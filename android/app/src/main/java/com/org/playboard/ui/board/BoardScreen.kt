@@ -70,6 +70,7 @@ fun BoardScreen(
         onGroupSwitcherToggled = viewModel::onGroupSwitcherToggled,
         onGroupSelected = viewModel::onGroupSelected,
         onCreateOrJoinGroupClicked = viewModel::onCreateOrJoinGroupClicked,
+        onInvitePlayersClicked = viewModel::onInvitePlayersClicked,
         onSortColumnSelected = viewModel::onSortColumnSelected,
         onRetry = viewModel::refresh,
     )
@@ -83,6 +84,14 @@ fun BoardScreen(
             onDismiss = viewModel::onSheetDismissed,
         )
     }
+
+    uiState.inviteSheet?.let { sheet ->
+        InviteSheet(
+            state = sheet,
+            onDismiss = viewModel::onInviteSheetDismissed,
+            onRetry = viewModel::onInviteRetry,
+        )
+    }
 }
 
 @Composable
@@ -92,6 +101,7 @@ private fun BoardContent(
     onGroupSwitcherToggled: () -> Unit,
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
+    onInvitePlayersClicked: () -> Unit,
     onSortColumnSelected: (RankingSortColumn) -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -114,8 +124,10 @@ private fun BoardContent(
                 YourGroupsPanel(
                     groups = uiState.groups,
                     selectedGroupId = uiState.selectedGroup.id,
+                    canInviteSelected = uiState.selectedGroup.canInvite,
                     onGroupSelected = onGroupSelected,
                     onCreateOrJoinGroupClicked = onCreateOrJoinGroupClicked,
+                    onInvitePlayersClicked = onInvitePlayersClicked,
                 )
             }
         }
@@ -209,8 +221,10 @@ private fun GroupSwitcherCard(group: Group, isExpanded: Boolean, onToggle: () ->
 private fun YourGroupsPanel(
     groups: List<Group>,
     selectedGroupId: String,
+    canInviteSelected: Boolean,
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
+    onInvitePlayersClicked: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -259,22 +273,31 @@ private fun YourGroupsPanel(
                 color = TextMuted.copy(alpha = 0.15f),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onCreateOrJoinGroupClicked)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            ) {
-                Text(text = "+", color = BrandLime, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = "Create or join a group",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextMuted,
-                    modifier = Modifier.padding(start = 12.dp),
-                )
+            if (canInviteSelected) {
+                PanelActionRow(icon = "↗", label = "Invite players", onClick = onInvitePlayersClicked)
             }
+            PanelActionRow(icon = "+", label = "Create or join a group", onClick = onCreateOrJoinGroupClicked)
         }
+    }
+}
+
+/** A tappable action row at the foot of the group switcher (invite, create/join). */
+@Composable
+private fun PanelActionRow(icon: String, label: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(text = icon, color = BrandLime, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextMuted,
+            modifier = Modifier.padding(start = 12.dp),
+        )
     }
 }
 
@@ -577,8 +600,8 @@ private fun NoMatchesState() {
 }
 
 private val previewGroups = listOf(
-    Group(id = "g1", name = "Saturday Smashers", avatarColor = "#C7EA2B", memberCount = 6, matchCount = 10),
-    Group(id = "g2", name = "Office League", avatarColor = "#3DB4FF", memberCount = 4, matchCount = 4),
+    Group(id = "g1", name = "Saturday Smashers", avatarColor = "#C7EA2B", memberCount = 6, matchCount = 10, myRole = "owner"),
+    Group(id = "g2", name = "Office League", avatarColor = "#3DB4FF", memberCount = 4, matchCount = 4, myRole = "member"),
 )
 
 private val previewRankings = listOf(
@@ -608,6 +631,7 @@ private fun BoardContentPreview() {
             onGroupSwitcherToggled = {},
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
+            onInvitePlayersClicked = {},
             onSortColumnSelected = {},
             onRetry = {},
         )
@@ -624,6 +648,7 @@ private fun BoardContentSwitcherExpandedPreview() {
             onGroupSwitcherToggled = {},
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
+            onInvitePlayersClicked = {},
             onSortColumnSelected = {},
             onRetry = {},
         )

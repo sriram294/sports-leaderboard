@@ -9,9 +9,11 @@ import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
+import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
+import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardEntryDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
@@ -46,6 +48,7 @@ private class FakePlayboardApi(
     var leaderboardResult: suspend (String) -> LeaderboardResponseDto = { LeaderboardResponseDto(emptyList()) },
     var createGroupResult: suspend (CreateGroupRequestDto) -> GroupDto = { error("createGroup not stubbed") },
     var joinGroupResult: suspend (JoinGroupRequestDto) -> GroupDto = { error("joinGroup not stubbed") },
+    var createInviteResult: suspend (String) -> InviteResponseDto = { error("createInvite not stubbed") },
 ) : PlayboardApi {
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         error("not used in this test")
@@ -54,6 +57,8 @@ private class FakePlayboardApi(
     override suspend fun getGroups(): GroupsResponseDto = groupsResult()
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = createGroupResult(request)
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = joinGroupResult(request)
+    override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
+        createInviteResult(groupId)
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = leaderboardResult(groupId)
 }
 
@@ -63,14 +68,14 @@ private fun invalidInviteHttpException(): HttpException {
     return HttpException(Response.error<Any>(404, body))
 }
 
-private fun groupDto(id: String, name: String) = GroupDto(
+private fun groupDto(id: String, name: String, myRole: String = "member") = GroupDto(
     id = id,
     name = name,
     avatarColor = "#C7EA2B",
     sportCode = "badminton_doubles",
     memberCount = 6,
     matchCount = 10,
-    myRole = "member",
+    myRole = myRole,
 )
 
 private fun entryDto(rank: Int, name: String, gamesPlayed: Int, wins: Int, pointsFor: Int, winRate: Double) =
@@ -301,5 +306,58 @@ class BoardViewModelTest {
         assertNotNull(sheet) // sheet stays open
         assertFalse(sheet!!.isSubmitting)
         assertNull(sheet.error)
+    }
+
+    @Test
+    fun `inviting players generates a code for the active group`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers", myRole = "owner"))) },
+            createInviteResult = { groupId ->
+                assertEquals("g1", groupId)
+                InviteResponseDto(code = "SMASH42")
+            },
+        )
+        val viewModel = viewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onInvitePlayersClicked()
+        advanceUntilIdle()
+
+        val sheet = viewModel.uiState.value.inviteSheet
+        assertNotNull(sheet)
+        assertEquals("Saturday Smashers", sheet!!.groupName)
+        assertFalse(sheet.isLoading)
+        assertEquals("SMASH42", sheet.code)
+        assertFalse(sheet.hasFailed)
+    }
+
+    @Test
+    fun `invite failure is retryable`() = runTest(testDispatcher) {
+        var failing = true
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers", myRole = "owner"))) },
+            createInviteResult = {
+                if (failing) throw RuntimeException("network down")
+                InviteResponseDto(code = "SMASH42")
+            },
+        )
+        val viewModel = viewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onInvitePlayersClicked()
+        advanceUntilIdle()
+
+        val failed = viewModel.uiState.value.inviteSheet
+        assertNotNull(failed)
+        assertTrue(failed!!.hasFailed)
+        assertNull(failed.code)
+
+        failing = false
+        viewModel.onInviteRetry()
+        advanceUntilIdle()
+
+        val recovered = viewModel.uiState.value.inviteSheet
+        assertFalse(recovered!!.hasFailed)
+        assertEquals("SMASH42", recovered.code)
     }
 }

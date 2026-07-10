@@ -72,6 +72,44 @@ class BoardViewModel @Inject constructor(
         _uiState.update { it.copy(isGroupSwitcherExpanded = false, groupActionSheet = GroupActionSheetState()) }
     }
 
+    /**
+     * Opens the invite sheet for the active group and starts generating a code.
+     * No-op if there's no active group; the entry point is gated on
+     * [com.org.playboard.data.model.Group.canInvite] so only owners/admins reach it.
+     */
+    fun onInvitePlayersClicked() {
+        val group = _uiState.value.selectedGroup ?: return
+        _uiState.update {
+            it.copy(isGroupSwitcherExpanded = false, inviteSheet = InviteSheetState(groupName = group.name))
+        }
+        generateInvite(group.id)
+    }
+
+    fun onInviteRetry() {
+        val group = _uiState.value.selectedGroup ?: return
+        updateInviteSheet { it.copy(isLoading = true, hasFailed = false) }
+        generateInvite(group.id)
+    }
+
+    fun onInviteSheetDismissed() {
+        _uiState.update { it.copy(inviteSheet = null) }
+    }
+
+    private fun generateInvite(groupId: String) {
+        viewModelScope.launch {
+            groupRepository.createInvite(groupId)
+                .onSuccess { code -> updateInviteSheet { it.copy(isLoading = false, code = code, hasFailed = false) } }
+                .onFailure { updateInviteSheet { it.copy(isLoading = false, hasFailed = true) } }
+        }
+    }
+
+    /** Applies [transform] to the open invite sheet; a no-op if it's already closed. */
+    private inline fun updateInviteSheet(transform: (InviteSheetState) -> InviteSheetState) {
+        _uiState.update { state ->
+            state.inviteSheet?.let { state.copy(inviteSheet = transform(it)) } ?: state
+        }
+    }
+
     fun onSheetModeChanged(mode: GroupActionMode) = updateSheet { it.copy(mode = mode, input = "", error = null) }
 
     fun onSheetInputChanged(input: String) = updateSheet { it.copy(input = input, error = null) }

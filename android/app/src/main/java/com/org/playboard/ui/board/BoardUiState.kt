@@ -30,6 +30,18 @@ data class GroupActionSheetState(
 }
 
 /**
+ * State of the "invite players" bottom sheet. `null` on [BoardUiState] means
+ * it's closed. While [isLoading] the code is being generated; [code] holds the
+ * generated invite once ready; [hasFailed] marks a (retryable) failure.
+ */
+data class InviteSheetState(
+    val groupName: String,
+    val isLoading: Boolean = true,
+    val code: String? = null,
+    val hasFailed: Boolean = false,
+)
+
+/**
  * Immutable state for the Board tab. [rankings] keeps the server order
  * (win rate desc — the canonical ranking); [tableRows] applies the user's
  * chosen sort on top of it for display.
@@ -44,6 +56,7 @@ data class BoardUiState(
     val rankings: List<PlayerRanking> = emptyList(),
     val sortColumn: RankingSortColumn = RankingSortColumn.WIN_RATE,
     val groupActionSheet: GroupActionSheetState? = null,
+    val inviteSheet: InviteSheetState? = null,
 ) {
     /** Top 3 by canonical ranking — always the first entries of the server-sorted list. */
     val podium: List<PlayerRanking> get() = rankings.take(3)

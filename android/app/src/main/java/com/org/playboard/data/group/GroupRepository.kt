@@ -4,6 +4,7 @@ import com.org.playboard.data.model.Group
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.apiErrorCode
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
+import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.InvalidInviteCodeException
@@ -70,6 +71,14 @@ class GroupRepository @Inject constructor(
                 throw if (cause.apiErrorCode(json) == "GROUP_INVITE_INVALID") InvalidInviteCodeException() else cause
             }
 
+    /**
+     * Creates a shareable invite code for [groupId] (unlimited uses, no expiry).
+     * Owner/admin only — the backend rejects other members — so callers should
+     * gate this on [Group.canInvite].
+     */
+    suspend fun createInvite(groupId: String): Result<String> =
+        runCatching { api.createInvite(groupId, CreateInviteRequestDto()).code }
+
     fun selectGroup(groupId: String) {
         _selectedGroupId.value = groupId
     }
@@ -98,4 +107,5 @@ private fun GroupDto.toGroup() = Group(
     avatarColor = avatarColor,
     memberCount = memberCount,
     matchCount = matchCount,
+    myRole = myRole,
 )

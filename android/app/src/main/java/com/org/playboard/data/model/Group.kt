@@ -7,4 +7,12 @@ data class Group(
     val avatarColor: String,
     val memberCount: Int,
     val matchCount: Int,
-)
+    val myRole: String,
+) {
+    /**
+     * Whether the signed-in user may create invites for this group. The backend
+     * restricts `POST /groups/{id}/invites` to owners and admins, so the UI
+     * gates the "Invite players" action the same way.
+     */
+    val canInvite: Boolean get() = myRole == "owner" || myRole == "admin"
+}
