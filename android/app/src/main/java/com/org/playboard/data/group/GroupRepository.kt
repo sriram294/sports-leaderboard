@@ -2,7 +2,11 @@ package com.org.playboard.data.group
 
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.remote.apiErrorCode
+import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
+import com.org.playboard.data.remote.dto.JoinGroupRequestDto
+import com.org.playboard.data.remote.InvalidInviteCodeException
 import com.org.playboard.di.AuthenticatedApi
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
+import kotlinx.serialization.json.Json
 
 /**
  * Groups the signed-in user belongs to, plus which one is currently active.
@@ -23,6 +29,7 @@ import kotlinx.coroutines.flow.combine
 @Singleton
 class GroupRepository @Inject constructor(
     @AuthenticatedApi private val api: PlayboardApi,
+    private val json: Json,
 ) {
     private val _groups = MutableStateFlow<List<Group>>(emptyList())
     val groups: StateFlow<List<Group>> = _groups.asStateFlow()
@@ -42,8 +49,46 @@ class GroupRepository @Inject constructor(
         runCatching { api.getGroups().groups.map(GroupDto::toGroup) }
             .onSuccess { _groups.value = it }
 
+    /**
+     * Creates a group (the caller becomes its owner) and makes it active so the
+     * Board switches to it immediately. Only one sport exists today, so
+     * [SPORT_CODE] is fixed rather than chosen.
+     */
+    suspend fun createGroup(name: String): Result<Group> =
+        runCatching { api.createGroup(CreateGroupRequestDto(name.trim(), SPORT_CODE)).toGroup() }
+            .onSuccess(::addAndSelect)
+
+    /**
+     * Joins a group by invite code and makes it active. A wrong/expired/exhausted
+     * code (`GROUP_INVITE_INVALID`) is surfaced as [InvalidInviteCodeException] so
+     * the UI can tell it apart from a network failure.
+     */
+    suspend fun joinGroup(code: String): Result<Group> =
+        runCatching { api.joinGroup(JoinGroupRequestDto(code.trim().uppercase())).toGroup() }
+            .onSuccess(::addAndSelect)
+            .recoverCatching { cause ->
+                throw if (cause.apiErrorCode(json) == "GROUP_INVITE_INVALID") InvalidInviteCodeException() else cause
+            }
+
     fun selectGroup(groupId: String) {
         _selectedGroupId.value = groupId
+    }
+
+    /** Inserts [group] (or replaces the existing entry with the same id) and selects it. */
+    private fun addAndSelect(group: Group) {
+        _groups.update { current ->
+            if (current.any { it.id == group.id }) {
+                current.map { if (it.id == group.id) group else it }
+            } else {
+                current + group
+            }
+        }
+        selectGroup(group.id)
+    }
+
+    private companion object {
+        // The only sport seeded server-side (V1 migration); no sport picker yet.
+        const val SPORT_CODE = "badminton_doubles"
     }
 }
 
