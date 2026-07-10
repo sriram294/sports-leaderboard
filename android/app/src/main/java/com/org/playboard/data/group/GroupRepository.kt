@@ -1,12 +1,14 @@
 package com.org.playboard.data.group
 
 import com.org.playboard.data.model.Group
+import com.org.playboard.data.model.Member
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.apiErrorCode
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
+import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.InvalidInviteCodeException
 import com.org.playboard.di.AuthenticatedApi
 import javax.inject.Inject
@@ -38,6 +40,18 @@ class GroupRepository @Inject constructor(
     private val _selectedGroupId = MutableStateFlow<String?>(null)
 
     /**
+     * Bumped whenever match data changes (e.g. a match is recorded), so screens
+     * showing derived data — the Board leaderboard — can re-fetch. Kept here
+     * because the active group is already the app-wide coordination point.
+     */
+    private val _dataRevision = MutableStateFlow(0)
+    val dataRevision: StateFlow<Int> = _dataRevision.asStateFlow()
+
+    fun notifyMatchesChanged() {
+        _dataRevision.update { it + 1 }
+    }
+
+    /**
      * The active group — the explicit selection if it still exists, else the
      * first group the user belongs to, else `null` (user has no groups yet).
      */
@@ -49,6 +63,10 @@ class GroupRepository @Inject constructor(
     suspend fun refreshGroups(): Result<List<Group>> =
         runCatching { api.getGroups().groups.map(GroupDto::toGroup) }
             .onSuccess { _groups.value = it }
+
+    /** The active group's roster, for building teams in Add Match. */
+    suspend fun getMembers(groupId: String): Result<List<Member>> =
+        runCatching { api.getMembers(groupId).members.map(MemberDto::toMember) }
 
     /**
      * Creates a group (the caller becomes its owner) and makes it active so the
@@ -100,6 +118,14 @@ class GroupRepository @Inject constructor(
         const val SPORT_CODE = "badminton_doubles"
     }
 }
+
+private fun MemberDto.toMember() = Member(
+    id = userId,
+    displayName = displayName,
+    photoUrl = photoUrl,
+    avatarColor = avatarColor,
+    role = role,
+)
 
 private fun GroupDto.toGroup() = Group(
     id = id,

@@ -8,6 +8,9 @@ import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
+import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.RecordMatchRequestDto
+import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import retrofit2.http.Body
@@ -41,4 +44,13 @@ interface PlayboardApi {
 
     @GET("api/v1/groups/{groupId}/leaderboard")
     suspend fun getLeaderboard(@Path("groupId") groupId: String): LeaderboardResponseDto
+
+    @GET("api/v1/groups/{groupId}/members")
+    suspend fun getMembers(@Path("groupId") groupId: String): MembersResponseDto
+
+    @POST("api/v1/groups/{groupId}/matches")
+    suspend fun recordMatch(
+        @Path("groupId") groupId: String,
+        @Body request: RecordMatchRequestDto,
+    ): RecordMatchResponseDto
 }
