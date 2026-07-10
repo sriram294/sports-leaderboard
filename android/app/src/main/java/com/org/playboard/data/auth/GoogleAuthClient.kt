@@ -7,7 +7,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.org.playboard.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,10 +35,12 @@ class CredentialManagerGoogleAuthClient @Inject constructor(
 ) : GoogleAuthClient {
 
     override suspend fun signIn(): GoogleAuthResult {
-        val option = GetGoogleIdOption.Builder()
-            .setFilterByAuthorizedAccounts(false)
-            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-            .build()
+        // GetSignInWithGoogleOption is the explicit "Sign in with Google" button
+        // flow: it always shows the account picker. GetGoogleIdOption is the
+        // silent/One-Tap flow for returning users and throws NoCredentialException
+        // when there's no already-authorized credential to return, even with
+        // Google accounts present on the device.
+        val option = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
 
         return try {

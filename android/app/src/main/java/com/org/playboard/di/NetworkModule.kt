@@ -8,6 +8,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
 import kotlinx.serialization.json.Json
@@ -45,6 +46,11 @@ object NetworkModule {
 
     private fun baseClientBuilder(): OkHttpClient.Builder =
         OkHttpClient.Builder().apply {
+            // The backend runs on Railway's free tier, which sleeps when idle and
+            // can take ~15-20s to cold-start on the first request. OkHttp's default
+            // 10s read timeout is too tight for that and fails the first sign-in;
+            // a 30s call timeout (whole request/response) absorbs the wake-up.
+            callTimeout(30, TimeUnit.SECONDS)
             if (BuildConfig.DEBUG) {
                 addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             }

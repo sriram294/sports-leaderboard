@@ -29,13 +29,13 @@ android {
         // must be on the same network). This IP is DHCP-assigned and can
         // change on reconnect — re-check with `ip -4 addr show scope global`
         // on the host if the app stops reaching the backend.
-        buildConfigField("String", "BASE_URL", "\"http://192.168.29.3:8080/\"")
+        buildConfigField("String", "BASE_URL", "\"https://playboard-prd.up.railway.app/\"")
         // Web-application OAuth Client ID (same value as the backend's
         // GOOGLE_CLIENT_ID env var) — not a secret, safe to version-control.
         buildConfigField(
             "String",
             "GOOGLE_WEB_CLIENT_ID",
-            "\"230561174351-ups60805rkpi1le11dkvsvjidh9fqq45.apps.googleusercontent.com\"",
+            "\"230561174351-ruug2ce5qci35d4o7of6kgmgj8shvigg.apps.googleusercontent.com\"",
         )
     }
 
