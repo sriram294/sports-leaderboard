@@ -8,15 +8,19 @@ import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
+import com.org.playboard.data.remote.dto.MatchDetailDto
+import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /** Mirrors `docs/backend/api-contracts.md`. Grows with each page slice. */
 interface PlayboardApi {
@@ -53,4 +57,23 @@ interface PlayboardApi {
         @Path("groupId") groupId: String,
         @Body request: RecordMatchRequestDto,
     ): RecordMatchResponseDto
+
+    @GET("api/v1/groups/{groupId}/matches")
+    suspend fun getMatches(
+        @Path("groupId") groupId: String,
+        @Query("cursor") cursor: String? = null,
+        @Query("limit") limit: Int? = null,
+    ): MatchListResponseDto
+
+    @GET("api/v1/groups/{groupId}/matches/{matchId}")
+    suspend fun getMatchDetail(
+        @Path("groupId") groupId: String,
+        @Path("matchId") matchId: String,
+    ): MatchDetailDto
+
+    @DELETE("api/v1/groups/{groupId}/matches/{matchId}")
+    suspend fun deleteMatch(
+        @Path("groupId") groupId: String,
+        @Path("matchId") matchId: String,
+    )
 }

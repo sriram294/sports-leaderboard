@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
+import com.org.playboard.ui.matches.MatchesScreen
 import com.org.playboard.ui.profile.ProfilePlaceholderScreen
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
@@ -56,7 +57,7 @@ fun MainScreen() {
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selectedTab) {
                 MainTab.Board -> BoardScreen(onProfileClick = { selectedTab = MainTab.Profile })
-                MainTab.Matches -> PlaceholderTab("Matches — coming in the next slice.")
+                MainTab.Matches -> MatchesScreen()
                 MainTab.Add -> AddMatchScreen(onRecorded = { selectedTab = MainTab.Board })
                 MainTab.Profile -> ProfilePlaceholderScreen()
             }
