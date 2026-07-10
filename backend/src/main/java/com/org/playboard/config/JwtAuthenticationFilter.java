@@ -18,7 +18,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * caller's user id as the authentication principal. Runs before the
  * dispatcher, so an invalid/expired token is not surfaced as our usual
  * {@code ApiException} -> ProblemDetail response — it's swallowed and the
- * request proceeds unauthenticated, letting Spring Security's own 401 apply.
+ * request proceeds unauthenticated, letting Spring Security's configured
+ * {@link org.springframework.security.web.authentication.HttpStatusEntryPoint}
+ * (see {@link SecurityConfig}) return 401.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
