@@ -72,17 +72,35 @@ class AddMatchViewModel @Inject constructor(
         }
     }
 
-    /** Assigns a player to the next open slot (Team 1 first), or unassigns if already picked. */
-    fun onPlayerClicked(userId: String) {
+    /** Opens the "Select Player" sheet for [teamNo], unless that team is already full. */
+    fun onEmptySlotClicked(teamNo: Int) {
+        val team = if (teamNo == 1) _uiState.value.team1 else _uiState.value.team2
+        if (team.size >= AddMatchUiState.TEAM_SIZE) return
+        _uiState.update { it.copy(playerPickerTeam = teamNo) }
+    }
+
+    /** Assigns the picked player to the team the sheet was opened for, then closes it. */
+    fun onPlayerPicked(userId: String) {
         _uiState.update { state ->
+            val teamNo = state.playerPickerTeam
             val next = when {
-                userId in state.team1 -> state.copy(team1 = state.team1 - userId)
-                userId in state.team2 -> state.copy(team2 = state.team2 - userId)
-                state.team1.size < AddMatchUiState.TEAM_SIZE -> state.copy(team1 = state.team1 + userId)
-                state.team2.size < AddMatchUiState.TEAM_SIZE -> state.copy(team2 = state.team2 + userId)
-                else -> state // both teams full
+                teamNo == null || userId in state.assignedIds -> state
+                teamNo == 1 && state.team1.size < AddMatchUiState.TEAM_SIZE -> state.copy(team1 = state.team1 + userId)
+                teamNo == 2 && state.team2.size < AddMatchUiState.TEAM_SIZE -> state.copy(team2 = state.team2 + userId)
+                else -> state
             }
-            next.copy(submitError = null)
+            next.copy(playerPickerTeam = null, submitError = null)
+        }
+    }
+
+    fun onPlayerPickerDismissed() {
+        _uiState.update { it.copy(playerPickerTeam = null) }
+    }
+
+    /** Removes a player from whichever team they're on (tapping a filled slot). */
+    fun onRemovePlayer(userId: String) {
+        _uiState.update {
+            it.copy(team1 = it.team1 - userId, team2 = it.team2 - userId, submitError = null)
         }
     }
 
@@ -149,6 +167,7 @@ class AddMatchViewModel @Inject constructor(
                 sets = listOf(SetScoreInput()),
                 winnerOverride = null,
                 submitError = null,
+                playerPickerTeam = null,
             )
         }
         groupRepository.getMembers(group.id)
@@ -165,6 +184,7 @@ class AddMatchViewModel @Inject constructor(
                 winnerOverride = null,
                 isSubmitting = false,
                 submitError = null,
+                playerPickerTeam = null,
             )
         }
     }
