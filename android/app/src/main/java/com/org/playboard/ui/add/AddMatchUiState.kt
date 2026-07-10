@@ -24,8 +24,13 @@ data class AddMatchUiState(
     val winnerOverride: Int? = null,
     val isSubmitting: Boolean = false,
     val submitError: RecordMatchError? = null,
+    /** Team (1 or 2) the "Select Player" sheet is currently picking for; `null` = closed. */
+    val playerPickerTeam: Int? = null,
 ) {
     val assignedIds: Set<String> get() = (team1 + team2).toSet()
+
+    /** Roster members not yet on a team — the choices shown in the picker. */
+    val availablePlayers: List<Member> get() = roster.filter { it.id !in assignedIds }
 
     val teamsComplete: Boolean get() = team1.size == TEAM_SIZE && team2.size == TEAM_SIZE
 

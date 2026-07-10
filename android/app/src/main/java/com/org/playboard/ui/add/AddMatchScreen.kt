@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,7 +35,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -71,7 +68,8 @@ fun AddMatchScreen(
 
     AddMatchContent(
         state = uiState,
-        onPlayerClicked = viewModel::onPlayerClicked,
+        onEmptySlotClicked = viewModel::onEmptySlotClicked,
+        onRemovePlayer = viewModel::onRemovePlayer,
         onSetScoreChanged = viewModel::onSetScoreChanged,
         onAddSet = viewModel::onAddSet,
         onRemoveSet = viewModel::onRemoveSet,
@@ -79,12 +77,21 @@ fun AddMatchScreen(
         onRecord = viewModel::onRecord,
         onRetry = viewModel::retry,
     )
+
+    if (uiState.playerPickerTeam != null) {
+        PlayerPickerSheet(
+            available = uiState.availablePlayers,
+            onPick = viewModel::onPlayerPicked,
+            onDismiss = viewModel::onPlayerPickerDismissed,
+        )
+    }
 }
 
 @Composable
 private fun AddMatchContent(
     state: AddMatchUiState,
-    onPlayerClicked: (String) -> Unit,
+    onEmptySlotClicked: (Int) -> Unit,
+    onRemovePlayer: (String) -> Unit,
     onSetScoreChanged: (Int, Int, String) -> Unit,
     onAddSet: () -> Unit,
     onRemoveSet: (Int) -> Unit,
@@ -107,7 +114,8 @@ private fun AddMatchContent(
         }
         else -> AddMatchForm(
             state = state,
-            onPlayerClicked = onPlayerClicked,
+            onEmptySlotClicked = onEmptySlotClicked,
+            onRemovePlayer = onRemovePlayer,
             onSetScoreChanged = onSetScoreChanged,
             onAddSet = onAddSet,
             onRemoveSet = onRemoveSet,
@@ -120,7 +128,8 @@ private fun AddMatchContent(
 @Composable
 private fun AddMatchForm(
     state: AddMatchUiState,
-    onPlayerClicked: (String) -> Unit,
+    onEmptySlotClicked: (Int) -> Unit,
+    onRemovePlayer: (String) -> Unit,
     onSetScoreChanged: (Int, Int, String) -> Unit,
     onAddSet: () -> Unit,
     onRemoveSet: (Int) -> Unit,
@@ -140,11 +149,19 @@ private fun AddMatchForm(
         Header(groupName = state.groupName, recorder = state.recorder)
 
         SectionLabel("BUILD TEAMS")
-        TeamSlots(teamNo = 1, players = state.teamPlayers(1), onSlotClicked = onPlayerClicked)
+        TeamSlots(
+            teamNo = 1,
+            players = state.teamPlayers(1),
+            onEmptySlotClicked = onEmptySlotClicked,
+            onRemovePlayer = onRemovePlayer,
+        )
         Spacer(Modifier.height(12.dp))
-        TeamSlots(teamNo = 2, players = state.teamPlayers(2), onSlotClicked = onPlayerClicked)
-        Spacer(Modifier.height(16.dp))
-        PlayerChips(roster = state.roster, assignedIds = state.assignedIds, onPlayerClicked = onPlayerClicked)
+        TeamSlots(
+            teamNo = 2,
+            players = state.teamPlayers(2),
+            onEmptySlotClicked = onEmptySlotClicked,
+            onRemovePlayer = onRemovePlayer,
+        )
 
         Spacer(Modifier.height(28.dp))
         SectionLabel("SCORE BY SET")
@@ -253,7 +270,12 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun TeamSlots(teamNo: Int, players: List<Member>, onSlotClicked: (String) -> Unit) {
+private fun TeamSlots(
+    teamNo: Int,
+    players: List<Member>,
+    onEmptySlotClicked: (Int) -> Unit,
+    onRemovePlayer: (String) -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "Team $teamNo",
@@ -266,26 +288,9 @@ private fun TeamSlots(teamNo: Int, players: List<Member>, onSlotClicked: (String
             repeat(AddMatchUiState.TEAM_SIZE) { i ->
                 val member = players.getOrNull(i)
                 if (member != null) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onSlotClicked(member.id) },
-                    ) {
-                        PlayerAvatar(
-                            displayName = member.displayName,
-                            photoUrl = member.photoUrl,
-                            avatarColorHex = member.avatarColor,
-                            size = 52.dp,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = member.displayName,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp),
-                            color = TextPrimary,
-                            maxLines = 1,
-                        )
-                    }
+                    FilledSlot(member = member, onRemove = { onRemovePlayer(member.id) })
                 } else {
-                    EmptySlot()
+                    EmptySlot(onClick = { onEmptySlotClicked(teamNo) })
                 }
             }
         }
@@ -293,56 +298,53 @@ private fun TeamSlots(teamNo: Int, players: List<Member>, onSlotClicked: (String
 }
 
 @Composable
-private fun EmptySlot() {
+private fun FilledSlot(member: Member, onRemove: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            PlayerAvatar(
+                displayName = member.displayName,
+                photoUrl = member.photoUrl,
+                avatarColorHex = member.avatarColor,
+                size = 52.dp,
+            )
+            // A small × badge to remove the player (tapping the slot also removes).
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceDark)
+                    .border(1.dp, TextMuted.copy(alpha = 0.5f), CircleShape)
+                    .clickable(onClick = onRemove),
+            ) {
+                Text("×", color = TextPrimary, fontSize = 13.sp)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = member.displayName,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp),
+            color = TextPrimary,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun EmptySlot(onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .border(1.dp, TextMuted.copy(alpha = 0.5f), CircleShape),
+                .border(1.dp, TextMuted.copy(alpha = 0.5f), CircleShape)
+                .clickable(onClick = onClick),
         ) {
             Text("+", color = TextMuted, fontSize = 22.sp)
         }
         Spacer(Modifier.height(4.dp))
         Text(text = " ", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp))
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun PlayerChips(roster: List<Member>, assignedIds: Set<String>, onPlayerClicked: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        roster.forEach { member ->
-            val assigned = member.id in assignedIds
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (assigned) BrandLime.copy(alpha = 0.12f) else SurfaceDark)
-                    .border(
-                        1.dp,
-                        if (assigned) BrandLime else Color.Transparent,
-                        RoundedCornerShape(20.dp),
-                    )
-                    .clickable { onPlayerClicked(member.id) }
-                    .padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-            ) {
-                PlayerAvatar(
-                    displayName = member.displayName,
-                    photoUrl = member.photoUrl,
-                    avatarColorHex = member.avatarColor,
-                    size = 26.dp,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = member.displayName,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                    color = if (assigned) BrandLime else TextPrimary,
-                    fontWeight = if (assigned) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
-        }
     }
 }
 
@@ -495,10 +497,11 @@ private fun AddMatchFormPreview() {
                 recorder = UserSession("u1", "Raj", "raj@example.com", null, "#9ADE28"),
                 roster = previewRoster,
                 team1 = listOf("u1", "u2"),
-                team2 = listOf("u3", "u4"),
+                team2 = listOf("u3"),
                 sets = listOf(SetScoreInput("21", "12"), SetScoreInput("21", "17")),
             ),
-            onPlayerClicked = {},
+            onEmptySlotClicked = {},
+            onRemovePlayer = {},
             onSetScoreChanged = { _, _, _ -> },
             onAddSet = {},
             onRemoveSet = {},

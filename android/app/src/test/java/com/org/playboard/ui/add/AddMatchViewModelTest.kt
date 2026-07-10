@@ -96,6 +96,14 @@ private fun matchInvalidScoresException(): HttpException {
     return HttpException(Response.error<Any>(422, body))
 }
 
+/** Fills both teams via the picker: u1,u2 → Team 1; u3,u4 → Team 2. */
+private fun AddMatchViewModel.buildTeams() {
+    onEmptySlotClicked(1); onPlayerPicked("u1")
+    onEmptySlotClicked(1); onPlayerPicked("u2")
+    onEmptySlotClicked(2); onPlayerPicked("u3")
+    onEmptySlotClicked(2); onPlayerPicked("u4")
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class AddMatchViewModelTest {
 
@@ -160,21 +168,26 @@ class AddMatchViewModelTest {
         val viewModel = readyViewModel(api)
         advanceUntilIdle()
 
-        listOf("u1", "u2", "u3", "u4").forEach(viewModel::onPlayerClicked)
+        viewModel.buildTeams()
         var state = viewModel.uiState.value
         assertEquals(listOf("u1", "u2"), state.team1)
         assertEquals(listOf("u3", "u4"), state.team2)
         assertTrue(state.teamsComplete)
+        // The 5th player is no longer available to pick.
+        assertTrue(state.availablePlayers.map { it.id }.contains("u5"))
 
-        // Both teams full — a further, unassigned player is ignored.
-        viewModel.onPlayerClicked("u5")
+        // Team 1 is full — opening the picker for it is a no-op, so a pick can't land there.
+        viewModel.onEmptySlotClicked(1)
+        assertNull(viewModel.uiState.value.playerPickerTeam)
+        viewModel.onPlayerPicked("u5")
         state = viewModel.uiState.value
         assertEquals(listOf("u1", "u2"), state.team1)
         assertEquals(listOf("u3", "u4"), state.team2)
 
-        // Tapping an assigned player unassigns them.
-        viewModel.onPlayerClicked("u1")
+        // Removing a player frees the slot and returns them to the available list.
+        viewModel.onRemovePlayer("u1")
         assertEquals(listOf("u2"), viewModel.uiState.value.team1)
+        assertTrue(viewModel.uiState.value.availablePlayers.map { it.id }.contains("u1"))
     }
 
     @Test
@@ -183,7 +196,7 @@ class AddMatchViewModelTest {
         val viewModel = readyViewModel(api)
         advanceUntilIdle()
 
-        listOf("u1", "u2", "u3", "u4").forEach(viewModel::onPlayerClicked)
+        viewModel.buildTeams()
         assertFalse(viewModel.uiState.value.canRecord) // no scores yet
 
         viewModel.onSetScoreChanged(0, 1, "21")
@@ -204,7 +217,7 @@ class AddMatchViewModelTest {
         val viewModel = readyViewModel(api)
         advanceUntilIdle()
 
-        listOf("u1", "u2", "u3", "u4").forEach(viewModel::onPlayerClicked)
+        viewModel.buildTeams()
         viewModel.onSetScoreChanged(0, 1, "21")
         viewModel.onSetScoreChanged(0, 2, "21")
 
@@ -224,7 +237,7 @@ class AddMatchViewModelTest {
             }
             advanceUntilIdle() // let the roster load
 
-            listOf("u1", "u2", "u3", "u4").forEach(viewModel::onPlayerClicked)
+            viewModel.buildTeams()
             viewModel.onSetScoreChanged(0, 1, "21")
             viewModel.onSetScoreChanged(0, 2, "12")
             viewModel.onRecord()
@@ -254,7 +267,7 @@ class AddMatchViewModelTest {
         val viewModel = readyViewModel(api)
         advanceUntilIdle()
 
-        listOf("u1", "u2", "u3", "u4").forEach(viewModel::onPlayerClicked)
+        viewModel.buildTeams()
         viewModel.onSetScoreChanged(0, 1, "21")
         viewModel.onSetScoreChanged(0, 2, "12")
         viewModel.onRecord()
