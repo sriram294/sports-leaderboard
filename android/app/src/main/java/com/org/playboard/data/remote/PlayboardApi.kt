@@ -11,6 +11,7 @@ import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
@@ -51,6 +52,12 @@ interface PlayboardApi {
 
     @GET("api/v1/groups/{groupId}/members")
     suspend fun getMembers(@Path("groupId") groupId: String): MembersResponseDto
+
+    @GET("api/v1/groups/{groupId}/members/{userId}/stats")
+    suspend fun getPlayerStats(
+        @Path("groupId") groupId: String,
+        @Path("userId") userId: String,
+    ): PlayerStatsDto
 
     @POST("api/v1/groups/{groupId}/matches")
     suspend fun recordMatch(

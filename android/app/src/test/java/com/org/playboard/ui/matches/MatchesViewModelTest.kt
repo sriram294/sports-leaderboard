@@ -26,6 +26,7 @@ import com.org.playboard.data.remote.dto.MatchSetDto
 import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RecordedByDto
@@ -66,6 +67,7 @@ private class FakePlayboardApi(
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto = error("unused")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
+    override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
         MatchListResponseDto(matches.toList())
