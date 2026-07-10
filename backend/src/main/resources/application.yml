@@ -24,7 +24,8 @@ spring:
       max-request-size: 5MB
 
 server:
-  port: 8080
+  # Railway (and most PaaS) inject the port to bind on via $PORT.
+  port: ${PORT:8080}
 
 playboard:
   auth:
