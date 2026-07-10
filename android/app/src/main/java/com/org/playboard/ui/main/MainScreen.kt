@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
 import com.org.playboard.ui.matches.MatchesScreen
-import com.org.playboard.ui.profile.ProfilePlaceholderScreen
+import com.org.playboard.ui.profile.ProfileScreen
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.SurfaceDark
@@ -59,7 +59,7 @@ fun MainScreen() {
                 MainTab.Board -> BoardScreen(onProfileClick = { selectedTab = MainTab.Profile })
                 MainTab.Matches -> MatchesScreen()
                 MainTab.Add -> AddMatchScreen(onRecorded = { selectedTab = MainTab.Board })
-                MainTab.Profile -> ProfilePlaceholderScreen()
+                MainTab.Profile -> ProfileScreen()
             }
         }
     }

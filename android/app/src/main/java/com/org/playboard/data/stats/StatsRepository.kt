@@ -1,0 +1,81 @@
+package com.org.playboard.data.stats
+
+import com.org.playboard.data.model.BestPartner
+import com.org.playboard.data.model.Match
+import com.org.playboard.data.model.MatchPlayer
+import com.org.playboard.data.model.MatchSet
+import com.org.playboard.data.model.MatchTeam
+import com.org.playboard.data.model.PlayerStats
+import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.remote.dto.BestPartnerDto
+import com.org.playboard.data.remote.dto.MatchPlayerDto
+import com.org.playboard.data.remote.dto.MatchSetDto
+import com.org.playboard.data.remote.dto.MatchSummaryDto
+import com.org.playboard.data.remote.dto.MatchTeamDto
+import com.org.playboard.data.remote.dto.PlayerStatsDto
+import com.org.playboard.di.AuthenticatedApi
+import java.time.Instant
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Fetches a player's per-group stats for the Profile tab
+ * (docs/requirements/05-profile.md). Same endpoint powers own stats and,
+ * later, a leaderboard player's stats — the caller passes the `userId`.
+ */
+@Singleton
+class StatsRepository @Inject constructor(
+    @AuthenticatedApi private val api: PlayboardApi,
+) {
+    suspend fun getPlayerStats(groupId: String, userId: String): Result<PlayerStats> =
+        runCatching { api.getPlayerStats(groupId, userId).toStats() }
+}
+
+private fun PlayerStatsDto.toStats() = PlayerStats(
+    userId = userId,
+    displayName = displayName,
+    photoUrl = photoUrl,
+    avatarColor = avatarColor,
+    matchesPlayed = matchesPlayed,
+    wins = wins,
+    losses = losses,
+    pointsFor = pointsFor,
+    pointsAgainst = pointsAgainst,
+    winRate = winRate,
+    currentStreak = currentStreak,
+    bestStreak = bestStreak,
+    bestPartner = bestPartner?.toBestPartner(),
+    recentMatches = recentMatches.map(MatchSummaryDto::toMatch),
+)
+
+private fun BestPartnerDto.toBestPartner() = BestPartner(
+    userId = userId,
+    displayName = displayName,
+    photoUrl = photoUrl,
+    avatarColor = avatarColor,
+    gamesTogether = gamesTogether,
+    winsTogether = winsTogether,
+    winRate = winRate,
+)
+
+private fun MatchSummaryDto.toMatch() = Match(
+    id = id,
+    playedAt = Instant.parse(playedAt),
+    teams = teams.map(MatchTeamDto::toTeam),
+    sets = sets.map(MatchSetDto::toSet),
+)
+
+private fun MatchTeamDto.toTeam() = MatchTeam(
+    teamNo = teamNo,
+    isWinner = isWinner,
+    players = players.map(MatchPlayerDto::toPlayer),
+)
+
+private fun MatchPlayerDto.toPlayer() = MatchPlayer(
+    userId = userId,
+    displayName = displayName,
+    avatarColor = avatarColor,
+    photoUrl = photoUrl,
+)
+
+private fun MatchSetDto.toSet() = MatchSet(setNo = setNo, team1Score = team1Score, team2Score = team2Score)
