@@ -1,7 +1,10 @@
 package com.org.playboard.data.remote
 
+import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
+import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
+import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
@@ -21,6 +24,12 @@ interface PlayboardApi {
 
     @GET("api/v1/groups")
     suspend fun getGroups(): GroupsResponseDto
+
+    @POST("api/v1/groups")
+    suspend fun createGroup(@Body request: CreateGroupRequestDto): GroupDto
+
+    @POST("api/v1/groups/join")
+    suspend fun joinGroup(@Body request: JoinGroupRequestDto): GroupDto
 
     @GET("api/v1/groups/{groupId}/leaderboard")
     suspend fun getLeaderboard(@Path("groupId") groupId: String): LeaderboardResponseDto

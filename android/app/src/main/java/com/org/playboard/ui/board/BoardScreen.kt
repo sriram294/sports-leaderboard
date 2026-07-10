@@ -73,6 +73,16 @@ fun BoardScreen(
         onSortColumnSelected = viewModel::onSortColumnSelected,
         onRetry = viewModel::refresh,
     )
+
+    uiState.groupActionSheet?.let { sheet ->
+        GroupActionSheet(
+            state = sheet,
+            onModeChanged = viewModel::onSheetModeChanged,
+            onInputChanged = viewModel::onSheetInputChanged,
+            onSubmit = viewModel::onSheetSubmit,
+            onDismiss = viewModel::onSheetDismissed,
+        )
+    }
 }
 
 @Composable
@@ -113,7 +123,8 @@ private fun BoardContent(
         when {
             uiState.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
             uiState.hasLoadFailed -> LoadFailedState(onRetry = onRetry)
-            uiState.selectedGroup == null -> NoGroupsState()
+            uiState.selectedGroup == null ->
+                NoGroupsState(onCreateOrJoinGroupClicked = onCreateOrJoinGroupClicked)
             uiState.rankings.isEmpty() -> NoMatchesState()
             else -> LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -538,14 +549,18 @@ private fun LoadFailedState(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun NoGroupsState() {
+private fun NoGroupsState(onCreateOrJoinGroupClicked: () -> Unit) {
     CenteredBox {
-        Text(
-            text = "You're not in a group yet.\nCreate or join one to start tracking matches.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
-            textAlign = TextAlign.Center,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "You're not in a group yet.\nCreate or join one to start tracking matches.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onCreateOrJoinGroupClicked) { Text("Create or join a group") }
+        }
     }
 }
 

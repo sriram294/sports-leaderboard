@@ -9,6 +9,26 @@ enum class RankingSortColumn {
     GAMES_PLAYED, WINS, LOSSES, POINTS_FOR, WIN_RATE
 }
 
+/** Whether the create/join sheet is creating a new group or joining one by code. */
+enum class GroupActionMode { CREATE, JOIN }
+
+/** Reason a create/join attempt failed, mapped to a user-facing message in the sheet. */
+enum class GroupActionError { INVALID_CODE, NETWORK }
+
+/**
+ * State of the "create or join a group" bottom sheet. `null` on [BoardUiState]
+ * means the sheet is closed.
+ */
+data class GroupActionSheetState(
+    val mode: GroupActionMode = GroupActionMode.CREATE,
+    val input: String = "",
+    val isSubmitting: Boolean = false,
+    val error: GroupActionError? = null,
+) {
+    /** Submit is allowed only with non-blank input and no in-flight request. */
+    val canSubmit: Boolean get() = input.isNotBlank() && !isSubmitting
+}
+
 /**
  * Immutable state for the Board tab. [rankings] keeps the server order
  * (win rate desc — the canonical ranking); [tableRows] applies the user's
@@ -23,6 +43,7 @@ data class BoardUiState(
     val isGroupSwitcherExpanded: Boolean = false,
     val rankings: List<PlayerRanking> = emptyList(),
     val sortColumn: RankingSortColumn = RankingSortColumn.WIN_RATE,
+    val groupActionSheet: GroupActionSheetState? = null,
 ) {
     /** Top 3 by canonical ranking — always the first entries of the server-sorted list. */
     val podium: List<PlayerRanking> get() = rankings.take(3)

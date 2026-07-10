@@ -6,6 +6,7 @@ import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.model.SessionState
+import com.org.playboard.data.remote.InvalidInviteCodeException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,8 +67,56 @@ class BoardViewModel @Inject constructor(
         _uiState.update { it.copy(sortColumn = column) }
     }
 
-    /** Stub — group creation/joining lands with the group-management slice. */
-    fun onCreateOrJoinGroupClicked() = Unit
+    /** Opens the create/join sheet (and collapses the group switcher behind it). */
+    fun onCreateOrJoinGroupClicked() {
+        _uiState.update { it.copy(isGroupSwitcherExpanded = false, groupActionSheet = GroupActionSheetState()) }
+    }
+
+    fun onSheetModeChanged(mode: GroupActionMode) = updateSheet { it.copy(mode = mode, input = "", error = null) }
+
+    fun onSheetInputChanged(input: String) = updateSheet { it.copy(input = input, error = null) }
+
+    fun onSheetDismissed() {
+        _uiState.update { it.copy(groupActionSheet = null) }
+    }
+
+    fun onSheetSubmit() {
+        val sheet = _uiState.value.groupActionSheet ?: return
+        if (!sheet.canSubmit) return
+        updateSheet { it.copy(isSubmitting = true, error = null) }
+        viewModelScope.launch {
+            val result = when (sheet.mode) {
+                GroupActionMode.CREATE -> groupRepository.createGroup(sheet.input)
+                GroupActionMode.JOIN -> groupRepository.joinGroup(sheet.input)
+            }
+            result
+                .onSuccess {
+                    // The repository has already made the new group active; reload the
+                    // board for it and sync the switcher's group list.
+                    _uiState.update {
+                        it.copy(
+                            groupActionSheet = null,
+                            groups = groupRepository.groups.value,
+                            isLoading = true,
+                            hasLoadFailed = false,
+                        )
+                    }
+                    loadLeaderboardForSelection()
+                }
+                .onFailure { cause ->
+                    val error =
+                        if (cause is InvalidInviteCodeException) GroupActionError.INVALID_CODE else GroupActionError.NETWORK
+                    updateSheet { it.copy(isSubmitting = false, error = error) }
+                }
+        }
+    }
+
+    /** Applies [transform] to the open sheet; a no-op if it's already closed. */
+    private inline fun updateSheet(transform: (GroupActionSheetState) -> GroupActionSheetState) {
+        _uiState.update { state ->
+            state.groupActionSheet?.let { state.copy(groupActionSheet = transform(it)) } ?: state
+        }
+    }
 
     private suspend fun loadLeaderboardForSelection() {
         val group = groupRepository.selectedGroup.first()

@@ -8,8 +8,11 @@ import com.org.playboard.data.auth.GoogleAuthClient
 import com.org.playboard.data.auth.GoogleAuthResult
 import com.org.playboard.data.auth.TokenStore
 import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
+import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
+import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
@@ -39,6 +42,8 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = signInResult(request)
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("not used in this test")
     override suspend fun getGroups(): GroupsResponseDto = error("not used in this test")
+    override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("not used in this test")
+    override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
 }
 
