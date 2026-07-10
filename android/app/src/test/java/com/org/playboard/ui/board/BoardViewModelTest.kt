@@ -17,6 +17,9 @@ import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardEntryDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
+import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.RecordMatchRequestDto
+import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import kotlinx.coroutines.CoroutineScope
@@ -60,6 +63,9 @@ private class FakePlayboardApi(
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         createInviteResult(groupId)
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = leaderboardResult(groupId)
+    override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
+    override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
+        error("recordMatch not used in this test")
 }
 
 /** A `404` with the backend's `GROUP_INVITE_INVALID` code, as `joinGroup` returns for a bad code. */

@@ -13,6 +13,9 @@ import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
+import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.RecordMatchRequestDto
+import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
@@ -33,6 +36,9 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
+        error("not used in this test")
+    override suspend fun getMembers(groupId: String): MembersResponseDto = error("not used in this test")
+    override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
 }

@@ -12,6 +12,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -36,6 +37,11 @@ class BoardViewModel @Inject constructor(
             authRepository.sessionState.collect { session ->
                 _uiState.update { it.copy(currentUser = (session as? SessionState.SignedIn)?.user) }
             }
+        }
+        // A match recorded on the Add tab changes the leaderboard; re-fetch when
+        // the shared data revision advances (drop(1) skips the initial value).
+        viewModelScope.launch {
+            groupRepository.dataRevision.drop(1).collect { refresh() }
         }
         refresh()
     }
