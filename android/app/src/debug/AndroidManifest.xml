@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest overlay: permits plain HTTP (cleartext) traffic, since
+  the dev backend runs on http://<LAN IP>:8080 with no TLS. Android blocks
+  cleartext by default for apps targeting API 28+; this override only
+  applies to debug builds (Gradle manifest merging), so release builds stay
+  HTTPS-only by default.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:usesCleartextTraffic="true" />
+</manifest>

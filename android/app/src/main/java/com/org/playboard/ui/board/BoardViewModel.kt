@@ -1,0 +1,94 @@
+package com.org.playboard.ui.board
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.org.playboard.data.auth.AuthRepository
+import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.data.leaderboard.LeaderboardRepository
+import com.org.playboard.data.model.SessionState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/**
+ * Board tab (docs/requirements/02-board-leaderboard.md): loads the user's
+ * groups, then the leaderboard of the active group; switching groups reloads
+ * podium + rankings.
+ */
+@HiltViewModel
+class BoardViewModel @Inject constructor(
+    authRepository: AuthRepository,
+    private val groupRepository: GroupRepository,
+    private val leaderboardRepository: LeaderboardRepository,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(BoardUiState())
+    val uiState: StateFlow<BoardUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            authRepository.sessionState.collect { session ->
+                _uiState.update { it.copy(currentUser = (session as? SessionState.SignedIn)?.user) }
+            }
+        }
+        refresh()
+    }
+
+    /** Full reload — groups then the active group's leaderboard. Also the retry path. */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, hasLoadFailed = false) }
+            groupRepository.refreshGroups()
+                .onSuccess { groups ->
+                    _uiState.update { it.copy(groups = groups) }
+                    loadLeaderboardForSelection()
+                }
+                .onFailure { _uiState.update { it.copy(isLoading = false, hasLoadFailed = true) } }
+        }
+    }
+
+    fun onGroupSwitcherToggled() {
+        _uiState.update { it.copy(isGroupSwitcherExpanded = !it.isGroupSwitcherExpanded) }
+    }
+
+    fun onGroupSelected(groupId: String) {
+        groupRepository.selectGroup(groupId)
+        _uiState.update { it.copy(isGroupSwitcherExpanded = false, isLoading = true, hasLoadFailed = false) }
+        viewModelScope.launch { loadLeaderboardForSelection() }
+    }
+
+    fun onSortColumnSelected(column: RankingSortColumn) {
+        _uiState.update { it.copy(sortColumn = column) }
+    }
+
+    /** Stub — group creation/joining lands with the group-management slice. */
+    fun onCreateOrJoinGroupClicked() = Unit
+
+    private suspend fun loadLeaderboardForSelection() {
+        val group = groupRepository.selectedGroup.first()
+        if (group == null) {
+            // User belongs to no groups yet — empty state, nothing to fetch.
+            _uiState.update { it.copy(isLoading = false, selectedGroup = null, rankings = emptyList()) }
+            return
+        }
+        leaderboardRepository.getLeaderboard(group.id)
+            .onSuccess { rankings ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        selectedGroup = group,
+                        rankings = rankings,
+                        sortColumn = RankingSortColumn.WIN_RATE,
+                    )
+                }
+            }
+            .onFailure {
+                _uiState.update { it.copy(isLoading = false, selectedGroup = group, hasLoadFailed = true) }
+            }
+    }
+}
