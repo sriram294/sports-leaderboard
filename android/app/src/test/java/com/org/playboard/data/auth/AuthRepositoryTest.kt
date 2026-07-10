@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import com.org.playboard.data.model.SessionState
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
+import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
+import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
@@ -30,6 +32,8 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
     override suspend fun getGroups(): GroupsResponseDto = error("not used in this test")
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("not used in this test")
+    override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
+        error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
 }
 
