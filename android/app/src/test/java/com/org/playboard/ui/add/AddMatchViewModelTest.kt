@@ -16,6 +16,8 @@ import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
+import com.org.playboard.data.remote.dto.MatchDetailDto
+import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -71,6 +73,11 @@ private class FakePlayboardApi(
         lastRecordRequest = request
         return recordMatchBehavior(request)
     }
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
+        error("not used in this test")
+    override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
+        error("not used in this test")
+    override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
 }
 
 private fun groupDto(id: String, name: String) = GroupDto(

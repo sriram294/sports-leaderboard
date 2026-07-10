@@ -19,6 +19,8 @@ import com.org.playboard.data.remote.dto.LeaderboardEntryDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
+import com.org.playboard.data.remote.dto.MatchDetailDto
+import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
@@ -66,6 +68,11 @@ private class FakePlayboardApi(
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("recordMatch not used in this test")
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
+        error("not used in this test")
+    override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
+        error("not used in this test")
+    override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
 }
 
 /** A `404` with the backend's `GROUP_INVITE_INVALID` code, as `joinGroup` returns for a bad code. */

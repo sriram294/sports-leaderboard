@@ -1,8 +1,20 @@
 package com.org.playboard.data.match
 
 import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.data.model.Match
+import com.org.playboard.data.model.MatchDetail
+import com.org.playboard.data.model.MatchEvent
+import com.org.playboard.data.model.MatchPlayer
+import com.org.playboard.data.model.MatchSet
+import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.apiErrorCode
+import com.org.playboard.data.remote.dto.MatchDetailDto
+import com.org.playboard.data.remote.dto.MatchEventDto
+import com.org.playboard.data.remote.dto.MatchPlayerDto
+import com.org.playboard.data.remote.dto.MatchSetDto
+import com.org.playboard.data.remote.dto.MatchSummaryDto
+import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.SetInputDto
 import com.org.playboard.data.remote.dto.TeamInputDto
@@ -60,4 +72,55 @@ class MatchRepository @Inject constructor(
                     else -> cause
                 }
             }
+
+    /** The group's matches, newest first (first page only for now). */
+    suspend fun getMatches(groupId: String): Result<List<Match>> =
+        runCatching { api.getMatches(groupId).matches.map(MatchSummaryDto::toMatch) }
+
+    suspend fun getMatchDetail(groupId: String, matchId: String): Result<MatchDetail> =
+        runCatching { api.getMatchDetail(groupId, matchId).toDetail() }
+
+    /** Deletes a match; recomputes stats server-side, so bump the data revision. */
+    suspend fun deleteMatch(groupId: String, matchId: String): Result<Unit> =
+        runCatching { api.deleteMatch(groupId, matchId) }
+            .onSuccess { groupRepository.notifyMatchesChanged() }
 }
+
+private fun MatchSummaryDto.toMatch() = Match(
+    id = id,
+    playedAt = Instant.parse(playedAt),
+    teams = teams.map(MatchTeamDto::toTeam),
+    sets = sets.map(MatchSetDto::toSet),
+)
+
+private fun MatchDetailDto.toDetail() = MatchDetail(
+    id = id,
+    playedAt = Instant.parse(playedAt),
+    teams = teams.map(MatchTeamDto::toTeam),
+    sets = sets.map(MatchSetDto::toSet),
+    recordedByUserId = recordedBy.userId,
+    recordedByName = recordedBy.displayName,
+    recordedAt = Instant.parse(recordedAt),
+    events = events.map(MatchEventDto::toEvent),
+)
+
+private fun MatchTeamDto.toTeam() = MatchTeam(
+    teamNo = teamNo,
+    isWinner = isWinner,
+    players = players.map(MatchPlayerDto::toPlayer),
+)
+
+private fun MatchPlayerDto.toPlayer() = MatchPlayer(
+    userId = userId,
+    displayName = displayName,
+    avatarColor = avatarColor,
+    photoUrl = photoUrl,
+)
+
+private fun MatchSetDto.toSet() = MatchSet(setNo = setNo, team1Score = team1Score, team2Score = team2Score)
+
+private fun MatchEventDto.toEvent() = MatchEvent(
+    displayName = displayName,
+    action = action,
+    createdAt = Instant.parse(createdAt),
+)
