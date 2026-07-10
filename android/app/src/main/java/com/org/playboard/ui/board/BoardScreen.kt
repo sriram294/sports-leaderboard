@@ -166,12 +166,12 @@ private fun BoardHeader(currentUser: UserSession?, onProfileClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "SHUTTLE STATS",
+                text = "PLAYBOARD",
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
                 color = BrandLime,
             )
-            Text(text = "DOUBLES TRACKER", style = MaterialTheme.typography.labelSmall, color = TextMuted)
         }
+
         if (currentUser != null) {
             PlayerAvatar(
                 displayName = currentUser.displayName,

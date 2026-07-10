@@ -15,7 +15,7 @@ val Typography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
     ),
-    // Heavy branded headline (e.g. "SHUTTLE STATS") — no custom condensed
+    // Heavy branded headline (e.g. "PLAYBOARD") — no custom condensed
     // display font added yet, FontWeight.Black + letterSpacing approximates
     // the prototype's tight/heavy look with the system default family.
     displayLarge = TextStyle(
