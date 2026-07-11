@@ -157,16 +157,9 @@ private fun AddMatchForm(
         }
 
         SectionLabel("BUILD TEAMS")
-        TeamSlots(
-            teamNo = 1,
-            players = state.teamPlayers(1),
-            onEmptySlotClicked = onEmptySlotClicked,
-            onRemovePlayer = onRemovePlayer,
-        )
-        Spacer(Modifier.height(12.dp))
-        TeamSlots(
-            teamNo = 2,
-            players = state.teamPlayers(2),
+        TeamBuilder(
+            team1 = state.teamPlayers(1),
+            team2 = state.teamPlayers(2),
             onEmptySlotClicked = onEmptySlotClicked,
             onRemovePlayer = onRemovePlayer,
         )
@@ -281,29 +274,82 @@ private fun SectionLabel(text: String) {
     )
 }
 
+/**
+ * Horizontal team builder: `Team 1 [+][+]  VS  [+][+] Team 2`, team names
+ * centered as headers above each avatar pair (docs/requirements/04-add-match.md).
+ */
 @Composable
-private fun TeamSlots(
+private fun TeamBuilder(
+    team1: List<Member>,
+    team2: List<Member>,
+    onEmptySlotClicked: (Int) -> Unit,
+    onRemovePlayer: (String) -> Unit,
+) {
+    val vsWidth = 44.dp
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TeamHeader(text = "Team 1", modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(vsWidth))
+            TeamHeader(text = "Team 2", modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TeamSlotRow(
+                teamNo = 1,
+                players = team1,
+                onEmptySlotClicked = onEmptySlotClicked,
+                onRemovePlayer = onRemovePlayer,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "VS",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(vsWidth),
+            )
+            TeamSlotRow(
+                teamNo = 2,
+                players = team2,
+                onEmptySlotClicked = onEmptySlotClicked,
+                onRemovePlayer = onRemovePlayer,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TeamHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = TextPrimary,
+        textAlign = TextAlign.Center,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun TeamSlotRow(
     teamNo: Int,
     players: List<Member>,
     onEmptySlotClicked: (Int) -> Unit,
     onRemovePlayer: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = "Team $teamNo",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
-            modifier = Modifier.width(72.dp),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            repeat(AddMatchUiState.TEAM_SIZE) { i ->
-                val member = players.getOrNull(i)
-                if (member != null) {
-                    FilledSlot(member = member, onRemove = { onRemovePlayer(member.id) })
-                } else {
-                    EmptySlot(onClick = { onEmptySlotClicked(teamNo) })
-                }
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+    ) {
+        repeat(AddMatchUiState.TEAM_SIZE) { i ->
+            val member = players.getOrNull(i)
+            if (member != null) {
+                FilledSlot(member = member, onRemove = { onRemovePlayer(member.id) })
+            } else {
+                EmptySlot(onClick = { onEmptySlotClicked(teamNo) })
             }
         }
     }
