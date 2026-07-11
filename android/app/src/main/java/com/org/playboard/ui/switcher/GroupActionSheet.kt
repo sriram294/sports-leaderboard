@@ -1,4 +1,4 @@
-package com.org.playboard.ui.board
+package com.org.playboard.ui.switcher
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

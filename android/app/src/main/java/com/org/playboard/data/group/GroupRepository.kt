@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.Json
 
+/** Load status of the app-wide group list (see [GroupRepository.groupsLoadState]). */
+enum class GroupsLoadState { LOADING, LOADED, FAILED }
+
 /**
  * Groups the signed-in user belongs to, plus which one is currently active.
  *
@@ -36,6 +39,15 @@ class GroupRepository @Inject constructor(
 ) {
     private val _groups = MutableStateFlow<List<Group>>(emptyList())
     val groups: StateFlow<List<Group>> = _groups.asStateFlow()
+
+    /**
+     * Load status of the group list, so screens can tell "still loading" apart
+     * from "genuinely no groups" apart from "the fetch failed" — all three of
+     * which otherwise look like an empty [selectedGroup]. Owned here because the
+     * group list is app-wide state shared by the switcher and every tab.
+     */
+    private val _groupsLoadState = MutableStateFlow(GroupsLoadState.LOADING)
+    val groupsLoadState: StateFlow<GroupsLoadState> = _groupsLoadState.asStateFlow()
 
     private val _selectedGroupId = MutableStateFlow<String?>(null)
 
@@ -60,9 +72,15 @@ class GroupRepository @Inject constructor(
     }
 
     /** Re-fetches the user's groups from the backend, updating [groups] on success. */
-    suspend fun refreshGroups(): Result<List<Group>> =
-        runCatching { api.getGroups().groups.map(GroupDto::toGroup) }
-            .onSuccess { _groups.value = it }
+    suspend fun refreshGroups(): Result<List<Group>> {
+        _groupsLoadState.value = GroupsLoadState.LOADING
+        return runCatching { api.getGroups().groups.map(GroupDto::toGroup) }
+            .onSuccess {
+                _groups.value = it
+                _groupsLoadState.value = GroupsLoadState.LOADED
+            }
+            .onFailure { _groupsLoadState.value = GroupsLoadState.FAILED }
+    }
 
     /** The active group's roster, for building teams in Add Match. */
     suspend fun getMembers(groupId: String): Result<List<Member>> =
