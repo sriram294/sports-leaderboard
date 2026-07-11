@@ -7,6 +7,7 @@ import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
 import com.org.playboard.dto.stats.PlayerStatsDto;
 import com.org.playboard.entity.group.GroupMember;
+import com.org.playboard.entity.group.GroupRole;
 import com.org.playboard.entity.group.MemberStatus;
 import com.org.playboard.entity.stats.MemberStats;
 import com.org.playboard.entity.user.User;
@@ -22,7 +23,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +85,7 @@ public class StatsQueryService {
         membershipGuard.requireActiveMember(groupId, callerId);
         GroupMember target = groupMemberRepository
                 .findByGroupIdAndUserId(groupId, targetUserId)
-                .filter(m -> m.getStatus() == MemberStatus.ACTIVE)
+                .filter(m -> m.getStatus() == MemberStatus.ACTIVE && m.getRole() != GroupRole.GUEST)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
         User user = target.getUser();
@@ -120,13 +123,27 @@ public class StatsQueryService {
             return null;
         }
 
+        // Guest fillers aren't real partners — leave them out of the tally so a
+        // one-off guest can never surface as someone's "best partner".
+        Set<UUID> guestIds = groupMemberRepository
+                .findByGroupIdAndStatusAndRole(groupId, MemberStatus.ACTIVE, GroupRole.GUEST)
+                .stream()
+                .map(m -> m.getUser().getId())
+                .collect(Collectors.toSet());
+
         Map<UUID, int[]> tally = new HashMap<>();
         for (PartnerRow row : rows) {
+            if (guestIds.contains(row.getPartnerId())) {
+                continue;
+            }
             int[] counts = tally.computeIfAbsent(row.getPartnerId(), k -> new int[2]);
             counts[0]++;
             if (row.isWinner()) {
                 counts[1]++;
             }
+        }
+        if (tally.isEmpty()) {
+            return null;
         }
 
         UUID bestPartnerId = null;
