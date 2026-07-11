@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,11 +51,21 @@ fun GroupSwitcher(
         uiState = uiState,
         modifier = modifier,
         onToggle = viewModel::onToggled,
+        onEditGroup = viewModel::onEditGroupClicked,
         onGroupSelected = viewModel::onGroupSelected,
         onCreateOrJoinGroupClicked = viewModel::onCreateOrJoinGroupClicked,
         onInvitePlayersClicked = viewModel::onInvitePlayersClicked,
         onRetry = viewModel::refresh,
     )
+
+    uiState.renameSheet?.let { sheet ->
+        RenameGroupSheet(
+            state = sheet,
+            onInputChanged = viewModel::onRenameInputChanged,
+            onSubmit = viewModel::onRenameSubmit,
+            onDismiss = viewModel::onRenameSheetDismissed,
+        )
+    }
 
     uiState.groupActionSheet?.let { sheet ->
         GroupActionSheet(
@@ -80,6 +91,7 @@ private fun GroupSwitcherContent(
     uiState: GroupSwitcherUiState,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
+    onEditGroup: () -> Unit,
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
     onInvitePlayersClicked: () -> Unit,
@@ -88,7 +100,12 @@ private fun GroupSwitcherContent(
     Column(modifier = modifier.fillMaxWidth()) {
         val group = uiState.selectedGroup
         if (group != null) {
-            GroupSwitcherCard(group = group, isExpanded = uiState.isExpanded, onToggle = onToggle)
+            GroupSwitcherCard(
+                group = group,
+                isExpanded = uiState.isExpanded,
+                onToggle = onToggle,
+                onEditGroup = onEditGroup,
+            )
             AnimatedVisibility(visible = uiState.isExpanded) {
                 YourGroupsPanel(
                     groups = uiState.groups,
@@ -111,7 +128,12 @@ private fun GroupSwitcherContent(
 }
 
 @Composable
-private fun GroupSwitcherCard(group: Group, isExpanded: Boolean, onToggle: () -> Unit) {
+private fun GroupSwitcherCard(
+    group: Group,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    onEditGroup: () -> Unit,
+) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = SurfaceDark,
@@ -130,6 +152,19 @@ private fun GroupSwitcherCard(group: Group, isExpanded: Boolean, onToggle: () ->
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary,
+                )
+            }
+            // Owner/admin only — a pencil to rename the group. Its own clickable so
+            // tapping it opens the rename sheet rather than toggling the switcher.
+            if (group.canManage) {
+                Text(
+                    text = "✎",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                    color = TextMuted,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onEditGroup)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
             Text(
@@ -280,6 +315,7 @@ private fun GroupSwitcherCollapsedPreview() {
                 loadState = GroupsLoadState.LOADED,
             ),
             onToggle = {},
+            onEditGroup = {},
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
@@ -300,6 +336,7 @@ private fun GroupSwitcherExpandedPreview() {
                 isExpanded = true,
             ),
             onToggle = {},
+            onEditGroup = {},
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
@@ -315,6 +352,7 @@ private fun GroupSwitcherNoGroupPreview() {
         GroupSwitcherContent(
             uiState = GroupSwitcherUiState(loadState = GroupsLoadState.LOADED),
             onToggle = {},
+            onEditGroup = {},
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},

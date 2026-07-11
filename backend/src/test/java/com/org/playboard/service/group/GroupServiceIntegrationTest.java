@@ -10,6 +10,7 @@ import com.org.playboard.dto.group.GroupSummaryDto;
 import com.org.playboard.dto.group.InviteResponse;
 import com.org.playboard.dto.group.JoinGroupRequest;
 import com.org.playboard.dto.group.MembersResponse;
+import com.org.playboard.dto.group.RenameGroupRequest;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.user.UserRepository;
 import java.util.UUID;
@@ -72,6 +73,36 @@ class GroupServiceIntegrationTest {
         assertThatThrownBy(() -> groupService.listMembers(created.id(), stranger.getId()))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("GROUP_ACCESS_FORBIDDEN"));
+    }
+
+    @Test
+    void renameGroupUpdatesNameForOwnerButRejectsPlainMember() {
+        User owner = userRepository.save(newUser());
+        User joiner = userRepository.save(newUser());
+
+        GroupSummaryDto created = groupService.createGroup(
+                owner.getId(), new CreateGroupRequest("Original Name", "badminton_doubles"));
+        String colorBefore = created.avatarColor();
+
+        InviteResponse invite = groupService.createInvite(created.id(), owner.getId(), new CreateInviteRequest(5, null));
+        groupService.joinGroup(joiner.getId(), new JoinGroupRequest(invite.code()));
+
+        // Owner renames — name changes, avatar color stays stable.
+        GroupSummaryDto renamed =
+                groupService.renameGroup(created.id(), owner.getId(), new RenameGroupRequest("  Renamed Group  "));
+        assertThat(renamed.name()).isEqualTo("Renamed Group");
+        assertThat(renamed.avatarColor()).isEqualTo(colorBefore);
+
+        // The change persists and is visible to other members.
+        assertThat(groupService.listGroupsForUser(joiner.getId()).groups())
+                .extracting("name")
+                .containsExactly("Renamed Group");
+
+        // A plain member can't rename (owner/admin only).
+        assertThatThrownBy(
+                        () -> groupService.renameGroup(created.id(), joiner.getId(), new RenameGroupRequest("Hijacked")))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("GROUP_ROLE_FORBIDDEN"));
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.org.playboard.dto.group.InviteResponse;
 import com.org.playboard.dto.group.JoinGroupRequest;
 import com.org.playboard.dto.group.MemberDto;
 import com.org.playboard.dto.group.MembersResponse;
+import com.org.playboard.dto.group.RenameGroupRequest;
 import com.org.playboard.entity.group.Group;
 import com.org.playboard.entity.group.GroupInvite;
 import com.org.playboard.entity.group.GroupMember;
@@ -163,6 +164,20 @@ public class GroupService {
         }
 
         return toSummary(group, member.getRole());
+    }
+
+    /**
+     * Renames a group. Owner/admin only (same gate as invites). The avatar color
+     * is left untouched — it stays stable so the group looks the same everywhere
+     * after a rename.
+     */
+    @Transactional
+    public GroupSummaryDto renameGroup(UUID groupId, UUID callerId, RenameGroupRequest request) {
+        GroupMember caller = membershipGuard.requireRole(groupId, callerId, Set.of(GroupRole.OWNER, GroupRole.ADMIN));
+        Group group = caller.getGroup();
+        group.setName(request.name().trim());
+        group = groupRepository.save(group);
+        return toSummary(group, caller.getRole());
     }
 
     @Transactional

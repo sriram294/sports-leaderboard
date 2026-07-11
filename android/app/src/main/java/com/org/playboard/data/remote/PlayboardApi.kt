@@ -15,6 +15,7 @@ import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
+import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -41,6 +42,12 @@ interface PlayboardApi {
 
     @POST("api/v1/groups/join")
     suspend fun joinGroup(@Body request: JoinGroupRequestDto): GroupDto
+
+    @PATCH("api/v1/groups/{groupId}")
+    suspend fun renameGroup(
+        @Path("groupId") groupId: String,
+        @Body request: RenameGroupRequestDto,
+    ): GroupDto
 
     @POST("api/v1/groups/{groupId}/invites")
     suspend fun createInvite(

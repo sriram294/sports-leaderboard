@@ -9,6 +9,7 @@ import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.MemberDto
+import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.InvalidInviteCodeException
 import com.org.playboard.di.AppScope
 import com.org.playboard.di.AuthenticatedApi
@@ -123,6 +124,17 @@ class GroupRepository @Inject constructor(
             .onSuccess(::addAndSelect)
             .recoverCatching { cause ->
                 throw if (cause.apiErrorCode(json) == "GROUP_INVITE_INVALID") InvalidInviteCodeException() else cause
+            }
+
+    /**
+     * Renames [groupId] and updates the cached list in place (selection is
+     * unchanged). Owner/admin only — the backend rejects other members — so
+     * callers should gate this on [Group.canManage].
+     */
+    suspend fun renameGroup(groupId: String, name: String): Result<Group> =
+        runCatching { api.renameGroup(groupId, RenameGroupRequestDto(name.trim())).toGroup() }
+            .onSuccess { updated ->
+                _groups.update { list -> list.map { if (it.id == updated.id) updated else it } }
             }
 
     /**
