@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +37,7 @@ import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
 import com.org.playboard.ui.matches.MatchesScreen
 import com.org.playboard.ui.profile.ProfileScreen
+import com.org.playboard.ui.switcher.GroupSwitcher
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.SurfaceDark
@@ -54,12 +56,21 @@ fun MainScreen() {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = { MainBottomBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it }) },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (selectedTab) {
-                MainTab.Board -> BoardScreen(onProfileClick = { selectedTab = MainTab.Profile })
-                MainTab.Matches -> MatchesScreen()
-                MainTab.Add -> AddMatchScreen(onRecorded = { selectedTab = MainTab.Board })
-                MainTab.Profile -> ProfileScreen()
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Shared group switcher — the top header on every tab, in place of the
+            // old per-page titles (docs/requirements/00-overview.md § Group).
+            GroupSwitcher(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (selectedTab) {
+                    MainTab.Board -> BoardScreen()
+                    MainTab.Matches -> MatchesScreen()
+                    MainTab.Add -> AddMatchScreen(onRecorded = { selectedTab = MainTab.Board })
+                    MainTab.Profile -> ProfileScreen()
+                }
             }
         }
     }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -140,13 +139,12 @@ private fun AddMatchForm(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp),
     ) {
-        Header(groupName = state.groupName, recorder = state.recorder)
+        RecorderCaption(recorder = state.recorder)
 
         SectionLabel("BUILD TEAMS")
         TeamSlots(
@@ -238,25 +236,14 @@ private fun AddMatchForm(
 }
 
 @Composable
-private fun Header(groupName: String?, recorder: UserSession?) {
-    Column(modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)) {
-        Text(
-            text = "ADD MATCH",
-            style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
-            color = BrandLime,
-        )
-        if (groupName != null) {
-            Text(text = groupName, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-        }
-        if (recorder != null) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Recording as ${recorder.displayName} · ${recorder.email}",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = TextMuted,
-            )
-        }
-    }
+private fun RecorderCaption(recorder: UserSession?) {
+    if (recorder == null) return
+    Text(
+        text = "Recording as ${recorder.displayName} · ${recorder.email}",
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+        color = TextMuted,
+        modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+    )
 }
 
 @Composable

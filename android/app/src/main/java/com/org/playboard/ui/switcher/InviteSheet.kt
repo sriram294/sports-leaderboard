@@ -1,4 +1,4 @@
-package com.org.playboard.ui.board
+package com.org.playboard.ui.switcher
 
 import android.content.Intent
 import android.widget.Toast

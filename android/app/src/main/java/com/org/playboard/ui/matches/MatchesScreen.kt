@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -90,11 +89,8 @@ private fun MatchesContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .padding(horizontal = 20.dp),
     ) {
-        Header(groupName = state.groupName)
-
         when {
             state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
             state.noGroup -> CenteredMessage("Create or join a group to see its matches.")
@@ -329,20 +325,6 @@ private fun DeleteConfirmDialog(isDeleting: Boolean, onConfirm: () -> Unit, onDi
             TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Cancel", color = TextMuted) }
         },
     )
-}
-
-@Composable
-private fun Header(groupName: String?) {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        Text(
-            text = "MATCHES",
-            style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
-            color = BrandLime,
-        )
-        if (groupName != null) {
-            Text(text = groupName, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-        }
-    }
 }
 
 @Composable

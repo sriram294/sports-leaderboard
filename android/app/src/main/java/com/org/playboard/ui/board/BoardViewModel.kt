@@ -2,29 +2,30 @@ package com.org.playboard.ui.board
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.leaderboard.LeaderboardRepository
-import com.org.playboard.data.model.SessionState
-import com.org.playboard.data.remote.InvalidInviteCodeException
+import com.org.playboard.data.model.Group
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Board tab (docs/requirements/02-board-leaderboard.md): loads the user's
- * groups, then the leaderboard of the active group; switching groups reloads
- * podium + rankings.
+ * Board tab (docs/requirements/02-board-leaderboard.md): shows the leaderboard
+ * of the active group. The active group is chosen from the shared group switcher
+ * ([com.org.playboard.ui.switcher.GroupSwitcher]) — this ViewModel observes it
+ * and (re)loads the podium + rankings whenever it changes or a match is recorded.
  */
 @HiltViewModel
 class BoardViewModel @Inject constructor(
-    authRepository: AuthRepository,
     private val groupRepository: GroupRepository,
     private val leaderboardRepository: LeaderboardRepository,
 ) : ViewModel() {
@@ -33,142 +34,60 @@ class BoardViewModel @Inject constructor(
     val uiState: StateFlow<BoardUiState> = _uiState.asStateFlow()
 
     init {
+        // Follow the active group; also react to the group-list load status so we
+        // can tell "loading" from "no groups" from "group fetch failed" while the
+        // switcher owns the actual fetch.
         viewModelScope.launch {
-            authRepository.sessionState.collect { session ->
-                _uiState.update { it.copy(currentUser = (session as? SessionState.SignedIn)?.user) }
+            combine(groupRepository.selectedGroup, groupRepository.groupsLoadState) { group, loadState ->
+                group to loadState
+            }
+                .distinctUntilChanged { old, new -> old.first?.id == new.first?.id && old.second == new.second }
+                .collect { (group, loadState) -> applySelection(group, loadState) }
+        }
+        // A match recorded on the Add tab (or deleted) changes the leaderboard;
+        // re-fetch silently when the shared data revision advances.
+        viewModelScope.launch {
+            groupRepository.dataRevision.drop(1).collect {
+                val group = groupRepository.selectedGroup.first() ?: return@collect
+                loadLeaderboard(group, showLoading = false)
             }
         }
-        // A match recorded on the Add tab changes the leaderboard; re-fetch when
-        // the shared data revision advances (drop(1) skips the initial value).
-        viewModelScope.launch {
-            groupRepository.dataRevision.drop(1).collect { refresh() }
-        }
-        refresh()
     }
 
-    /** Full reload — groups then the active group's leaderboard. Also the retry path. */
+    /** Retry path: recover a failed group-list fetch, or reload the leaderboard. */
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, hasLoadFailed = false) }
-            groupRepository.refreshGroups()
-                .onSuccess { groups ->
-                    _uiState.update { it.copy(groups = groups) }
-                    loadLeaderboardForSelection()
-                }
-                .onFailure { _uiState.update { it.copy(isLoading = false, hasLoadFailed = true) } }
+            val group = groupRepository.selectedGroup.first()
+            if (group == null) {
+                groupRepository.refreshGroups()
+            } else {
+                loadLeaderboard(group, showLoading = true)
+            }
         }
-    }
-
-    fun onGroupSwitcherToggled() {
-        _uiState.update { it.copy(isGroupSwitcherExpanded = !it.isGroupSwitcherExpanded) }
-    }
-
-    fun onGroupSelected(groupId: String) {
-        groupRepository.selectGroup(groupId)
-        _uiState.update { it.copy(isGroupSwitcherExpanded = false, isLoading = true, hasLoadFailed = false) }
-        viewModelScope.launch { loadLeaderboardForSelection() }
     }
 
     fun onSortColumnSelected(column: RankingSortColumn) {
         _uiState.update { it.copy(sortColumn = column) }
     }
 
-    /** Opens the create/join sheet (and collapses the group switcher behind it). */
-    fun onCreateOrJoinGroupClicked() {
-        _uiState.update { it.copy(isGroupSwitcherExpanded = false, groupActionSheet = GroupActionSheetState()) }
-    }
-
-    /**
-     * Opens the invite sheet for the active group and starts generating a code.
-     * No-op if there's no active group; the entry point is gated on
-     * [com.org.playboard.data.model.Group.canInvite] so only owners/admins reach it.
-     */
-    fun onInvitePlayersClicked() {
-        val group = _uiState.value.selectedGroup ?: return
-        _uiState.update {
-            it.copy(isGroupSwitcherExpanded = false, inviteSheet = InviteSheetState(groupName = group.name))
-        }
-        generateInvite(group.id)
-    }
-
-    fun onInviteRetry() {
-        val group = _uiState.value.selectedGroup ?: return
-        updateInviteSheet { it.copy(isLoading = true, hasFailed = false) }
-        generateInvite(group.id)
-    }
-
-    fun onInviteSheetDismissed() {
-        _uiState.update { it.copy(inviteSheet = null) }
-    }
-
-    private fun generateInvite(groupId: String) {
-        viewModelScope.launch {
-            groupRepository.createInvite(groupId)
-                .onSuccess { code -> updateInviteSheet { it.copy(isLoading = false, code = code, hasFailed = false) } }
-                .onFailure { updateInviteSheet { it.copy(isLoading = false, hasFailed = true) } }
-        }
-    }
-
-    /** Applies [transform] to the open invite sheet; a no-op if it's already closed. */
-    private inline fun updateInviteSheet(transform: (InviteSheetState) -> InviteSheetState) {
-        _uiState.update { state ->
-            state.inviteSheet?.let { state.copy(inviteSheet = transform(it)) } ?: state
-        }
-    }
-
-    fun onSheetModeChanged(mode: GroupActionMode) = updateSheet { it.copy(mode = mode, input = "", error = null) }
-
-    fun onSheetInputChanged(input: String) = updateSheet { it.copy(input = input, error = null) }
-
-    fun onSheetDismissed() {
-        _uiState.update { it.copy(groupActionSheet = null) }
-    }
-
-    fun onSheetSubmit() {
-        val sheet = _uiState.value.groupActionSheet ?: return
-        if (!sheet.canSubmit) return
-        updateSheet { it.copy(isSubmitting = true, error = null) }
-        viewModelScope.launch {
-            val result = when (sheet.mode) {
-                GroupActionMode.CREATE -> groupRepository.createGroup(sheet.input)
-                GroupActionMode.JOIN -> groupRepository.joinGroup(sheet.input)
-            }
-            result
-                .onSuccess {
-                    // The repository has already made the new group active; reload the
-                    // board for it and sync the switcher's group list.
-                    _uiState.update {
-                        it.copy(
-                            groupActionSheet = null,
-                            groups = groupRepository.groups.value,
-                            isLoading = true,
-                            hasLoadFailed = false,
-                        )
-                    }
-                    loadLeaderboardForSelection()
-                }
-                .onFailure { cause ->
-                    val error =
-                        if (cause is InvalidInviteCodeException) GroupActionError.INVALID_CODE else GroupActionError.NETWORK
-                    updateSheet { it.copy(isSubmitting = false, error = error) }
-                }
-        }
-    }
-
-    /** Applies [transform] to the open sheet; a no-op if it's already closed. */
-    private inline fun updateSheet(transform: (GroupActionSheetState) -> GroupActionSheetState) {
-        _uiState.update { state ->
-            state.groupActionSheet?.let { state.copy(groupActionSheet = transform(it)) } ?: state
-        }
-    }
-
-    private suspend fun loadLeaderboardForSelection() {
-        val group = groupRepository.selectedGroup.first()
-        if (group == null) {
-            // User belongs to no groups yet — empty state, nothing to fetch.
-            _uiState.update { it.copy(isLoading = false, selectedGroup = null, rankings = emptyList()) }
+    private suspend fun applySelection(group: Group?, loadState: GroupsLoadState) {
+        if (group != null) {
+            loadLeaderboard(group, showLoading = true)
             return
         }
+        // No active group — reflect why (loading / failed / genuinely none).
+        _uiState.update {
+            it.copy(
+                isLoading = loadState == GroupsLoadState.LOADING,
+                hasLoadFailed = loadState == GroupsLoadState.FAILED,
+                selectedGroup = null,
+                rankings = emptyList(),
+            )
+        }
+    }
+
+    private suspend fun loadLeaderboard(group: Group, showLoading: Boolean) {
+        _uiState.update { it.copy(isLoading = showLoading, hasLoadFailed = false, selectedGroup = group) }
         leaderboardRepository.getLeaderboard(group.id)
             .onSuccess { rankings ->
                 _uiState.update {
@@ -181,7 +100,11 @@ class BoardViewModel @Inject constructor(
                 }
             }
             .onFailure {
-                _uiState.update { it.copy(isLoading = false, selectedGroup = group, hasLoadFailed = true) }
+                // Keep a stale list on a silent refresh failure; only show the error
+                // screen when there's nothing to show.
+                _uiState.update {
+                    it.copy(isLoading = false, selectedGroup = group, hasLoadFailed = it.rankings.isEmpty())
+                }
             }
     }
 }

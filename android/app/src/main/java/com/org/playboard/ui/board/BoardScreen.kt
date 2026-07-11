@@ -1,6 +1,5 @@
 package com.org.playboard.ui.board
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -42,8 +40,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
-import com.org.playboard.data.model.UserSession
-import com.org.playboard.ui.components.GroupAvatar
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.theme.BrandLime
@@ -59,49 +55,18 @@ import com.org.playboard.ui.theme.WinRateMidAmber
 
 /** Board (home) tab — see docs/requirements/02-board-leaderboard.md, docs/prototype/leaderboard.pdf. */
 @Composable
-fun BoardScreen(
-    onProfileClick: () -> Unit,
-    viewModel: BoardViewModel = hiltViewModel(),
-) {
+fun BoardScreen(viewModel: BoardViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     BoardContent(
         uiState = uiState,
-        onProfileClick = onProfileClick,
-        onGroupSwitcherToggled = viewModel::onGroupSwitcherToggled,
-        onGroupSelected = viewModel::onGroupSelected,
-        onCreateOrJoinGroupClicked = viewModel::onCreateOrJoinGroupClicked,
-        onInvitePlayersClicked = viewModel::onInvitePlayersClicked,
         onSortColumnSelected = viewModel::onSortColumnSelected,
         onRetry = viewModel::refresh,
     )
-
-    uiState.groupActionSheet?.let { sheet ->
-        GroupActionSheet(
-            state = sheet,
-            onModeChanged = viewModel::onSheetModeChanged,
-            onInputChanged = viewModel::onSheetInputChanged,
-            onSubmit = viewModel::onSheetSubmit,
-            onDismiss = viewModel::onSheetDismissed,
-        )
-    }
-
-    uiState.inviteSheet?.let { sheet ->
-        InviteSheet(
-            state = sheet,
-            onDismiss = viewModel::onInviteSheetDismissed,
-            onRetry = viewModel::onInviteRetry,
-        )
-    }
 }
 
 @Composable
 private fun BoardContent(
     uiState: BoardUiState,
-    onProfileClick: () -> Unit,
-    onGroupSwitcherToggled: () -> Unit,
-    onGroupSelected: (String) -> Unit,
-    onCreateOrJoinGroupClicked: () -> Unit,
-    onInvitePlayersClicked: () -> Unit,
     onSortColumnSelected: (RankingSortColumn) -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -109,34 +74,12 @@ private fun BoardContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .padding(horizontal = 20.dp),
     ) {
-        BoardHeader(currentUser = uiState.currentUser, onProfileClick = onProfileClick)
-
-        if (uiState.selectedGroup != null) {
-            GroupSwitcherCard(
-                group = uiState.selectedGroup,
-                isExpanded = uiState.isGroupSwitcherExpanded,
-                onToggle = onGroupSwitcherToggled,
-            )
-            AnimatedVisibility(visible = uiState.isGroupSwitcherExpanded) {
-                YourGroupsPanel(
-                    groups = uiState.groups,
-                    selectedGroupId = uiState.selectedGroup.id,
-                    canInviteSelected = uiState.selectedGroup.canInvite,
-                    onGroupSelected = onGroupSelected,
-                    onCreateOrJoinGroupClicked = onCreateOrJoinGroupClicked,
-                    onInvitePlayersClicked = onInvitePlayersClicked,
-                )
-            }
-        }
-
         when {
             uiState.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
             uiState.hasLoadFailed -> LoadFailedState(onRetry = onRetry)
-            uiState.selectedGroup == null ->
-                NoGroupsState(onCreateOrJoinGroupClicked = onCreateOrJoinGroupClicked)
+            uiState.selectedGroup == null -> NoGroupsState()
             uiState.rankings.isEmpty() -> NoMatchesState()
             else -> LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -153,151 +96,6 @@ private fun BoardContent(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
             }
         }
-    }
-}
-
-@Composable
-private fun BoardHeader(currentUser: UserSession?, onProfileClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "PLAYBOARD",
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
-                color = BrandLime,
-            )
-        }
-
-        if (currentUser != null) {
-            PlayerAvatar(
-                displayName = currentUser.displayName,
-                photoUrl = currentUser.photoUrl,
-                avatarColorHex = currentUser.avatarColor,
-                size = 44.dp,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .clickable(onClick = onProfileClick),
-            )
-        }
-    }
-}
-
-@Composable
-private fun GroupSwitcherCard(group: Group, isExpanded: Boolean, onToggle: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onToggle,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            GroupAvatar(name = group.name, avatarColorHex = group.avatarColor, size = 40.dp)
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(text = "GROUP", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                Text(
-                    text = group.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                )
-            }
-            Text(
-                text = "${group.memberCount} players ${if (isExpanded) "▴" else "▾"}",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                color = TextMuted,
-            )
-        }
-    }
-}
-
-@Composable
-private fun YourGroupsPanel(
-    groups: List<Group>,
-    selectedGroupId: String,
-    canInviteSelected: Boolean,
-    onGroupSelected: (String) -> Unit,
-    onCreateOrJoinGroupClicked: () -> Unit,
-    onInvitePlayersClicked: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-    ) {
-        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-            Text(
-                text = "YOUR GROUPS",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextMuted,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-            groups.forEach { group ->
-                val isSelected = group.id == selectedGroupId
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onGroupSelected(group.id) }
-                        .background(if (isSelected) BrandLime.copy(alpha = 0.08f) else Color.Transparent)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                ) {
-                    GroupAvatar(name = group.name, avatarColorHex = group.avatarColor, size = 36.dp)
-                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(
-                            text = group.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isSelected) BrandLime else TextPrimary,
-                        )
-                        Text(
-                            text = "${group.memberCount} players · ${group.matchCount} matches",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                            color = TextMuted,
-                        )
-                    }
-                    if (isSelected) {
-                        Text(text = "✓", color = BrandLime, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-            HorizontalDivider(
-                color = TextMuted.copy(alpha = 0.15f),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            if (canInviteSelected) {
-                PanelActionRow(icon = "↗", label = "Invite players", onClick = onInvitePlayersClicked)
-            }
-            PanelActionRow(icon = "+", label = "Create or join a group", onClick = onCreateOrJoinGroupClicked)
-        }
-    }
-}
-
-/** A tappable action row at the foot of the group switcher (invite, create/join). */
-@Composable
-private fun PanelActionRow(icon: String, label: String, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-    ) {
-        Text(text = icon, color = BrandLime, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
-            modifier = Modifier.padding(start = 12.dp),
-        )
     }
 }
 
@@ -572,18 +370,15 @@ private fun LoadFailedState(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun NoGroupsState(onCreateOrJoinGroupClicked: () -> Unit) {
+private fun NoGroupsState() {
     CenteredBox {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "You're not in a group yet.\nCreate or join one to start tracking matches.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextMuted,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onCreateOrJoinGroupClicked) { Text("Create or join a group") }
-        }
+        Text(
+            text = "You're not in a group yet.\nUse the group switcher above to create or join one.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(24.dp),
+        )
     }
 }
 
@@ -601,7 +396,6 @@ private fun NoMatchesState() {
 
 private val previewGroups = listOf(
     Group(id = "g1", name = "Saturday Smashers", avatarColor = "#C7EA2B", memberCount = 6, matchCount = 10, myRole = "owner"),
-    Group(id = "g2", name = "Office League", avatarColor = "#3DB4FF", memberCount = 4, matchCount = 4, myRole = "member"),
 )
 
 private val previewRankings = listOf(
@@ -615,8 +409,6 @@ private val previewRankings = listOf(
 
 private val previewState = BoardUiState(
     isLoading = false,
-    currentUser = UserSession("u3", "Raj", "raj@example.com", null, "#9ADE28"),
-    groups = previewGroups,
     selectedGroup = previewGroups.first(),
     rankings = previewRankings,
 )
@@ -627,28 +419,6 @@ private fun BoardContentPreview() {
     PlayboardTheme {
         BoardContent(
             uiState = previewState,
-            onProfileClick = {},
-            onGroupSwitcherToggled = {},
-            onGroupSelected = {},
-            onCreateOrJoinGroupClicked = {},
-            onInvitePlayersClicked = {},
-            onSortColumnSelected = {},
-            onRetry = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, heightDp = 1400)
-@Composable
-private fun BoardContentSwitcherExpandedPreview() {
-    PlayboardTheme {
-        BoardContent(
-            uiState = previewState.copy(isGroupSwitcherExpanded = true),
-            onProfileClick = {},
-            onGroupSwitcherToggled = {},
-            onGroupSelected = {},
-            onCreateOrJoinGroupClicked = {},
-            onInvitePlayersClicked = {},
             onSortColumnSelected = {},
             onRetry = {},
         )
