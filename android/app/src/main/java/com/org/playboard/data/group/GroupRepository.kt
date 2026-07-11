@@ -10,15 +10,18 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.InvalidInviteCodeException
+import com.org.playboard.di.AppScope
 import com.org.playboard.di.AuthenticatedApi
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 /** Load status of the app-wide group list (see [GroupRepository.groupsLoadState]). */
@@ -29,13 +32,16 @@ enum class GroupsLoadState { LOADING, LOADED, FAILED }
  *
  * The active group is app-wide state (the Board/Matches/Add/Profile headers
  * all scope to it — docs/requirements/00-overview.md § Group), so it lives
- * here rather than in any one screen's ViewModel. Selection is in-memory
- * only for now: on a fresh process the first group is active again.
+ * here rather than in any one screen's ViewModel. The selection persists
+ * across relaunches via [SelectedGroupStore]; an in-session pick takes
+ * precedence over the saved id until the process restarts.
  */
 @Singleton
 class GroupRepository @Inject constructor(
     @AuthenticatedApi private val api: PlayboardApi,
     private val json: Json,
+    private val selectedGroupStore: SelectedGroupStore,
+    @AppScope private val appScope: CoroutineScope,
 ) {
     private val _groups = MutableStateFlow<List<Group>>(emptyList())
     val groups: StateFlow<List<Group>> = _groups.asStateFlow()
@@ -64,12 +70,16 @@ class GroupRepository @Inject constructor(
     }
 
     /**
-     * The active group — the explicit selection if it still exists, else the
-     * first group the user belongs to, else `null` (user has no groups yet).
+     * The active group — an in-session pick if made, else the id persisted from
+     * a previous run, resolved against the loaded groups. Falls back to the first
+     * group when that id no longer exists (e.g. the user left it), else `null`
+     * (user has no groups yet).
      */
-    val selectedGroup: Flow<Group?> = combine(_groups, _selectedGroupId) { groups, selectedId ->
-        groups.firstOrNull { it.id == selectedId } ?: groups.firstOrNull()
-    }
+    val selectedGroup: Flow<Group?> =
+        combine(_groups, _selectedGroupId, selectedGroupStore.selectedGroupId) { groups, sessionId, savedId ->
+            val activeId = sessionId ?: savedId
+            groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
+        }
 
     /** Re-fetches the user's groups from the backend, updating [groups] on success. */
     suspend fun refreshGroups(): Result<List<Group>> {
@@ -125,6 +135,8 @@ class GroupRepository @Inject constructor(
 
     fun selectGroup(groupId: String) {
         _selectedGroupId.value = groupId
+        // Persist so the next launch reopens this group (fire-and-forget).
+        appScope.launch { selectedGroupStore.set(groupId) }
     }
 
     /** Inserts [group] (or replaces the existing entry with the same id) and selects it. */
