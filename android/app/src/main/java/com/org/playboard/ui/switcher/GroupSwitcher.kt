@@ -104,7 +104,6 @@ private fun GroupSwitcherContent(
                 group = group,
                 isExpanded = uiState.isExpanded,
                 onToggle = onToggle,
-                onEditGroup = onEditGroup,
             )
             AnimatedVisibility(visible = uiState.isExpanded) {
                 YourGroupsPanel(
@@ -133,7 +132,6 @@ private fun GroupSwitcherCard(
     group: Group,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    onEditGroup: (groupId: String, groupName: String) -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
