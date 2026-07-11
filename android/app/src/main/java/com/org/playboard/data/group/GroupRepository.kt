@@ -83,8 +83,16 @@ class GroupRepository @Inject constructor(
     }
 
     /** The active group's roster, for building teams in Add Match. */
+    /**
+     * The active group's roster for building teams in Add Match: real players
+     * first, then the group's guest fillers (each [Member.isGuest]). Guests come
+     * back in a separate field so they never count as players elsewhere.
+     */
     suspend fun getMembers(groupId: String): Result<List<Member>> =
-        runCatching { api.getMembers(groupId).members.map(MemberDto::toMember) }
+        runCatching {
+            val response = api.getMembers(groupId)
+            (response.members + response.guests).map(MemberDto::toMember)
+        }
 
     /**
      * Creates a group (the caller becomes its owner) and makes it active so the

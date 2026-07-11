@@ -56,7 +56,12 @@ class GroupServiceIntegrationTest {
         assertThat(rejoined.memberCount()).isEqualTo(2);
 
         MembersResponse roster = groupService.listMembers(created.id(), owner.getId());
+        // Real players only in members[] — guests are fillers, not counted as players.
         assertThat(roster.members()).extracting("userId").containsExactlyInAnyOrder(owner.getId(), joiner.getId());
+        // Every group is seeded with its guest fillers, returned separately and
+        // excluded from memberCount above.
+        assertThat(roster.guests()).extracting("displayName").containsExactly("Guest 1", "Guest 2", "Guest 3");
+        assertThat(roster.guests()).extracting("role").containsOnly("guest");
 
         // A plain member can't mint invites (owner/admin only).
         assertThatThrownBy(() -> groupService.createInvite(created.id(), joiner.getId(), new CreateInviteRequest(null, null)))

@@ -1,7 +1,10 @@
 package com.org.playboard.service.stats;
 
 import com.org.playboard.entity.group.Group;
+import com.org.playboard.entity.group.GroupRole;
+import com.org.playboard.entity.group.MemberStatus;
 import com.org.playboard.entity.stats.MemberStats;
+import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository.PlayerMatchRow;
 import com.org.playboard.repository.match.MatchSetRepository;
@@ -34,20 +37,33 @@ public class StatsRecalculationService {
     private final MatchSetRepository matchSetRepository;
     private final MemberStatsRepository memberStatsRepository;
     private final UserRepository userRepository;
+    private final GroupMemberRepository groupMemberRepository;
 
     public StatsRecalculationService(
             MatchParticipantRepository matchParticipantRepository,
             MatchSetRepository matchSetRepository,
             MemberStatsRepository memberStatsRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            GroupMemberRepository groupMemberRepository) {
         this.matchParticipantRepository = matchParticipantRepository;
         this.matchSetRepository = matchSetRepository;
         this.memberStatsRepository = memberStatsRepository;
         this.userRepository = userRepository;
+        this.groupMemberRepository = groupMemberRepository;
     }
 
     public void recompute(Group group, Set<UUID> userIds) {
+        // Guest fillers never accumulate stats — skip them, so no member_stats row
+        // is ever created for a guest (keeps them off the leaderboard too).
+        Set<UUID> guestIds = groupMemberRepository
+                .findByGroupIdAndStatusAndRole(group.getId(), MemberStatus.ACTIVE, GroupRole.GUEST)
+                .stream()
+                .map(m -> m.getUser().getId())
+                .collect(Collectors.toSet());
         for (UUID userId : userIds) {
+            if (guestIds.contains(userId)) {
+                continue;
+            }
             recomputeForPlayer(group, userId);
         }
     }

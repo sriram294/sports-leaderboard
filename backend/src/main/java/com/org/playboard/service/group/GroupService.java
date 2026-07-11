@@ -25,6 +25,7 @@ import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.user.UserRepository;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -41,6 +42,12 @@ public class GroupService {
     private static final String INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int INVITE_CODE_LENGTH = 6;
     private static final int INVITE_CODE_MAX_ATTEMPTS = 5;
+
+    // Per-group filler players for one-off non-members. Enough for "1 regular +
+    // 3 guests" in a doubles match. Kept in sync with V4__group_guests.sql, which
+    // backfills the same count/naming/color into pre-existing groups.
+    private static final int GUEST_FILLER_COUNT = 3;
+    private static final String GUEST_AVATAR_COLOR = "#9AA0A6";
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -99,7 +106,32 @@ public class GroupService {
         owner.setStatus(MemberStatus.ACTIVE);
         groupMemberRepository.save(owner);
 
+        seedGuestFillers(group);
+
         return toSummary(group, GroupRole.OWNER);
+    }
+
+    /**
+     * Creates this group's pool of guest fillers (see {@link GroupRole#GUEST}).
+     * Each is a synthetic user with a deterministic per-group email — matching
+     * the backfill in V4__group_guests.sql — so a match can reference it like any
+     * player while it stays out of counts and stats.
+     */
+    private void seedGuestFillers(Group group) {
+        for (int n = 1; n <= GUEST_FILLER_COUNT; n++) {
+            User guestUser = new User();
+            guestUser.setDisplayName("Guest " + n);
+            guestUser.setEmail("guest-" + n + "+" + group.getId() + "@playboard.local");
+            guestUser.setAvatarColor(GUEST_AVATAR_COLOR);
+            guestUser = userRepository.save(guestUser);
+
+            GroupMember guest = new GroupMember();
+            guest.setGroup(group);
+            guest.setUser(guestUser);
+            guest.setRole(GroupRole.GUEST);
+            guest.setStatus(MemberStatus.ACTIVE);
+            groupMemberRepository.save(guest);
+        }
     }
 
     @Transactional
@@ -154,12 +186,18 @@ public class GroupService {
     @Transactional(readOnly = true)
     public MembersResponse listMembers(UUID groupId, UUID callerId) {
         membershipGuard.requireActiveMember(groupId, callerId);
-        List<MemberDto> members = groupMemberRepository
-                .findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)
-                .stream()
+        List<GroupMember> active = groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE);
+        List<MemberDto> members = active.stream()
+                .filter(m -> m.getRole() != GroupRole.GUEST)
                 .map(MemberDto::from)
                 .toList();
-        return new MembersResponse(members);
+        // Guest fillers, ordered "Guest 1/2/3" for a stable picker order.
+        List<MemberDto> guests = active.stream()
+                .filter(m -> m.getRole() == GroupRole.GUEST)
+                .map(MemberDto::from)
+                .sorted(Comparator.comparing(MemberDto::displayName))
+                .toList();
+        return new MembersResponse(members, guests);
     }
 
     private boolean isUsable(GroupInvite invite) {
@@ -170,7 +208,9 @@ public class GroupService {
     }
 
     private GroupSummaryDto toSummary(Group group, GroupRole myRole) {
-        long memberCount = groupMemberRepository.countByGroupIdAndStatus(group.getId(), MemberStatus.ACTIVE);
+        // Guests are fillers, not players — they don't count toward member count.
+        long memberCount = groupMemberRepository
+                .countByGroupIdAndStatusAndRoleNot(group.getId(), MemberStatus.ACTIVE, GroupRole.GUEST);
         long matchCount = matchRepository.countByGroupIdAndDeletedFalse(group.getId());
         return GroupSummaryDto.of(group, memberCount, matchCount, myRole);
     }

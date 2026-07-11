@@ -26,11 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.data.model.Member
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.theme.BackgroundDark
+import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.theme.TextPrimary
@@ -124,6 +126,39 @@ private fun PlayerRow(member: Member, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary,
+            modifier = Modifier.weight(1f),
         )
+        if (member.isGuest) {
+            GuestTag()
+        }
+    }
+}
+
+/** A small pill marking a guest filler (excluded from stats & the leaderboard). */
+@Composable
+private fun GuestTag() {
+    Text(
+        text = "GUEST",
+        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 1.sp),
+        color = TextMuted,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, TextMuted.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF141414)
+@Composable
+private fun PlayerRowsPreview() {
+    PlayboardTheme {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(20.dp),
+        ) {
+            PlayerRow(Member("u1", "Sriram", null, "#9ADE28", "owner"), onClick = {})
+            PlayerRow(Member("g1", "Guest 1", null, "#9AA0A6", "guest"), onClick = {})
+            PlayerRow(Member("g2", "Guest 2", null, "#9AA0A6", "guest"), onClick = {})
+        }
     }
 }
