@@ -93,6 +93,42 @@ class GroupSwitcherViewModel @Inject constructor(
         _uiState.update { it.copy(inviteSheet = null) }
     }
 
+    /**
+     * Opens the rename sheet for the active group, seeded with its current name.
+     * No-op if there's no active group; the entry point is gated on
+     * [com.org.playboard.data.model.Group.canManage] so only owners/admins reach it.
+     */
+    fun onEditGroupClicked() {
+        val group = _uiState.value.selectedGroup ?: return
+        _uiState.update {
+            it.copy(isExpanded = false, renameSheet = RenameSheetState(groupId = group.id, input = group.name))
+        }
+    }
+
+    fun onRenameInputChanged(input: String) = updateRenameSheet { it.copy(input = input, hasFailed = false) }
+
+    fun onRenameSheetDismissed() {
+        _uiState.update { it.copy(renameSheet = null) }
+    }
+
+    fun onRenameSubmit() {
+        val sheet = _uiState.value.renameSheet ?: return
+        if (!sheet.canSubmit) return
+        updateRenameSheet { it.copy(isSubmitting = true, hasFailed = false) }
+        viewModelScope.launch {
+            groupRepository.renameGroup(sheet.groupId, sheet.input)
+                .onSuccess { _uiState.update { state -> state.copy(renameSheet = null) } }
+                .onFailure { updateRenameSheet { it.copy(isSubmitting = false, hasFailed = true) } }
+        }
+    }
+
+    /** Applies [transform] to the open rename sheet; a no-op if it's already closed. */
+    private inline fun updateRenameSheet(transform: (RenameSheetState) -> RenameSheetState) {
+        _uiState.update { state ->
+            state.renameSheet?.let { state.copy(renameSheet = transform(it)) } ?: state
+        }
+    }
+
     private fun generateInvite(groupId: String) {
         viewModelScope.launch {
             groupRepository.createInvite(groupId)

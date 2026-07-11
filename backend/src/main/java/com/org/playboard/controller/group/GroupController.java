@@ -7,12 +7,14 @@ import com.org.playboard.dto.group.GroupSummaryDto;
 import com.org.playboard.dto.group.InviteResponse;
 import com.org.playboard.dto.group.JoinGroupRequest;
 import com.org.playboard.dto.group.MembersResponse;
+import com.org.playboard.dto.group.RenameGroupRequest;
 import com.org.playboard.service.group.GroupService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,6 +47,14 @@ public class GroupController {
     @PostMapping("/join")
     public GroupSummaryDto joinGroup(@AuthenticationPrincipal UUID userId, @Valid @RequestBody JoinGroupRequest request) {
         return groupService.joinGroup(userId, request);
+    }
+
+    @PatchMapping("/{groupId}")
+    public GroupSummaryDto renameGroup(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID groupId,
+            @Valid @RequestBody RenameGroupRequest request) {
+        return groupService.renameGroup(groupId, userId, request);
     }
 
     @PostMapping("/{groupId}/invites")

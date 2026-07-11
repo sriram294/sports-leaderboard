@@ -106,6 +106,10 @@ Request: `{ "name": "Saturday Smashers", "sportCode": "badminton_doubles" }`
 Request: `{ "code": "SMASH42" }` → `200` group object.
 `404 GROUP_INVITE_INVALID` if code is wrong/expired/exhausted.
 
+### `PATCH /groups/{groupId}`
+Rename a group. Requires `owner`/`admin` (`403 GROUP_ROLE_FORBIDDEN` otherwise).
+Request: `{ "name": "New Name" }` → `200` group object (avatar color unchanged).
+
 ### `POST /groups/{groupId}/invites`
 Requires `owner`/`admin` (`403 GROUP_ROLE_FORBIDDEN` otherwise). Request:
 `{ "maxUses": 10, "expiresInHours": 168 }` (both optional) →
@@ -241,6 +245,7 @@ players. `204`. Same permission rule as edit.
 | GET | `/groups` | List my groups (group switcher) |
 | POST | `/groups` | Create a group |
 | POST | `/groups/join` | Join via invite code |
+| PATCH | `/groups/{groupId}` | Rename a group (owner/admin) |
 | POST | `/groups/{groupId}/invites` | Create invite code |
 | GET | `/groups/{groupId}/members` | Roster (Add Match player chips) |
 | GET | `/groups/{groupId}/leaderboard` | Board tab |

@@ -24,6 +24,21 @@ data class GroupActionSheetState(
 }
 
 /**
+ * State of the "rename group" bottom sheet. `null` on [GroupSwitcherUiState]
+ * means it's closed. [groupId] is the group being renamed; [input] is the
+ * edited name (seeded with the current one); [hasFailed] marks a retryable error.
+ */
+data class RenameSheetState(
+    val groupId: String,
+    val input: String,
+    val isSubmitting: Boolean = false,
+    val hasFailed: Boolean = false,
+) {
+    /** Submit is allowed only with non-blank input and no in-flight request. */
+    val canSubmit: Boolean get() = input.isNotBlank() && !isSubmitting
+}
+
+/**
  * State of the "invite players" bottom sheet. `null` on [GroupSwitcherUiState]
  * means it's closed. While [isLoading] the code is being generated; [code] holds
  * the generated invite once ready; [hasFailed] marks a (retryable) failure.
@@ -48,4 +63,5 @@ data class GroupSwitcherUiState(
     val isExpanded: Boolean = false,
     val groupActionSheet: GroupActionSheetState? = null,
     val inviteSheet: InviteSheetState? = null,
+    val renameSheet: RenameSheetState? = null,
 )
