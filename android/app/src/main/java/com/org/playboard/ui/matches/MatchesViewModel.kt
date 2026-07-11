@@ -70,6 +70,23 @@ class MatchesViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Pull-to-refresh: silently re-sync the group list (member counts) and this
+     * group's match log, driving the pull indicator via [MatchesUiState.isRefreshing]
+     * rather than the full-screen spinner. Also refreshes the open card's detail.
+     */
+    fun onPullRefresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            groupRepository.refreshGroups(showLoading = false)
+            groupRepository.selectedGroup.first()?.let { group ->
+                loadMatches(group, showLoading = false)
+                _uiState.value.expandedId?.let { fetchDetail(group.id, it) }
+            }
+            _uiState.update { it.copy(isRefreshing = false) }
+        }
+    }
+
     /** Expands a card (fetching its detail) or collapses it if already open. */
     fun onMatchClicked(matchId: String) {
         val state = _uiState.value

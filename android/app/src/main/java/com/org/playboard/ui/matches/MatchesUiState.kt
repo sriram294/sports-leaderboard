@@ -12,6 +12,8 @@ data class MatchDateSection(val date: LocalDate, val matches: List<Match>)
 data class MatchesUiState(
     val isLoading: Boolean = true,
     val hasLoadFailed: Boolean = false,
+    /** A user-initiated pull-to-refresh is in flight (drives the pull indicator). */
+    val isRefreshing: Boolean = false,
     val noGroup: Boolean = false,
     val groupId: String? = null,
     val groupName: String? = null,

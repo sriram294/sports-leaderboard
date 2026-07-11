@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -43,17 +42,22 @@ class GroupSwitcherViewModel @Inject constructor(
                 _uiState.update { it.copy(groups = groups, selectedGroup = selected, loadState = loadState) }
             }
         }
-        // A group created/joined/left elsewhere, or a match recorded, can change
-        // member/match counts — re-fetch the list when the data revision advances.
-        viewModelScope.launch {
-            groupRepository.dataRevision.drop(1).collect { refresh() }
-        }
         refresh()
     }
 
     /** Re-fetches the user's groups. Also the retry path when the list fails to load. */
     fun refresh() {
         viewModelScope.launch { groupRepository.refreshGroups() }
+    }
+
+    /**
+     * The app returned to the foreground — silently re-sync so changes made
+     * elsewhere (another member joining, a match recorded on another device) show
+     * up without a relogin. Mounted once via the shared switcher, so this is the
+     * app-wide resume hook. See [GroupRepository.refresh].
+     */
+    fun onAppResumed() {
+        viewModelScope.launch { groupRepository.refresh() }
     }
 
     fun onToggled() {

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.auth.TokenStore
 import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
@@ -15,6 +16,7 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
+import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
@@ -73,6 +75,7 @@ private class FakePlayboardApi(
     override suspend fun getGroups(): GroupsResponseDto = GroupsResponseDto(groups)
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("not used in this test")
+    override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
@@ -150,7 +153,7 @@ class AddMatchViewModelTest {
         )
         val json = Json { ignoreUnknownKeys = true }
         val auth = AuthRepository(api, TokenStore(dataStore))
-        val groups = GroupRepository(api, json)
+        val groups = testGroupRepository(api, json)
         val matches = MatchRepository(api, groups, json)
         return Triple(auth, groups, matches)
     }
@@ -180,6 +183,30 @@ class AddMatchViewModelTest {
         assertFalse(state.isLoading)
         assertEquals("g1", state.groupId)
         assertEquals(4, state.roster.size)
+    }
+
+    @Test
+    fun `a member joining refreshes the roster in place without clearing the form`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto("g1", "Smashers")), members = fourPlayers)
+        val (auth, groups, matches) = deps(api)
+        groups.refreshGroups()
+        val viewModel = AddMatchViewModel(auth, groups, matches)
+        advanceUntilIdle()
+
+        viewModel.buildTeams()
+        assertTrue(viewModel.uiState.value.teamsComplete)
+
+        // A new member joins the group; a foreground resync / recorded match bumps the revision.
+        api.members = fourPlayers + memberDto("u5", "Sam")
+        groups.notifyMatchesChanged()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(5, state.roster.size) // new member is now pickable
+        assertTrue(state.roster.any { it.id == "u5" })
+        // Teams the user was already building stay intact.
+        assertEquals(listOf("u1", "u2"), state.team1)
+        assertEquals(listOf("u3", "u4"), state.team2)
     }
 
     @Test

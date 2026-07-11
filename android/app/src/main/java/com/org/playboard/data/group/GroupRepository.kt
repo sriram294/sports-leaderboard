@@ -59,14 +59,34 @@ class GroupRepository @Inject constructor(
     private val _selectedGroupId = MutableStateFlow<String?>(null)
 
     /**
-     * Bumped whenever match data changes (e.g. a match is recorded), so screens
-     * showing derived data — the Board leaderboard — can re-fetch. Kept here
-     * because the active group is already the app-wide coordination point.
+     * Bumped whenever app data may have changed — a local match mutation, or a
+     * manual/foreground [refresh] — so screens showing derived data (the Board
+     * leaderboard, Matches log, Profile stats) can re-fetch. Kept here because the
+     * active group is already the app-wide coordination point.
      */
     private val _dataRevision = MutableStateFlow(0)
     val dataRevision: StateFlow<Int> = _dataRevision.asStateFlow()
 
+    /**
+     * A locally recorded/edited/deleted match changed the leaderboard and the
+     * group's match count. Bump the revision (fire-and-forget, so it never blocks
+     * the record round-trip) and silently re-sync the group list so counts stay
+     * current.
+     */
     fun notifyMatchesChanged() {
+        _dataRevision.update { it + 1 }
+        appScope.launch { refreshGroups(showLoading = false) }
+    }
+
+    /**
+     * A foreground / pull-to-refresh resync: silently re-fetch the group list
+     * (member & match counts), then bump [dataRevision] so every observing screen
+     * reloads its derived data. This is how changes made by *other* members — most
+     * visibly, someone joining the group — show up without a relogin; previously
+     * the one-shot startup fetch was only re-run by signing out and back in.
+     */
+    suspend fun refresh() {
+        refreshGroups(showLoading = false)
         _dataRevision.update { it + 1 }
     }
 
@@ -82,15 +102,23 @@ class GroupRepository @Inject constructor(
             groups.firstOrNull { it.id == activeId } ?: groups.firstOrNull()
         }
 
-    /** Re-fetches the user's groups from the backend, updating [groups] on success. */
-    suspend fun refreshGroups(): Result<List<Group>> {
-        _groupsLoadState.value = GroupsLoadState.LOADING
+    /**
+     * Re-fetches the user's groups from the backend, updating [groups] on success.
+     * [showLoading] flips [groupsLoadState] to LOADING first — right for the initial
+     * load and explicit retries. A silent refresh (foreground resync, pull-to-refresh)
+     * passes `false`: it keeps the last-known list on screen and only reports FAILED
+     * when there's nothing loaded yet, so a transient network blip doesn't wipe the UI.
+     */
+    suspend fun refreshGroups(showLoading: Boolean = true): Result<List<Group>> {
+        if (showLoading) _groupsLoadState.value = GroupsLoadState.LOADING
         return runCatching { api.getGroups().groups.map(GroupDto::toGroup) }
             .onSuccess {
                 _groups.value = it
                 _groupsLoadState.value = GroupsLoadState.LOADED
             }
-            .onFailure { _groupsLoadState.value = GroupsLoadState.FAILED }
+            .onFailure {
+                if (showLoading || _groups.value.isEmpty()) _groupsLoadState.value = GroupsLoadState.FAILED
+            }
     }
 
     /** The active group's roster, for building teams in Add Match. */
