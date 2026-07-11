@@ -91,7 +91,7 @@ private fun GroupSwitcherContent(
     uiState: GroupSwitcherUiState,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
-    onEditGroup: () -> Unit,
+    onEditGroup: (String,String) -> Unit,
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
     onInvitePlayersClicked: () -> Unit,
@@ -114,6 +114,7 @@ private fun GroupSwitcherContent(
                     onGroupSelected = onGroupSelected,
                     onCreateOrJoinGroupClicked = onCreateOrJoinGroupClicked,
                     onInvitePlayersClicked = onInvitePlayersClicked,
+                    onEditGroup = onEditGroup,
                 )
             }
         } else {
@@ -132,7 +133,7 @@ private fun GroupSwitcherCard(
     group: Group,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    onEditGroup: () -> Unit,
+    onEditGroup: (groupId: String, groupName: String) -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -154,19 +155,7 @@ private fun GroupSwitcherCard(
                     color = TextPrimary,
                 )
             }
-            // Owner/admin only — a pencil to rename the group. Its own clickable so
-            // tapping it opens the rename sheet rather than toggling the switcher.
-            if (group.canManage) {
-                Text(
-                    text = "✎",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                    color = TextMuted,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onEditGroup)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                )
-            }
+
             Text(
                 text = "${group.memberCount} players ${if (isExpanded) "▴" else "▾"}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
@@ -223,6 +212,7 @@ private fun YourGroupsPanel(
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
     onInvitePlayersClicked: () -> Unit,
+    onEditGroup: (groupId: String, groupName: String) -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -262,8 +252,18 @@ private fun YourGroupsPanel(
                             color = TextMuted,
                         )
                     }
-                    if (isSelected) {
-                        Text(text = "✓", color = BrandLime, style = MaterialTheme.typography.bodyLarge)
+                    // Owner/admin only — a pencil to rename the group. Its own clickable so
+                    // tapping it opens the rename sheet rather than toggling the switcher.
+                    if (group.canManage) {
+                        Text(
+                            text = "rename",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+                            color = TextMuted,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onEditGroup(group.id, group.name) }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
                     }
                 }
             }
@@ -315,7 +315,7 @@ private fun GroupSwitcherCollapsedPreview() {
                 loadState = GroupsLoadState.LOADED,
             ),
             onToggle = {},
-            onEditGroup = {},
+            onEditGroup = {_,_ -> },
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
@@ -336,7 +336,7 @@ private fun GroupSwitcherExpandedPreview() {
                 isExpanded = true,
             ),
             onToggle = {},
-            onEditGroup = {},
+            onEditGroup = {_,_ -> },
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
@@ -352,7 +352,7 @@ private fun GroupSwitcherNoGroupPreview() {
         GroupSwitcherContent(
             uiState = GroupSwitcherUiState(loadState = GroupsLoadState.LOADED),
             onToggle = {},
-            onEditGroup = {},
+            onEditGroup = {_,_ -> },
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},

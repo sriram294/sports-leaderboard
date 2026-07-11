@@ -98,10 +98,9 @@ class GroupSwitcherViewModel @Inject constructor(
      * No-op if there's no active group; the entry point is gated on
      * [com.org.playboard.data.model.Group.canManage] so only owners/admins reach it.
      */
-    fun onEditGroupClicked() {
-        val group = _uiState.value.selectedGroup ?: return
+    fun onEditGroupClicked(groupId: String,groupName: String) {
         _uiState.update {
-            it.copy(isExpanded = false, renameSheet = RenameSheetState(groupId = group.id, input = group.name))
+            it.copy(isExpanded = false, renameSheet = RenameSheetState(groupId,groupName))
         }
     }
 

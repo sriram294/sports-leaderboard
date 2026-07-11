@@ -247,7 +247,10 @@ private fun StatTile(
     subLabel: String? = null,
 ) {
     Surface(shape = RoundedCornerShape(16.dp), color = SurfaceDark, modifier = modifier) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Text(
                 text = value,
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
@@ -255,13 +258,14 @@ private fun StatTile(
                 color = valueColor,
             )
             Spacer(Modifier.height(6.dp))
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center)
             if (subLabel != null) {
                 Text(
                     text = subLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = TextMuted,
                     modifier = Modifier.padding(top = 2.dp),
+                    textAlign = TextAlign.Center
                 )
             }
         }
