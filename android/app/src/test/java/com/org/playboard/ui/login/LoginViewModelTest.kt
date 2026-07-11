@@ -62,6 +62,8 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
         error("not used in this test")
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
         error("not used in this test")
+    override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto =
+        error("not used in this test")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
 }

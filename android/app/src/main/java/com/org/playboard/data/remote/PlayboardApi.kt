@@ -19,6 +19,7 @@ import com.org.playboard.data.remote.dto.TokenResponseDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -76,6 +77,13 @@ interface PlayboardApi {
     suspend fun getMatchDetail(
         @Path("groupId") groupId: String,
         @Path("matchId") matchId: String,
+    ): MatchDetailDto
+
+    @PATCH("api/v1/groups/{groupId}/matches/{matchId}")
+    suspend fun editMatch(
+        @Path("groupId") groupId: String,
+        @Path("matchId") matchId: String,
+        @Body request: RecordMatchRequestDto,
     ): MatchDetailDto
 
     @DELETE("api/v1/groups/{groupId}/matches/{matchId}")

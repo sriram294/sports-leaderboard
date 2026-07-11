@@ -50,10 +50,22 @@ import com.org.playboard.ui.theme.TextMuted
 @Composable
 fun MainScreen() {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Board) }
+    // Set when the user taps "Edit" on a match → the Add tab opens pre-filled in
+    // edit mode; null means a fresh "record a match" form.
+    var pendingEditMatchId by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = { MainBottomBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it }) },
+        bottomBar = {
+            MainBottomBar(
+                selectedTab = selectedTab,
+                onTabSelected = { tab ->
+                    // Tapping the + tab always starts a fresh (create) form.
+                    if (tab == MainTab.Add) pendingEditMatchId = null
+                    selectedTab = tab
+                },
+            )
+        },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Shared group switcher — the top header on every tab, in place of the
@@ -66,8 +78,21 @@ fun MainScreen() {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
                     MainTab.Board -> BoardScreen()
-                    MainTab.Matches -> MatchesScreen()
-                    MainTab.Add -> AddMatchScreen(onRecorded = { selectedTab = MainTab.Board })
+                    MainTab.Matches -> MatchesScreen(
+                        onEditMatch = { matchId ->
+                            pendingEditMatchId = matchId
+                            selectedTab = MainTab.Add
+                        },
+                    )
+                    MainTab.Add -> AddMatchScreen(
+                        editMatchId = pendingEditMatchId,
+                        onRecorded = {
+                            // Edits return to the Matches log; new matches go to the Board.
+                            val wasEdit = pendingEditMatchId != null
+                            pendingEditMatchId = null
+                            selectedTab = if (wasEdit) MainTab.Matches else MainTab.Board
+                        },
+                    )
                     MainTab.Profile -> ProfileScreen()
                 }
             }

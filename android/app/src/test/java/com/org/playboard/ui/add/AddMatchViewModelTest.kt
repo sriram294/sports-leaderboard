@@ -18,6 +18,10 @@ import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
+import com.org.playboard.data.remote.dto.MatchPlayerDto
+import com.org.playboard.data.remote.dto.MatchSetDto
+import com.org.playboard.data.remote.dto.MatchTeamDto
+import com.org.playboard.data.remote.dto.RecordedByDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
@@ -56,8 +60,11 @@ private class FakePlayboardApi(
     var recordMatchBehavior: suspend (RecordMatchRequestDto) -> RecordMatchResponseDto = {
         RecordMatchResponseDto("m1")
     },
+    var matchDetail: MatchDetailDto? = null,
 ) : PlayboardApi {
     var lastRecordRequest: RecordMatchRequestDto? = null
+    var lastEditRequest: RecordMatchRequestDto? = null
+    var lastEditMatchId: String? = null
 
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         error("not used in this test")
@@ -78,7 +85,12 @@ private class FakePlayboardApi(
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
         error("not used in this test")
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
-        error("not used in this test")
+        matchDetail ?: error("no match detail stubbed")
+    override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto {
+        lastEditMatchId = matchId
+        lastEditRequest = request
+        return matchDetail ?: error("no match detail stubbed")
+    }
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
 }
 
@@ -285,4 +297,90 @@ class AddMatchViewModelTest {
         assertEquals(RecordMatchError.INVALID_SCORES, viewModel.uiState.value.submitError)
         assertFalse(viewModel.uiState.value.isSubmitting)
     }
+
+    @Test
+    fun `entering edit mode pre-fills teams, sets, and winner from the match`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto("g1", "Smashers")),
+            members = fourPlayers,
+            matchDetail = detailDto(winningTeamNo = 2),
+        )
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onModeRequested("m1")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue("editing", state.isEditing)
+        assertEquals("m1", state.editingMatchId)
+        assertEquals(listOf("u1", "u2"), state.team1)
+        assertEquals(listOf("u3", "u4"), state.team2)
+        assertEquals(listOf("21", "21"), state.sets.map { it.team1 })
+        assertEquals(listOf("15", "18"), state.sets.map { it.team2 })
+        assertEquals(2, state.winnerOverride)
+        assertTrue("can save", state.canRecord)
+    }
+
+    @Test
+    fun `saving an edit sends a PATCH for that match, emits recorded, and resets to create mode`() =
+        runTest(testDispatcher) {
+            val api = FakePlayboardApi(
+                groups = listOf(groupDto("g1", "Smashers")),
+                members = fourPlayers,
+                matchDetail = detailDto(winningTeamNo = 2),
+            )
+            val viewModel = readyViewModel(api)
+            val recorded = mutableListOf<Unit>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.recorded.collect { recorded.add(Unit) }
+            }
+            advanceUntilIdle()
+
+            viewModel.onModeRequested("m1")
+            advanceUntilIdle()
+            viewModel.onRecord()
+            advanceUntilIdle()
+
+            assertEquals("edited match id", "m1", api.lastEditMatchId)
+            val request = api.lastEditRequest!!
+            assertEquals(listOf("u1", "u2"), request.teams[0].playerIds)
+            assertEquals(listOf("u3", "u4"), request.teams[1].playerIds)
+            assertEquals("winningTeamNo", 2, request.winningTeamNo)
+            assertNull("create path untouched", api.lastRecordRequest)
+
+            // Back to a fresh create form after a successful save.
+            val state = viewModel.uiState.value
+            assertFalse("no longer editing", state.isEditing)
+            assertTrue("team1 reset", state.team1.isEmpty())
+            assertEquals("recorded events", 1, recorded.size)
+        }
+
+    /** A two-set match: u1/u2 (team 1) vs u3/u4 (team 2), with [winningTeamNo] marked the winner. */
+    private fun detailDto(winningTeamNo: Int) = MatchDetailDto(
+        id = "m1",
+        playedAt = "2026-07-09T06:58:00Z",
+        teams = listOf(
+            MatchTeamDto(
+                teamNo = 1,
+                isWinner = winningTeamNo == 1,
+                players = listOf(
+                    MatchPlayerDto("u1", "Raj", "#9ADE28"),
+                    MatchPlayerDto("u2", "Dev", "#3DB4FF"),
+                ),
+            ),
+            MatchTeamDto(
+                teamNo = 2,
+                isWinner = winningTeamNo == 2,
+                players = listOf(
+                    MatchPlayerDto("u3", "Marcus", "#FF8A3D"),
+                    MatchPlayerDto("u4", "Kiran", "#EAC72B"),
+                ),
+            ),
+        ),
+        sets = listOf(MatchSetDto(1, 21, 15), MatchSetDto(2, 21, 18)),
+        recordedBy = RecordedByDto("u1", "Raj"),
+        recordedAt = "2026-07-09T06:58:00Z",
+        events = emptyList(),
+    )
 }

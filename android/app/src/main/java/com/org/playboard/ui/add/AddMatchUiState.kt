@@ -26,7 +26,11 @@ data class AddMatchUiState(
     val submitError: RecordMatchError? = null,
     /** Team (1 or 2) the "Select Player" sheet is currently picking for; `null` = closed. */
     val playerPickerTeam: Int? = null,
+    /** Id of the match being edited; `null` = recording a new match (create mode). */
+    val editingMatchId: String? = null,
 ) {
+    val isEditing: Boolean get() = editingMatchId != null
+
     val assignedIds: Set<String> get() = (team1 + team2).toSet()
 
     /** Roster members not yet on a team — the choices shown in the picker. */

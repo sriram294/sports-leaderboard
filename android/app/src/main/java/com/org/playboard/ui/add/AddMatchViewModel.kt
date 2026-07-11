@@ -6,10 +6,10 @@ import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.match.RecordMatchException
-import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -46,29 +46,93 @@ class AddMatchViewModel @Inject constructor(
     private val _recorded = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val recorded: SharedFlow<Unit> = _recorded.asSharedFlow()
 
+    /** Cancel-and-restart guard so a group switch and an edit request can't race to fill the form. */
+    private var loadJob: Job? = null
+
     init {
         viewModelScope.launch {
             authRepository.sessionState.collect { session ->
                 _uiState.update { it.copy(recorder = (session as? SessionState.SignedIn)?.user) }
             }
         }
+        // Switching groups resets to a fresh create form for the new roster.
         viewModelScope.launch {
-            groupRepository.selectedGroup.distinctUntilChangedBy { it?.id }.collect { group ->
-                if (group == null) {
-                    _uiState.update {
-                        it.copy(isLoading = false, noGroup = true, groupId = null, groupName = null)
-                    }
-                } else {
-                    loadRoster(group)
-                }
+            groupRepository.selectedGroup.distinctUntilChangedBy { it?.id }.collect {
+                _uiState.update { it.copy(editingMatchId = null) }
+                reload()
             }
         }
     }
 
-    fun retry() {
-        viewModelScope.launch {
-            val group = groupRepository.selectedGroup.first() ?: return@launch
-            loadRoster(group)
+    /**
+     * Enters edit mode for [matchId] (pre-filling the form from that match) or,
+     * when null, ensures a fresh create form. Called from the screen as the Add
+     * tab is opened; a no-op if already in the requested mode.
+     */
+    fun onModeRequested(matchId: String?) {
+        if (matchId == _uiState.value.editingMatchId) return
+        _uiState.update { it.copy(editingMatchId = matchId) }
+        reload()
+    }
+
+    fun retry() = reload()
+
+    /**
+     * Loads the active group's roster, then either pre-fills from the match being
+     * edited or clears to a blank create form. Cancels any in-flight load first so
+     * the latest requested mode always wins.
+     */
+    private fun reload() {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            val group = groupRepository.selectedGroup.first()
+            if (group == null) {
+                _uiState.update {
+                    it.copy(isLoading = false, noGroup = true, groupId = null, groupName = null, editingMatchId = null)
+                }
+                return@launch
+            }
+            _uiState.update {
+                it.copy(isLoading = true, hasLoadFailed = false, noGroup = false, groupId = group.id, groupName = group.name)
+            }
+            val members = groupRepository.getMembers(group.id).getOrElse {
+                _uiState.update { it.copy(isLoading = false, hasLoadFailed = true) }
+                return@launch
+            }
+            val editingId = _uiState.value.editingMatchId
+            if (editingId == null) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        roster = members,
+                        team1 = emptyList(),
+                        team2 = emptyList(),
+                        sets = listOf(SetScoreInput()),
+                        winnerOverride = null,
+                        submitError = null,
+                        playerPickerTeam = null,
+                    )
+                }
+                return@launch
+            }
+            matchRepository.getMatchDetail(group.id, editingId)
+                .onSuccess { detail ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            roster = members,
+                            team1 = detail.team(1)?.players?.map { p -> p.userId } ?: emptyList(),
+                            team2 = detail.team(2)?.players?.map { p -> p.userId } ?: emptyList(),
+                            sets = detail.sets.sortedBy { s -> s.setNo }
+                                .map { s -> SetScoreInput(s.team1Score.toString(), s.team2Score.toString()) }
+                                .ifEmpty { listOf(SetScoreInput()) },
+                            winnerOverride = detail.winningTeamNo,
+                            submitError = null,
+                            playerPickerTeam = null,
+                        )
+                    }
+                }
+                .onFailure { _uiState.update { it.copy(isLoading = false, roster = members, hasLoadFailed = true) } }
         }
     }
 
@@ -129,15 +193,22 @@ class AddMatchViewModel @Inject constructor(
         _uiState.update { it.copy(winnerOverride = teamNo, submitError = null) }
     }
 
+    /** Records a new match or, in edit mode, full-replaces the one being edited. */
     fun onRecord() {
         val state = _uiState.value
         val groupId = state.groupId ?: return
         val winner = state.effectiveWinner ?: return
         if (!state.canRecord) return
         val sets = state.parsedSets.filterNotNull()
+        val editingId = state.editingMatchId
         _uiState.update { it.copy(isSubmitting = true, submitError = null) }
         viewModelScope.launch {
-            matchRepository.recordMatch(groupId, state.team1, state.team2, sets, winner)
+            val result = if (editingId != null) {
+                matchRepository.editMatch(groupId, editingId, state.team1, state.team2, sets, winner)
+            } else {
+                matchRepository.recordMatch(groupId, state.team1, state.team2, sets, winner)
+            }
+            result
                 .onSuccess {
                     resetForm()
                     _recorded.emit(Unit)
@@ -153,31 +224,10 @@ class AddMatchViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadRoster(group: Group) {
-        _uiState.update {
-            it.copy(
-                isLoading = true,
-                hasLoadFailed = false,
-                noGroup = false,
-                groupId = group.id,
-                groupName = group.name,
-                roster = emptyList(),
-                team1 = emptyList(),
-                team2 = emptyList(),
-                sets = listOf(SetScoreInput()),
-                winnerOverride = null,
-                submitError = null,
-                playerPickerTeam = null,
-            )
-        }
-        groupRepository.getMembers(group.id)
-            .onSuccess { members -> _uiState.update { it.copy(isLoading = false, roster = members) } }
-            .onFailure { _uiState.update { it.copy(isLoading = false, hasLoadFailed = true) } }
-    }
-
     private fun resetForm() {
         _uiState.update {
             it.copy(
+                editingMatchId = null,
                 team1 = emptyList(),
                 team2 = emptyList(),
                 sets = listOf(SetScoreInput()),

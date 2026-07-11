@@ -57,9 +57,15 @@ import com.org.playboard.ui.theme.TextPrimary
 @Composable
 fun AddMatchScreen(
     onRecorded: () -> Unit,
+    editMatchId: String? = null,
     viewModel: AddMatchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Enter edit mode (pre-fill) when opened for a match, else ensure create mode.
+    LaunchedEffect(editMatchId) {
+        viewModel.onModeRequested(editMatchId)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.recorded.collect { onRecorded() }
@@ -144,7 +150,11 @@ private fun AddMatchForm(
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp),
     ) {
-        RecorderCaption(recorder = state.recorder)
+        if (state.isEditing) {
+            EditingCaption()
+        } else {
+            RecorderCaption(recorder = state.recorder)
+        }
 
         SectionLabel("BUILD TEAMS")
         TeamSlots(
@@ -229,7 +239,11 @@ private fun AddMatchForm(
             if (state.isSubmitting) {
                 CircularProgressIndicator(color = OnBrandLime, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
             } else {
-                Text("Record Match", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (state.isEditing) "Save changes" else "Record Match",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }
@@ -242,6 +256,17 @@ private fun RecorderCaption(recorder: UserSession?) {
         text = "Recording as ${recorder.displayName} · ${recorder.email}",
         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
         color = TextMuted,
+        modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+    )
+}
+
+@Composable
+private fun EditingCaption() {
+    Text(
+        text = "Editing match · saving replaces the original",
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+        color = BrandLime,
+        fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
     )
 }
