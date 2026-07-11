@@ -59,12 +59,16 @@ import java.util.Locale
 
 /** Matches tab — chronological match log (docs/requirements/03-matches.md). */
 @Composable
-fun MatchesScreen(viewModel: MatchesViewModel = hiltViewModel()) {
+fun MatchesScreen(
+    onEditMatch: (String) -> Unit,
+    viewModel: MatchesViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     MatchesContent(
         state = uiState,
         onMatchClicked = viewModel::onMatchClicked,
+        onEditClicked = onEditMatch,
         onDeleteClicked = viewModel::onDeleteClicked,
         onRetry = viewModel::retry,
     )
@@ -82,6 +86,7 @@ fun MatchesScreen(viewModel: MatchesViewModel = hiltViewModel()) {
 private fun MatchesContent(
     state: MatchesUiState,
     onMatchClicked: (String) -> Unit,
+    onEditClicked: (String) -> Unit,
     onDeleteClicked: (String) -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -105,6 +110,7 @@ private fun MatchesContent(
             else -> MatchList(
                 state = state,
                 onMatchClicked = onMatchClicked,
+                onEditClicked = onEditClicked,
                 onDeleteClicked = onDeleteClicked,
             )
         }
@@ -115,6 +121,7 @@ private fun MatchesContent(
 private fun MatchList(
     state: MatchesUiState,
     onMatchClicked: (String) -> Unit,
+    onEditClicked: (String) -> Unit,
     onDeleteClicked: (String) -> Unit,
 ) {
     LazyColumn(
@@ -147,6 +154,7 @@ private fun MatchList(
                     detail = if (state.expandedId == match.id) state.detail else null,
                     canModify = state.detail?.let { state.expandedId == match.id && state.canModify(it) } ?: false,
                     onClick = { onMatchClicked(match.id) },
+                    onEdit = { onEditClicked(match.id) },
                     onDelete = { onDeleteClicked(match.id) },
                 )
             }
@@ -164,6 +172,7 @@ private fun MatchCard(
     detail: MatchDetail?,
     canModify: Boolean,
     onClick: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Surface(
@@ -198,7 +207,7 @@ private fun MatchCard(
                         CircularProgressIndicator(color = BrandLime, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
                     }
                     detailFailed -> Text("Couldn't load match details.", color = TextMuted)
-                    detail != null -> ExpandedDetail(detail = detail, canModify = canModify, onDelete = onDelete)
+                    detail != null -> ExpandedDetail(detail = detail, canModify = canModify, onEdit = onEdit, onDelete = onDelete)
                 }
             }
         }
@@ -256,7 +265,7 @@ private fun ScoreColumn(sets: List<MatchSet>) {
 }
 
 @Composable
-private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onDelete: () -> Unit) {
+private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -> Unit, onDelete: () -> Unit) {
     Column {
         SubLabel("GAME BREAKDOWN")
         detail.sets.forEach { set ->
@@ -290,17 +299,26 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onDelete: ()
 
         if (canModify) {
             Spacer(Modifier.height(14.dp))
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, StatLossRed.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                    .clickable(onClick = onDelete)
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-            ) {
-                Text("Delete match", color = StatLossRed, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlineActionButton(label = "Edit match", color = BrandLime, onClick = onEdit)
+                OutlineActionButton(label = "Delete match", color = StatLossRed, onClick = onDelete)
             }
         }
+    }
+}
+
+/** A pill-outlined text button used for the edit/delete actions on an expanded match. */
+@Composable
+private fun OutlineActionButton(label: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+    ) {
+        Text(label, color = color, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -405,6 +423,7 @@ private fun MatchesContentPreview() {
                 detail = previewDetail,
             ),
             onMatchClicked = {},
+            onEditClicked = {},
             onDeleteClicked = {},
             onRetry = {},
         )

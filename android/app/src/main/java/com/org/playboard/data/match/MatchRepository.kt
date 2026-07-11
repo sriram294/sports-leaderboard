@@ -49,29 +49,54 @@ class MatchRepository @Inject constructor(
         sets: List<Pair<Int, Int>>,
         winningTeamNo: Int,
     ): Result<Unit> =
-        runCatching {
-            val request = RecordMatchRequestDto(
-                playedAt = Instant.now().toString(),
-                teams = listOf(
-                    TeamInputDto(teamNo = 1, playerIds = team1PlayerIds),
-                    TeamInputDto(teamNo = 2, playerIds = team2PlayerIds),
-                ),
-                sets = sets.mapIndexed { index, (t1, t2) ->
-                    SetInputDto(setNo = index + 1, team1Score = t1, team2Score = t2)
-                },
-                winningTeamNo = winningTeamNo,
-            )
-            api.recordMatch(groupId, request)
-            Unit
-        }
+        runCatching { api.recordMatch(groupId, buildRequest(team1PlayerIds, team2PlayerIds, sets, winningTeamNo)); Unit }
             .onSuccess { groupRepository.notifyMatchesChanged() }
-            .recoverCatching { cause ->
-                throw when (cause.apiErrorCode(json)) {
-                    "MATCH_INVALID_TEAMS" -> RecordMatchException.InvalidTeams()
-                    "MATCH_INVALID_SCORES" -> RecordMatchException.InvalidScores()
-                    else -> cause
-                }
+            .recoverMatchValidation()
+
+    /**
+     * Full-replace edit of an existing match (`PATCH`), same request shape as
+     * record. Recomputes stats server-side, so bump the data revision on success.
+     * @param sets ordered (team1, team2) score pairs, set 1 first.
+     * @param winningTeamNo 1 or 2.
+     */
+    suspend fun editMatch(
+        groupId: String,
+        matchId: String,
+        team1PlayerIds: List<String>,
+        team2PlayerIds: List<String>,
+        sets: List<Pair<Int, Int>>,
+        winningTeamNo: Int,
+    ): Result<Unit> =
+        runCatching { api.editMatch(groupId, matchId, buildRequest(team1PlayerIds, team2PlayerIds, sets, winningTeamNo)); Unit }
+            .onSuccess { groupRepository.notifyMatchesChanged() }
+            .recoverMatchValidation()
+
+    private fun buildRequest(
+        team1PlayerIds: List<String>,
+        team2PlayerIds: List<String>,
+        sets: List<Pair<Int, Int>>,
+        winningTeamNo: Int,
+    ) = RecordMatchRequestDto(
+        playedAt = Instant.now().toString(),
+        teams = listOf(
+            TeamInputDto(teamNo = 1, playerIds = team1PlayerIds),
+            TeamInputDto(teamNo = 2, playerIds = team2PlayerIds),
+        ),
+        sets = sets.mapIndexed { index, (t1, t2) ->
+            SetInputDto(setNo = index + 1, team1Score = t1, team2Score = t2)
+        },
+        winningTeamNo = winningTeamNo,
+    )
+
+    /** Maps the backend's `422` validation codes to typed exceptions. */
+    private fun Result<Unit>.recoverMatchValidation(): Result<Unit> =
+        recoverCatching { cause ->
+            throw when (cause.apiErrorCode(json)) {
+                "MATCH_INVALID_TEAMS" -> RecordMatchException.InvalidTeams()
+                "MATCH_INVALID_SCORES" -> RecordMatchException.InvalidScores()
+                else -> cause
             }
+        }
 
     /** The group's matches, newest first (first page only for now). */
     suspend fun getMatches(groupId: String): Result<List<Match>> =

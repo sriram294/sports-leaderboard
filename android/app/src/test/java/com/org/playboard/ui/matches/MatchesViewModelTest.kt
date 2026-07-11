@@ -73,6 +73,8 @@ private class FakePlayboardApi(
         MatchListResponseDto(matches.toList())
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
         details[matchId] ?: error("no detail for $matchId")
+    override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto =
+        error("unused")
     override suspend fun deleteMatch(groupId: String, matchId: String) {
         deletedIds.add(matchId)
         matches.removeAll { it.id == matchId }

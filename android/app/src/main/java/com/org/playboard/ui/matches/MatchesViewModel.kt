@@ -50,12 +50,15 @@ class MatchesViewModel @Inject constructor(
                 }
             }
         }
-        // A match recorded on the Add tab (or deleted) bumps the revision — refresh
-        // silently so the list stays current without a spinner flash.
+        // A match recorded/edited on the Add tab (or deleted) bumps the revision —
+        // refresh silently so the list stays current without a spinner flash. An
+        // edit also changes the open card's breakdown, so re-fetch that too.
         viewModelScope.launch {
             groupRepository.dataRevision.drop(1).collect {
                 val group = groupRepository.selectedGroup.first() ?: return@collect
                 loadMatches(group, showLoading = false)
+                val expandedId = _uiState.value.expandedId
+                if (expandedId != null) fetchDetail(group.id, expandedId)
             }
         }
     }
@@ -76,15 +79,18 @@ class MatchesViewModel @Inject constructor(
         }
         _uiState.update { it.copy(expandedId = matchId, detail = null, isDetailLoading = true, detailFailed = false) }
         val groupId = state.groupId ?: return
-        viewModelScope.launch {
-            matchRepository.getMatchDetail(groupId, matchId)
-                .onSuccess { detail ->
-                    _uiState.update { if (it.expandedId == matchId) it.copy(isDetailLoading = false, detail = detail) else it }
-                }
-                .onFailure {
-                    _uiState.update { if (it.expandedId == matchId) it.copy(isDetailLoading = false, detailFailed = true) else it }
-                }
-        }
+        viewModelScope.launch { fetchDetail(groupId, matchId) }
+    }
+
+    /** Loads a match's full detail into the expanded card (no-op if it's since collapsed). */
+    private suspend fun fetchDetail(groupId: String, matchId: String) {
+        matchRepository.getMatchDetail(groupId, matchId)
+            .onSuccess { detail ->
+                _uiState.update { if (it.expandedId == matchId) it.copy(isDetailLoading = false, detail = detail) else it }
+            }
+            .onFailure {
+                _uiState.update { if (it.expandedId == matchId) it.copy(isDetailLoading = false, detailFailed = true) else it }
+            }
     }
 
     fun onDeleteClicked(matchId: String) {
