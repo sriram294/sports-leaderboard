@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,9 +44,9 @@ import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
 
 /**
- * Post-login shell: the 4-tab bottom bar present on every screen
- * (docs/requirements/00-overview.md § Navigation). Board is real; the other
- * tabs are placeholders until their slices land.
+ * Post-login shell: the 5-tab bottom bar present on every screen
+ * (docs/requirements/00-overview.md § Navigation). All tabs are real except
+ * Stats, which shows an "Insights coming soon" placeholder until its slice lands.
  */
 @Composable
 fun MainScreen() {
@@ -93,6 +94,7 @@ fun MainScreen() {
                             selectedTab = if (wasEdit) MainTab.Matches else MainTab.Board
                         },
                     )
+                    MainTab.Stats -> PlaceholderTab("Insights coming soon")
                     MainTab.Profile -> ProfileScreen()
                 }
             }
@@ -157,31 +159,39 @@ private fun TabItem(tab: MainTab, isSelected: Boolean, onClick: () -> Unit, modi
     }
 }
 
-/** The prototype's floating lime "+" — a circular action rather than a regular tab item. */
+/**
+ * The prototype's floating lime "+" — a circular action rather than a regular tab
+ * item. Larger than the other tabs and lifted above the bar so it reads as the
+ * primary action, centered across the 5 items.
+ */
 @Composable
 private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .fillMaxSize()
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(top = 6.dp),
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(44.dp)
+                .offset(y = (-10).dp)
+                .size(58.dp)
                 .clip(CircleShape)
                 .background(BrandLime),
         ) {
             Text(
                 text = "+",
                 color = OnBrandLime,
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp, lineHeight = 24.sp),
+                style = MaterialTheme.typography.displayLarge.copy(fontSize = 32.sp, lineHeight = 32.sp),
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = MainTab.Add.label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Text(
+            text = MainTab.Add.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted,
+            modifier = Modifier.offset(y = (-6).dp),
+        )
     }
 }
 

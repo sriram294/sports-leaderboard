@@ -10,6 +10,8 @@ import com.org.playboard.R
 enum class MainTab(val label: String, @DrawableRes val iconRes: Int?) {
     Board("BOARD", R.drawable.ic_tab_board),
     Matches("MATCHES", R.drawable.ic_tab_matches),
+    // Add sits in the middle so the floating "+" is centered across the 5 items.
     Add("ADD", null),
+    Stats("STATS", R.drawable.ic_tab_stats),
     Profile("PROFILE", R.drawable.ic_tab_profile),
 }

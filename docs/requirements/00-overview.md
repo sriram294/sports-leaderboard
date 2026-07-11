@@ -7,13 +7,15 @@ A badminton doubles match tracker for private play groups. Members log match
 results, and the app maintains a live leaderboard and per-player stats.
 
 ## Navigation
-Bottom tab bar, 4 destinations, present on every screen:
+Bottom tab bar, 5 destinations, present on every screen. The floating "+" sits
+in the middle so it stays centered:
 
 | Tab | Icon | Purpose |
 |---|---|---|
 | Board | leaderboard | Group leaderboard / rankings (home) |
 | Matches | crossed rackets | Chronological match history |
 | Add (center, floating) | + | Record a new match |
+| Stats | insights | Group analytics dashboard (planned — placeholder for now) |
 | Profile | person | Signed-in user's stats & account |
 
 Per-page requirement docs:
@@ -22,6 +24,7 @@ Per-page requirement docs:
 - [03-matches.md](03-matches.md)
 - [04-add-match.md](04-add-match.md)
 - [05-profile.md](05-profile.md)
+- [06-stats.md](06-stats.md)
 
 ## Cross-cutting concepts
 
