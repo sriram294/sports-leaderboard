@@ -1,6 +1,7 @@
 package com.org.playboard.ui.board
 
 import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
@@ -10,6 +11,7 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
+import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardEntryDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
@@ -47,6 +49,7 @@ private class FakePlayboardApi(
     override suspend fun getGroups(): GroupsResponseDto = groupsResult()
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("not used in this test")
+    override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = leaderboardResult(groupId)
@@ -102,7 +105,7 @@ class BoardViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun repo(api: FakePlayboardApi) = GroupRepository(api, Json { ignoreUnknownKeys = true })
+    private fun repo(api: FakePlayboardApi) = testGroupRepository(api)
 
     private fun viewModel(repo: GroupRepository, api: FakePlayboardApi) =
         BoardViewModel(repo, LeaderboardRepository(api))
@@ -218,5 +221,30 @@ class BoardViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(listOf("Raj", "Priya", "Dev"), state.tableRows.map { it.displayName })
         assertEquals(listOf("Priya", "Dev", "Raj"), state.podium.map { it.displayName })
+    }
+
+    @Test
+    fun `pull-to-refresh reloads the leaderboard and clears the refreshing flag`() = runTest(testDispatcher) {
+        var players = listOf("Priya")
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
+            leaderboardResult = {
+                LeaderboardResponseDto(players.mapIndexed { i, name -> entryDto(i + 1, name, 6, 6, 252, 1.0) })
+            },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        advanceUntilIdle()
+        assertEquals(listOf("Priya"), viewModel.uiState.value.rankings.map { it.displayName })
+
+        // A new player joined + played since the initial load; pulling picks them up.
+        players = listOf("Priya", "Newbie")
+        viewModel.onPullRefresh()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("Priya", "Newbie"), state.rankings.map { it.displayName })
+        assertFalse(state.isRefreshing)
     }
 }

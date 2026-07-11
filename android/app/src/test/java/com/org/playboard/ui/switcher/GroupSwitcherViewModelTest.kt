@@ -1,6 +1,7 @@
 package com.org.playboard.ui.switcher
 
 import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
@@ -9,6 +10,7 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
+import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
@@ -52,6 +54,7 @@ private class FakePlayboardApi(
     override suspend fun getGroups(): GroupsResponseDto = groupsResult()
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = createGroupResult(request)
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = joinGroupResult(request)
+    override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         createInviteResult(groupId)
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
@@ -100,7 +103,7 @@ class GroupSwitcherViewModelTest {
     }
 
     private fun viewModel(api: FakePlayboardApi) =
-        GroupSwitcherViewModel(GroupRepository(api, Json { ignoreUnknownKeys = true }))
+        GroupSwitcherViewModel(testGroupRepository(api))
 
     @Test
     fun `loads groups and selects the first`() = runTest(testDispatcher) {
@@ -212,6 +215,26 @@ class GroupSwitcherViewModelTest {
         assertNotNull(sheet) // sheet stays open
         assertFalse(sheet!!.isSubmitting)
         assertNull(sheet.error)
+    }
+
+    @Test
+    fun `returning to the foreground re-syncs so a newly joined member appears`() = runTest(testDispatcher) {
+        var memberCount = 6
+        val api = FakePlayboardApi(
+            groupsResult = {
+                GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers").copy(memberCount = memberCount)))
+            },
+        )
+        val viewModel = viewModel(api)
+        advanceUntilIdle()
+        assertEquals(6, viewModel.uiState.value.selectedGroup?.memberCount)
+
+        // Someone joined the group from another device while the app was backgrounded.
+        memberCount = 7
+        viewModel.onAppResumed()
+        advanceUntilIdle()
+
+        assertEquals(7, viewModel.uiState.value.selectedGroup?.memberCount)
     }
 
     @Test

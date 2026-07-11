@@ -18,6 +18,8 @@ enum class RankingSortColumn {
 data class BoardUiState(
     val isLoading: Boolean = true,
     val hasLoadFailed: Boolean = false,
+    /** A user-initiated pull-to-refresh is in flight (drives the pull indicator). */
+    val isRefreshing: Boolean = false,
     val selectedGroup: Group? = null,
     val rankings: List<PlayerRanking> = emptyList(),
     val sortColumn: RankingSortColumn = RankingSortColumn.WIN_RATE,

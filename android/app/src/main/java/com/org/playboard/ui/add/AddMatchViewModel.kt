@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -60,6 +61,17 @@ class AddMatchViewModel @Inject constructor(
             groupRepository.selectedGroup.distinctUntilChangedBy { it?.id }.collect {
                 _uiState.update { it.copy(editingMatchId = null) }
                 reload()
+            }
+        }
+        // A member can join the active group while this form is open (foreground
+        // resync / a recorded match bumps the revision). Refresh just the roster in
+        // place so the new player is pickable, without disturbing teams/scores the
+        // user may already be entering.
+        viewModelScope.launch {
+            groupRepository.dataRevision.drop(1).collect {
+                val group = groupRepository.selectedGroup.first() ?: return@collect
+                val members = groupRepository.getMembers(group.id).getOrNull() ?: return@collect
+                _uiState.update { it.copy(roster = members) }
             }
         }
     }

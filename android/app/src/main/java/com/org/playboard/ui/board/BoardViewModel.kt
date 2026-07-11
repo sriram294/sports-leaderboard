@@ -66,6 +66,20 @@ class BoardViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Pull-to-refresh: silently re-sync the group list (member counts) and this
+     * group's leaderboard, driving the pull indicator via [BoardUiState.isRefreshing]
+     * rather than the full-screen spinner.
+     */
+    fun onPullRefresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            groupRepository.refreshGroups(showLoading = false)
+            groupRepository.selectedGroup.first()?.let { loadLeaderboard(it, showLoading = false) }
+            _uiState.update { it.copy(isRefreshing = false) }
+        }
+    }
+
     fun onSortColumnSelected(column: RankingSortColumn) {
         _uiState.update { it.copy(sortColumn = column) }
     }

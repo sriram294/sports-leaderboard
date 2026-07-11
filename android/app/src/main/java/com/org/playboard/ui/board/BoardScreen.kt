@@ -19,10 +19,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -61,14 +63,17 @@ fun BoardScreen(viewModel: BoardViewModel = hiltViewModel()) {
         uiState = uiState,
         onSortColumnSelected = viewModel::onSortColumnSelected,
         onRetry = viewModel::refresh,
+        onPullRefresh = viewModel::onPullRefresh,
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BoardContent(
     uiState: BoardUiState,
     onSortColumnSelected: (RankingSortColumn) -> Unit,
     onRetry: () -> Unit,
+    onPullRefresh: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -81,19 +86,25 @@ private fun BoardContent(
             uiState.hasLoadFailed -> LoadFailedState(onRetry = onRetry)
             uiState.selectedGroup == null -> NoGroupsState()
             uiState.rankings.isEmpty() -> NoMatchesState()
-            else -> LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            else -> PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = onPullRefresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                item { TopPlayersPodium(podium = uiState.podium) }
-                item {
-                    RankingsCard(
-                        rows = uiState.tableRows,
-                        sortColumn = uiState.sortColumn,
-                        onSortColumnSelected = onSortColumnSelected,
-                    )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    item { TopPlayersPodium(podium = uiState.podium) }
+                    item {
+                        RankingsCard(
+                            rows = uiState.tableRows,
+                            sortColumn = uiState.sortColumn,
+                            onSortColumnSelected = onSortColumnSelected,
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
-                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
         }
     }
@@ -421,6 +432,7 @@ private fun BoardContentPreview() {
             uiState = previewState,
             onSortColumnSelected = {},
             onRetry = {},
+            onPullRefresh = {},
         )
     }
 }

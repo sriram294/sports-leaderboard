@@ -17,6 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.model.Group
 import com.org.playboard.ui.components.GroupAvatar
@@ -47,6 +51,17 @@ fun GroupSwitcher(
     viewModel: GroupSwitcherViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Re-sync whenever the app returns to the foreground, so membership/match
+    // changes made elsewhere appear without a relogin. The effect also fires on the
+    // initial resume right after composition; skip that one (the ViewModel's init
+    // already did the first fetch) so we don't double the startup load.
+    var skipFirstResume by remember { mutableStateOf(true) }
+    LifecycleResumeEffect(Unit) {
+        if (skipFirstResume) skipFirstResume = false else viewModel.onAppResumed()
+        onPauseOrDispose { }
+    }
+
     GroupSwitcherContent(
         uiState = uiState,
         modifier = modifier,

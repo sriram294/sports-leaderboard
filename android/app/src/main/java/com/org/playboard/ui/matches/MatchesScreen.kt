@@ -20,11 +20,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -71,6 +73,7 @@ fun MatchesScreen(
         onEditClicked = onEditMatch,
         onDeleteClicked = viewModel::onDeleteClicked,
         onRetry = viewModel::retry,
+        onPullRefresh = viewModel::onPullRefresh,
     )
 
     if (uiState.deleteTargetId != null) {
@@ -82,6 +85,7 @@ fun MatchesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MatchesContent(
     state: MatchesUiState,
@@ -89,6 +93,7 @@ private fun MatchesContent(
     onEditClicked: (String) -> Unit,
     onDeleteClicked: (String) -> Unit,
     onRetry: () -> Unit,
+    onPullRefresh: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -107,12 +112,18 @@ private fun MatchesContent(
                 }
             }
             state.matches.isEmpty() -> CenteredMessage("No matches recorded yet.\nRecord one from the + tab.")
-            else -> MatchList(
-                state = state,
-                onMatchClicked = onMatchClicked,
-                onEditClicked = onEditClicked,
-                onDeleteClicked = onDeleteClicked,
-            )
+            else -> PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onPullRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                MatchList(
+                    state = state,
+                    onMatchClicked = onMatchClicked,
+                    onEditClicked = onEditClicked,
+                    onDeleteClicked = onDeleteClicked,
+                )
+            }
         }
     }
 }
@@ -426,6 +437,7 @@ private fun MatchesContentPreview() {
             onEditClicked = {},
             onDeleteClicked = {},
             onRetry = {},
+            onPullRefresh = {},
         )
     }
 }

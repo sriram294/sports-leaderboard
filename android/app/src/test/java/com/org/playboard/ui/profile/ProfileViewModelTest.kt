@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.auth.TokenStore
 import com.org.playboard.data.group.GroupRepository
+import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.BestPartnerDto
@@ -16,6 +17,7 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.InviteResponseDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
+import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
@@ -62,6 +64,7 @@ private class FakePlayboardApi(
     override suspend fun getGroups(): GroupsResponseDto = GroupsResponseDto(groups)
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("unused")
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("unused")
+    override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto = error("unused")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
@@ -140,7 +143,7 @@ class ProfileViewModelTest {
         )
         val json = Json { ignoreUnknownKeys = true }
         val auth = AuthRepository(api, TokenStore(dataStore))
-        val groups = GroupRepository(api, json)
+        val groups = testGroupRepository(api, json)
         val stats = StatsRepository(api)
         auth.signInWithGoogle("token")
         groups.refreshGroups()
