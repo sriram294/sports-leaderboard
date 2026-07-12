@@ -1,5 +1,6 @@
 package com.org.playboard.ui.board
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.org.playboard.R
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
@@ -169,19 +172,36 @@ private fun PodiumSlot(
                     )
                 }
             }
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(color),
-            ) {
-                Text(
-                    text = entry.rank.toString(),
-                    color = OnBrandLime,
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
-                    fontWeight = FontWeight.Bold,
+            val medalRes = when (entry.rank) {
+                1 -> R.drawable.ic_podium_gold
+                2 -> R.drawable.ic_podium_silver
+                3 -> R.drawable.ic_podium_bronze
+                else -> null
+            }
+            if (medalRes != null) {
+                // The medal art already carries the ribbon + rank numeral, so it replaces
+                // the plain numeric badge for the top three.
+                Image(
+                    painter = painterResource(id = medalRes),
+                    contentDescription = "Rank ${entry.rank}",
+                    modifier = Modifier.size(if (isChampion) 34.dp else 28.dp),
                 )
+            } else {
+                // Defensive fallback (rank > 3, not reached today since podium = top 3).
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(color),
+                ) {
+                    Text(
+                        text = entry.rank.toString(),
+                        color = OnBrandLime,
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
