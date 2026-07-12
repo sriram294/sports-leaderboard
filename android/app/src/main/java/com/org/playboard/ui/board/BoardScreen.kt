@@ -57,13 +57,17 @@ import com.org.playboard.ui.theme.WinRateMidAmber
 
 /** Board (home) tab — see docs/requirements/02-board-leaderboard.md, docs/prototype/leaderboard.pdf. */
 @Composable
-fun BoardScreen(viewModel: BoardViewModel = hiltViewModel()) {
+fun BoardScreen(
+    onPlayerClick: (String) -> Unit = {},
+    viewModel: BoardViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
     BoardContent(
         uiState = uiState,
         onSortColumnSelected = viewModel::onSortColumnSelected,
         onRetry = viewModel::refresh,
         onPullRefresh = viewModel::onPullRefresh,
+        onPlayerClick = onPlayerClick,
     )
 }
 
@@ -74,6 +78,7 @@ private fun BoardContent(
     onSortColumnSelected: (RankingSortColumn) -> Unit,
     onRetry: () -> Unit,
     onPullRefresh: () -> Unit,
+    onPlayerClick: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -95,12 +100,13 @@ private fun BoardContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item { TopPlayersPodium(podium = uiState.podium) }
+                    item { TopPlayersPodium(podium = uiState.podium, onPlayerClick = onPlayerClick) }
                     item {
                         RankingsCard(
                             rows = uiState.tableRows,
                             sortColumn = uiState.sortColumn,
                             onSortColumnSelected = onSortColumnSelected,
+                            onPlayerClick = onPlayerClick,
                         )
                     }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -111,28 +117,38 @@ private fun BoardContent(
 }
 
 @Composable
-private fun TopPlayersPodium(podium: List<PlayerRanking>) {
+private fun TopPlayersPodium(podium: List<PlayerRanking>, onPlayerClick: (String) -> Unit) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-            PodiumSlot(entry = podium.getOrNull(1), isChampion = false, modifier = Modifier.weight(1f))
-            PodiumSlot(entry = podium.getOrNull(0), isChampion = true, modifier = Modifier.weight(1.2f))
-            PodiumSlot(entry = podium.getOrNull(2), isChampion = false, modifier = Modifier.weight(1f))
+            PodiumSlot(entry = podium.getOrNull(1), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
+            PodiumSlot(entry = podium.getOrNull(0), isChampion = true, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1.2f))
+            PodiumSlot(entry = podium.getOrNull(2), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
         }
     }
 }
 
 /** One podium column; `entry == null` (fewer than 3 ranked players) leaves the slot empty. */
 @Composable
-private fun PodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier: Modifier = Modifier) {
+private fun PodiumSlot(
+    entry: PlayerRanking?,
+    isChampion: Boolean,
+    onPlayerClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (entry == null) {
         Spacer(modifier = modifier)
         return
     }
     val color = avatarColor(entry.avatarColor)
     val avatarSize: Dp = if (isChampion) 84.dp else 60.dp
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onPlayerClick(entry.userId) },
+    ) {
         // Rank badge overlapping the top of the avatar, as in the prototype.
         Box(contentAlignment = Alignment.TopCenter) {
             Box(modifier = Modifier.padding(top = 11.dp)) {
@@ -203,8 +219,9 @@ private fun PodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier: Mod
                     ),
                     color = if (isChampion) color else TextPrimary,
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+
                 Text(text = "WIN RATE", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${entry.wins}W · ${entry.losses}L",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
@@ -227,6 +244,7 @@ private fun RankingsCard(
     rows: List<PlayerRanking>,
     sortColumn: RankingSortColumn,
     onSortColumnSelected: (RankingSortColumn) -> Unit,
+    onPlayerClick: (String) -> Unit,
 ) {
     Surface(shape = RoundedCornerShape(20.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -235,7 +253,7 @@ private fun RankingsCard(
             RankingsHeaderRow(sortColumn = sortColumn, onSortColumnSelected = onSortColumnSelected)
             rows.forEach { row ->
                 HorizontalDivider(color = TextMuted.copy(alpha = 0.12f))
-                RankingRow(entry = row)
+                RankingRow(entry = row, onPlayerClick = onPlayerClick)
             }
         }
     }
@@ -291,11 +309,12 @@ private fun SortableHeaderLabel(
 }
 
 @Composable
-private fun RankingRow(entry: PlayerRanking) {
+private fun RankingRow(entry: PlayerRanking, onPlayerClick: (String) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onPlayerClick(entry.userId) }
             .padding(vertical = 10.dp),
     ) {
         Text(
@@ -433,6 +452,7 @@ private fun BoardContentPreview() {
             onSortColumnSelected = {},
             onRetry = {},
             onPullRefresh = {},
+            onPlayerClick = {},
         )
     }
 }
