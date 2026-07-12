@@ -83,6 +83,35 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
+    void guestFillersAreSharedAcrossGroups() {
+        User ownerA = userRepository.save(newUser());
+        User ownerB = userRepository.save(newUser());
+
+        GroupSummaryDto groupA =
+                groupService.createGroup(ownerA.getId(), new CreateGroupRequest("Group A", "badminton_doubles"));
+        GroupSummaryDto groupB =
+                groupService.createGroup(ownerB.getId(), new CreateGroupRequest("Group B", "badminton_doubles"));
+
+        MembersResponse rosterA = groupService.listMembers(groupA.id(), ownerA.getId());
+        MembersResponse rosterB = groupService.listMembers(groupB.id(), ownerB.getId());
+
+        // Each group still exposes exactly its 3 guest fillers, named/colored the same.
+        assertThat(rosterA.guests()).extracting("displayName").containsExactly("Guest 1", "Guest 2", "Guest 3");
+        assertThat(rosterA.guests()).extracting("role").containsOnly("guest");
+        assertThat(rosterA.guests()).extracting("avatarColor").containsOnly("#9AA0A6");
+
+        // ...but both groups reference the SAME 3 shared guest user rows — no new
+        // synthetic users are minted per group.
+        assertThat(rosterB.guests())
+                .extracting("userId")
+                .containsExactlyElementsOf(rosterA.guests().stream().map(MemberDto::userId).toList());
+
+        // Sharing guests doesn't leak them into member counts.
+        assertThat(groupA.memberCount()).isEqualTo(1);
+        assertThat(groupB.memberCount()).isEqualTo(1);
+    }
+
+    @Test
     void renameGroupUpdatesNameForOwnerButRejectsPlainMember() {
         User owner = userRepository.save(newUser());
         User joiner = userRepository.save(newUser());
