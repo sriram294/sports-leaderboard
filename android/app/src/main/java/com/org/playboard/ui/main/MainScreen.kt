@@ -37,6 +37,7 @@ import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
 import com.org.playboard.ui.matches.MatchesScreen
 import com.org.playboard.ui.profile.ProfileScreen
+import com.org.playboard.ui.stats.StatsScreen
 import com.org.playboard.ui.switcher.GroupSwitcher
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
@@ -109,7 +110,7 @@ fun MainScreen() {
                             selectedTab = if (wasEdit) MainTab.Matches else MainTab.Board
                         },
                     )
-                    MainTab.Stats -> PlaceholderTab("Insights coming soon")
+                    MainTab.Stats -> StatsScreen()
                     MainTab.Profile -> ProfileScreen()
                 }
             }
@@ -210,15 +211,3 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun PlaceholderTab(message: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(24.dp),
-        )
-    }
-}
