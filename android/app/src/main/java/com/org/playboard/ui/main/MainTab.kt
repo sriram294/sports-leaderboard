@@ -8,10 +8,10 @@ import com.org.playboard.R
  * [Add] renders as the floating center action instead of a regular tab item.
  */
 enum class MainTab(val label: String, @DrawableRes val iconRes: Int?) {
-    Board("BOARD", R.drawable.ic_tab_board),
-    Matches("MATCHES", R.drawable.ic_tab_matches),
+    Board("BOARD", R.drawable.boards),
+    Matches("MATCHES", R.drawable.matches),
     // Add sits in the middle so the floating "+" is centered across the 5 items.
     Add("ADD", null),
-    Stats("STATS", R.drawable.ic_tab_stats),
-    Profile("PROFILE", R.drawable.ic_tab_profile),
+    Stats("STATS", R.drawable.stats),
+    Profile("PROFILE", R.drawable.profile),
 }

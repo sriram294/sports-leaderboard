@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,6 +52,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.org.playboard.R
 import com.org.playboard.data.model.BestPartner
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchPlayer
@@ -379,7 +383,16 @@ private fun EditableAvatar(
                     .border(2.dp, SurfaceDark, CircleShape)
                     .clickable(onClick = onEdit),
             ) {
-                Text("✎", color = OnBrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    //          Text("✎", color = OnBrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
+                    contentDescription = "Edit",
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                    tint = Color.Black // Retains original asset colors
+                )
             }
         }
     }
@@ -391,13 +404,22 @@ private fun EditBadge(onClick: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(26.dp)
+            .size(22.dp)
             .clip(CircleShape)
             .background(SurfaceDark)
             .border(1.dp, BrandLime.copy(alpha = 0.6f), CircleShape)
             .clickable(onClick = onClick),
     ) {
-        Text("✎", color = BrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+//        Text("✎", color = BrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+
+        Icon(
+            imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
+            contentDescription = "Edit",
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .padding(horizontal = 5.dp, vertical = 2.dp),
+            tint = BrandLime // Retains original asset colors
+        )
     }
 }
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -38,6 +41,7 @@ import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.theme.TextPrimary
+import com.org.playboard.R
 
 /**
  * The shared group switcher, rendered at the top of every tab (replacing the
@@ -268,14 +272,25 @@ private fun YourGroupsPanel(
                     // Owner/admin only — a pencil to rename the group. Its own clickable so
                     // tapping it opens the rename sheet rather than toggling the switcher.
                     if (group.canManage) {
-                        Text(
-                            text = "rename",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                            color = TextMuted,
+//                        Text(
+//                            text = "rename",
+//                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+//                            color = TextMuted,
+//                            modifier = Modifier
+//                                .clip(RoundedCornerShape(8.dp))
+//                                .clickable { onEditGroup(group.id, group.name) }
+//                                .padding(horizontal = 10.dp, vertical = 4.dp),
+//                        )
+
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
+                            contentDescription = "Edit",
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onEditGroup(group.id, group.name) }
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .size(15.dp),
+                            tint = BrandLime // Retains original asset colors
                         )
                     }
                 }
