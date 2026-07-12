@@ -54,6 +54,9 @@ fun MainScreen() {
     // Set when the user taps "Edit" on a match → the Add tab opens pre-filled in
     // edit mode; null means a fresh "record a match" form.
     var pendingEditMatchId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Set when a leaderboard row is tapped → the Board tab drills into that player's
+    // profile in place; null shows the leaderboard (docs/requirements/02 §2).
+    var viewingProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -63,6 +66,8 @@ fun MainScreen() {
                 onTabSelected = { tab ->
                     // Tapping the + tab always starts a fresh (create) form.
                     if (tab == MainTab.Add) pendingEditMatchId = null
+                    // Any tab tap leaves a leaderboard drill-down (so Board returns home).
+                    viewingProfileUserId = null
                     selectedTab = tab
                 },
             )
@@ -78,7 +83,17 @@ fun MainScreen() {
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
-                    MainTab.Board -> BoardScreen()
+                    MainTab.Board ->
+                        if (viewingProfileUserId != null) {
+                            // Drill-down: show the tapped player's profile in place, keeping
+                            // the Board tab selected; Back returns to the leaderboard.
+                            ProfileScreen(
+                                viewedUserId = viewingProfileUserId,
+                                onBack = { viewingProfileUserId = null },
+                            )
+                        } else {
+                            BoardScreen(onPlayerClick = { viewingProfileUserId = it })
+                        }
                     MainTab.Matches -> MatchesScreen(
                         onEditMatch = { matchId ->
                             pendingEditMatchId = matchId

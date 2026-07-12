@@ -91,9 +91,9 @@ private fun groupDto() = GroupDto(
 
 private fun player(id: String, name: String) = MatchPlayerDto(id, name, "#FF3D8A", null)
 
-private fun statsDto(userId: String = "u1", withPartner: Boolean = true) = PlayerStatsDto(
+private fun statsDto(userId: String = "u1", displayName: String = "Raj", withPartner: Boolean = true) = PlayerStatsDto(
     userId = userId,
-    displayName = "Raj",
+    displayName = displayName,
     photoUrl = null,
     avatarColor = "#9ADE28",
     matchesPlayed = 8,
@@ -203,6 +203,52 @@ class ProfileViewModelTest {
 
         assertFalse(viewModel.uiState.value.isLoading)
         assertEquals(callsAfterInitialLoad + 1, api.statsCalls)
+    }
+
+    @Test
+    fun `viewing another player loads their stats and hides the account section`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            stats = mapOf(
+                "u1" to statsDto("u1", "Raj"),
+                "u2" to statsDto("u2", "Dev"),
+            ),
+        )
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isOwnProfile) // own profile by default
+
+        viewModel.setViewedUser("u2")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isOwnProfile)                 // account section hidden
+        assertEquals("u2", state.stats?.userId)
+        assertEquals("Dev", state.stats?.displayName)
+    }
+
+    @Test
+    fun `returning to own profile restores the account section`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            stats = mapOf(
+                "u1" to statsDto("u1", "Raj"),
+                "u2" to statsDto("u2", "Dev"),
+            ),
+        )
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.setViewedUser("u2")
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isOwnProfile)
+
+        viewModel.setViewedUser(null)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isOwnProfile)
+        assertEquals("u1", state.stats?.userId)
     }
 
     @Test

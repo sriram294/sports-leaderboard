@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -59,25 +60,46 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Profile tab — account info + per-group stats (docs/requirements/05-profile.md). */
+/**
+ * Profile screen — account info + per-group stats (docs/requirements/05-profile.md).
+ * Serves the Profile tab (own stats; [viewedUserId] null, no [onBack]) and the
+ * Board leaderboard drill-down (another player; [viewedUserId] set, [onBack] shown).
+ */
 @Composable
-fun ProfileScreen(viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(
+    viewedUserId: String? = null,
+    onBack: (() -> Unit)? = null,
+    viewModel: ProfileViewModel = hiltViewModel(),
+) {
+    // Drive whose profile the shared ViewModel loads whenever we (re)enter with a
+    // new target; setting null when already own is suppressed downstream.
+    LaunchedEffect(viewedUserId) { viewModel.setViewedUser(viewedUserId) }
     val uiState by viewModel.uiState.collectAsState()
     ProfileContent(
         state = uiState,
         onSignOut = viewModel::onSignOutClicked,
         onRetry = viewModel::retry,
+        onBack = onBack,
     )
 }
 
 @Composable
-private fun ProfileContent(state: ProfileUiState, onSignOut: () -> Unit, onRetry: () -> Unit) {
+private fun ProfileContent(
+    state: ProfileUiState,
+    onSignOut: () -> Unit,
+    onRetry: () -> Unit,
+    onBack: (() -> Unit)? = null,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 20.dp),
     ) {
+        // Drill-down back affordance (leaderboard → player); absent on the Profile tab.
+        if (onBack != null) {
+            BackRow(onBack = onBack)
+        }
         when {
             state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
             state.noGroup -> CenteredMessage("Create or join a group to see your stats.")
@@ -226,10 +248,9 @@ private fun StatTilesGrid(stats: PlayerStats) {
             modifier = Modifier.height(IntrinsicSize.Min),
         ) {
             StatTile(
-                "STREAK",
+                "CURRENT STREAK",
                 stats.currentStreak.toString(),
                 valueColor = BrandLime,
-                subLabel = "Best: ${stats.bestStreak}",
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             StatTile("BEST STREAK", stats.bestStreak.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
@@ -369,6 +390,27 @@ private fun ResultBadge(isWin: Boolean) {
     }
 }
 
+/** "← Back" row shown atop a drilled-in player's profile; returns to the leaderboard. */
+@Composable
+private fun BackRow(onBack: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onBack)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+    ) {
+        Text(text = "←", color = BrandLime, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "Leaderboard",
+            color = BrandLime,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
 @Composable
 private fun SectionLabel(text: String) {
     Text(
@@ -442,6 +484,25 @@ private fun ProfileContentPreview() {
             ),
             onSignOut = {},
             onRetry = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1100)
+@Composable
+private fun ViewedPlayerProfilePreview() {
+    PlayboardTheme {
+        // Drill-down from the leaderboard: back row shown, no account section.
+        ProfileContent(
+            state = ProfileUiState(
+                isLoading = false,
+                groupName = "Saturday Smashers",
+                isOwnProfile = false,
+                stats = previewStats,
+            ),
+            onSignOut = {},
+            onRetry = {},
+            onBack = {},
         )
     }
 }
