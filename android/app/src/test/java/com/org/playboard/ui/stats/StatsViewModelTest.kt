@@ -61,6 +61,8 @@ private class FakePlayboardApi(
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto = matchesResult(groupId)
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto = error("unused")
     override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto = error("unused")
+    override suspend fun updateDisplayName(request: com.org.playboard.data.remote.dto.UpdateUserRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("unused")
+    override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("unused")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("unused")
 }
 

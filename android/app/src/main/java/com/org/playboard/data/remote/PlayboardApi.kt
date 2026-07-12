@@ -17,11 +17,16 @@ import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
+import com.org.playboard.data.remote.dto.UpdateUserRequestDto
+import com.org.playboard.data.remote.dto.UserSummaryDto
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -33,6 +38,18 @@ interface PlayboardApi {
 
     @POST("api/v1/auth/refresh")
     suspend fun refresh(@Body request: RefreshRequestDto): TokenResponseDto
+
+    /** Rename the signed-in user (docs/requirements/05-profile.md req #3). */
+    @PATCH("api/v1/users/me")
+    suspend fun updateDisplayName(@Body request: UpdateUserRequestDto): UserSummaryDto
+
+    /**
+     * Upload/replace the signed-in user's avatar photo (multipart, field `file`).
+     * Returns the user with the new `photoUrl` per docs/backend/api-contracts.md.
+     */
+    @Multipart
+    @POST("api/v1/users/me/photo")
+    suspend fun uploadUserPhoto(@Part file: MultipartBody.Part): UserSummaryDto
 
     @GET("api/v1/groups")
     suspend fun getGroups(): GroupsResponseDto

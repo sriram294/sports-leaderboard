@@ -8,6 +8,7 @@ import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.SessionState
 import com.org.playboard.data.model.UserSession
 import com.org.playboard.data.stats.StatsRepository
+import com.org.playboard.data.user.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,7 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val groupRepository: GroupRepository,
     private val statsRepository: StatsRepository,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -54,9 +56,17 @@ class ProfileViewModel @Inject constructor(
     }
 
     init {
+        // Mirror the live session identity into state so an in-app rename / photo
+        // upload shows on the own-profile identity card without re-fetching stats.
         viewModelScope.launch {
             currentUser.collect { user ->
-                _uiState.update { it.copy(email = user?.email) }
+                _uiState.update {
+                    it.copy(
+                        email = user?.email,
+                        ownDisplayName = user?.displayName,
+                        ownPhotoUrl = user?.photoUrl,
+                    )
+                }
             }
         }
         // Reload when the signed-in user, the active group, or the viewed player changes.
@@ -90,6 +100,66 @@ class ProfileViewModel @Inject constructor(
 
     fun onSignOutClicked() {
         viewModelScope.launch { authRepository.signOut() }
+    }
+
+    // ── Profile editing (own profile only) — docs/requirements/05-profile.md req #3 ──
+
+    /** Opens the rename sheet seeded with the current display name. */
+    fun onEditNameClicked() {
+        val current = _uiState.value.displayName ?: return
+        _uiState.update { it.copy(renameSheet = EditNameSheetState(input = current), updateError = null) }
+    }
+
+    fun onRenameInputChanged(value: String) {
+        _uiState.update { state ->
+            state.renameSheet?.let { state.copy(renameSheet = it.copy(input = value, hasFailed = false)) } ?: state
+        }
+    }
+
+    fun onRenameDismissed() {
+        _uiState.update { it.copy(renameSheet = null) }
+    }
+
+    fun onRenameSubmitted() {
+        val sheet = _uiState.value.renameSheet ?: return
+        if (!sheet.canSubmit) return
+        val newName = sheet.input.trim()
+        _uiState.update { it.copy(renameSheet = sheet.copy(isSubmitting = true, hasFailed = false)) }
+        viewModelScope.launch {
+            userRepository.updateDisplayName(newName)
+                // Session update flows into ownDisplayName; refresh derived screens so
+                // the leaderboard/matches show the new name too.
+                .onSuccess {
+                    _uiState.update { it.copy(renameSheet = null) }
+                    launch { runCatching { groupRepository.refresh() } }
+                }
+                .onFailure {
+                    _uiState.update { state ->
+                        state.renameSheet?.let {
+                            state.copy(renameSheet = it.copy(isSubmitting = false, hasFailed = true))
+                        } ?: state
+                    }
+                }
+        }
+    }
+
+    /** Uploads a newly picked avatar photo (bytes already read off the main thread). */
+    fun onPhotoSelected(bytes: ByteArray, mimeType: String) {
+        _uiState.update { it.copy(isUploadingPhoto = true, updateError = null) }
+        viewModelScope.launch {
+            userRepository.updatePhoto(bytes, mimeType)
+                // Session update flows into ownPhotoUrl (cache-busted), so the identity
+                // avatar refreshes; nudge other screens to reload too.
+                .onSuccess {
+                    _uiState.update { it.copy(isUploadingPhoto = false) }
+                    launch { runCatching { groupRepository.refresh() } }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(isUploadingPhoto = false, updateError = "Couldn't upload photo. Please try again.")
+                    }
+                }
+        }
     }
 
     private suspend fun load(user: UserSession?, group: Group?, viewedId: String?, showLoading: Boolean) {

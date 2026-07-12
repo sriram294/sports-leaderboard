@@ -1,5 +1,8 @@
 package com.org.playboard.ui.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,15 +34,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.data.model.BestPartner
 import com.org.playboard.data.model.Match
@@ -80,16 +89,51 @@ fun ProfileScreen(
         onSignOut = viewModel::onSignOutClicked,
         onRetry = viewModel::retry,
         onBack = onBack,
+        onEditName = viewModel::onEditNameClicked,
+        onPhotoSelected = viewModel::onPhotoSelected,
+        onRenameInputChanged = viewModel::onRenameInputChanged,
+        onRenameSubmit = viewModel::onRenameSubmitted,
+        onRenameDismiss = viewModel::onRenameDismissed,
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileContent(
     state: ProfileUiState,
     onSignOut: () -> Unit,
     onRetry: () -> Unit,
     onBack: (() -> Unit)? = null,
+    onEditName: () -> Unit = {},
+    onPhotoSelected: (ByteArray, String) -> Unit = { _, _ -> },
+    onRenameInputChanged: (String) -> Unit = {},
+    onRenameSubmit: () -> Unit = {},
+    onRenameDismiss: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Modern photo picker — no storage permission needed. Reads the picked image's
+    // bytes off the main thread, then hands them to the ViewModel to upload.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val payload = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+                        bytes?.let { it to mime }
+                    }.getOrNull()
+                }
+                payload?.let { (bytes, mime) -> onPhotoSelected(bytes, mime) }
+            }
+        }
+    }
+    val pickPhoto = {
+        photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -110,13 +154,34 @@ private fun ProfileContent(
                     TextButton(onClick = onRetry) { Text("Retry", color = BrandLime) }
                 }
             }
-            state.stats != null -> StatsList(state = state, stats = state.stats, onSignOut = onSignOut)
+            state.stats != null -> StatsList(
+                state = state,
+                stats = state.stats,
+                onSignOut = onSignOut,
+                onEditName = onEditName,
+                onEditPhoto = pickPhoto,
+            )
         }
+    }
+
+    state.renameSheet?.let { sheet ->
+        EditNameSheet(
+            state = sheet,
+            onInputChanged = onRenameInputChanged,
+            onSubmit = onRenameSubmit,
+            onDismiss = onRenameDismiss,
+        )
     }
 }
 
 @Composable
-private fun StatsList(state: ProfileUiState, stats: PlayerStats, onSignOut: () -> Unit) {
+private fun StatsList(
+    state: ProfileUiState,
+    stats: PlayerStats,
+    onSignOut: () -> Unit,
+    onEditName: () -> Unit,
+    onEditPhoto: () -> Unit,
+) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
@@ -124,7 +189,26 @@ private fun StatsList(state: ProfileUiState, stats: PlayerStats, onSignOut: () -
         if (state.isOwnProfile) {
             item { AccountRow(email = state.email, onSignOut = onSignOut) }
         }
-        item { IdentityCard(stats = stats) }
+        item {
+            IdentityCard(
+                stats = stats,
+                displayName = state.displayName ?: stats.displayName,
+                photoUrl = state.identityPhotoUrl,
+                editable = state.isOwnProfile,
+                isUploadingPhoto = state.isUploadingPhoto,
+                onEditName = onEditName,
+                onEditPhoto = onEditPhoto,
+            )
+        }
+        state.updateError?.let { message ->
+            item {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+                    color = StatLossRed,
+                )
+            }
+        }
         item { StatTilesGrid(stats = stats) }
         stats.bestPartner?.let { partner ->
             item { BestPartnerCard(partner = partner) }
@@ -179,7 +263,15 @@ private fun AccountRow(email: String?, onSignOut: () -> Unit) {
 }
 
 @Composable
-private fun IdentityCard(stats: PlayerStats) {
+private fun IdentityCard(
+    stats: PlayerStats,
+    displayName: String,
+    photoUrl: String?,
+    editable: Boolean,
+    isUploadingPhoto: Boolean,
+    onEditName: () -> Unit,
+    onEditPhoto: () -> Unit,
+) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = SurfaceDark,
@@ -190,19 +282,27 @@ private fun IdentityCard(stats: PlayerStats) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(20.dp),
         ) {
-            PlayerAvatar(
-                displayName = stats.displayName,
-                photoUrl = stats.photoUrl,
+            EditableAvatar(
+                displayName = displayName,
+                photoUrl = photoUrl,
                 avatarColorHex = stats.avatarColor,
-                size = 76.dp,
+                editable = editable,
+                isUploading = isUploadingPhoto,
+                onEdit = onEditPhoto,
             )
             Spacer(Modifier.width(18.dp))
             Column {
-                Text(
-                    text = stats.displayName.uppercase(Locale.getDefault()),
-                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
-                    color = BrandLime,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = displayName.uppercase(Locale.getDefault()),
+                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
+                        color = BrandLime,
+                    )
+                    if (editable) {
+                        Spacer(Modifier.width(8.dp))
+                        EditBadge(onClick = onEditName)
+                    }
+                }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = "${stats.matchesPlayed} ${if (stats.matchesPlayed == 1) "match" else "matches"} played",
@@ -227,6 +327,77 @@ private fun IdentityCard(stats: PlayerStats) {
                 }
             }
         }
+    }
+}
+
+/**
+ * The identity avatar with an edit affordance for own profile (req #3): a lime
+ * pencil badge over the corner, tappable to pick a new photo; a spinner overlay
+ * while the upload is in flight. Non-editable (a viewed player) renders a plain
+ * [PlayerAvatar].
+ */
+@Composable
+private fun EditableAvatar(
+    displayName: String,
+    photoUrl: String?,
+    avatarColorHex: String,
+    editable: Boolean,
+    isUploading: Boolean,
+    onEdit: () -> Unit,
+) {
+    val size = 76.dp
+    Box(contentAlignment = Alignment.Center) {
+        PlayerAvatar(
+            displayName = displayName,
+            photoUrl = photoUrl,
+            avatarColorHex = avatarColorHex,
+            size = size,
+            modifier = if (editable && !isUploading) {
+                Modifier.clip(CircleShape).clickable(onClick = onEdit)
+            } else {
+                Modifier
+            },
+        )
+        if (isUploading) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(SurfaceDark.copy(alpha = 0.6f)),
+            ) {
+                CircularProgressIndicator(color = BrandLime, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+            }
+        } else if (editable) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(BrandLime)
+                    .border(2.dp, SurfaceDark, CircleShape)
+                    .clickable(onClick = onEdit),
+            ) {
+                Text("✎", color = OnBrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+/** Small tappable pencil chip next to the editable display name. */
+@Composable
+private fun EditBadge(onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(26.dp)
+            .clip(CircleShape)
+            .background(SurfaceDark)
+            .border(1.dp, BrandLime.copy(alpha = 0.6f), CircleShape)
+            .clickable(onClick = onClick),
+    ) {
+        Text("✎", color = BrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
 

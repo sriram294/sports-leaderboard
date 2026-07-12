@@ -66,6 +66,8 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
         error("not used in this test")
     override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto =
         error("not used in this test")
+    override suspend fun updateDisplayName(request: com.org.playboard.data.remote.dto.UpdateUserRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
+    override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
 }

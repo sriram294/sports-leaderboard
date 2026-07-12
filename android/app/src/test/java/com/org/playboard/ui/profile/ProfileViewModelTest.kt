@@ -31,8 +31,11 @@ import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
+import com.org.playboard.data.remote.dto.UpdateUserRequestDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import com.org.playboard.data.stats.StatsRepository
+import com.org.playboard.data.user.UserRepository
+import okhttp3.MultipartBody
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,14 +55,28 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-private class FakePlayboardApi(
+private open class FakePlayboardApi(
     var groups: List<GroupDto> = emptyList(),
     var stats: Map<String, PlayerStatsDto> = emptyMap(),
 ) : PlayboardApi {
     var statsCalls = 0
+    var userName = "Raj"
+    var userPhotoUrl: String? = null
+    var photoUploads = 0
+
+    private fun currentUser() = UserSummaryDto("u1", userName, "raj@example.com", userPhotoUrl, "#9ADE28")
 
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
-        TokenResponseDto("access", "refresh", 900, UserSummaryDto("u1", "Raj", "raj@example.com", null, "#9ADE28"))
+        TokenResponseDto("access", "refresh", 900, currentUser())
+    override suspend fun updateDisplayName(request: UpdateUserRequestDto): UserSummaryDto {
+        userName = request.displayName
+        return currentUser()
+    }
+    override suspend fun uploadUserPhoto(file: MultipartBody.Part): UserSummaryDto {
+        photoUploads++
+        userPhotoUrl = "https://cdn.example/avatars/u1.png"
+        return currentUser()
+    }
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")
     override suspend fun getGroups(): GroupsResponseDto = GroupsResponseDto(groups)
     override suspend fun createGroup(request: CreateGroupRequestDto): GroupDto = error("unused")
@@ -142,12 +159,14 @@ class ProfileViewModelTest {
             produceFile = { tempFolder.newFile("ds-${System.nanoTime()}.preferences_pb") },
         )
         val json = Json { ignoreUnknownKeys = true }
-        val auth = AuthRepository(api, TokenStore(dataStore))
+        val tokenStore = TokenStore(dataStore)
+        val auth = AuthRepository(api, tokenStore)
         val groups = testGroupRepository(api, json)
         val stats = StatsRepository(api)
+        val user = UserRepository(api, tokenStore)
         auth.signInWithGoogle("token")
         groups.refreshGroups()
-        return Triple(ProfileViewModel(auth, groups, stats), auth, groups)
+        return Triple(ProfileViewModel(auth, groups, stats, user), auth, groups)
     }
 
     @Test
@@ -258,5 +277,58 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.stats?.bestPartner)
+    }
+
+    @Test
+    fun `editing the name opens a seeded sheet, saves, and updates the identity`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto()), stats = mapOf("u1" to statsDto()))
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onEditNameClicked()
+        assertEquals("Raj", viewModel.uiState.value.renameSheet?.input) // seeded with current name
+
+        viewModel.onRenameInputChanged("Raj K")
+        viewModel.onRenameSubmitted()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.renameSheet)                 // sheet closed on success
+        assertEquals("Raj K", state.displayName)       // identity reflects the live session name
+        assertEquals("Raj K", api.userName)            // persisted server-side
+    }
+
+    @Test
+    fun `a failed rename keeps the sheet open and flags the error`() = runTest(testDispatcher) {
+        val api = object : FakePlayboardApi(groups = listOf(groupDto()), stats = mapOf("u1" to statsDto())) {
+            override suspend fun updateDisplayName(request: UpdateUserRequestDto): UserSummaryDto = error("network down")
+        }
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onEditNameClicked()
+        viewModel.onRenameInputChanged("Raj K")
+        viewModel.onRenameSubmitted()
+        advanceUntilIdle()
+
+        val sheet = viewModel.uiState.value.renameSheet
+        assertTrue(sheet != null && sheet.hasFailed && !sheet.isSubmitting)
+        assertEquals("Raj", viewModel.uiState.value.displayName) // unchanged
+    }
+
+    @Test
+    fun `uploading a photo sets the identity avatar and clears the spinner`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto()), stats = mapOf("u1" to statsDto()))
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onPhotoSelected(byteArrayOf(1, 2, 3), "image/png")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isUploadingPhoto)
+        assertEquals(1, api.photoUploads)
+        // Cache-busted URL so the image loader reloads the new bytes.
+        assertTrue(state.identityPhotoUrl?.startsWith("https://cdn.example/avatars/u1.png?") == true)
     }
 }
