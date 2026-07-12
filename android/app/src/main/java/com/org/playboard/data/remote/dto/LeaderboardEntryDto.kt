@@ -18,4 +18,8 @@ data class LeaderboardEntryDto(
     val losses: Int,
     val pointsFor: Int,
     val winRate: Double,
+    // Signed: positive = current win streak, negative = current loss streak.
+    // Defaulted so a pre-streak backend's JSON still deserializes during rollout.
+    val currentStreak: Int = 0,
+    val bestStreak: Int = 0,
 )

@@ -138,6 +138,14 @@ private fun RecordsCard(records: Records) {
             Spacer(Modifier.height(10.dp))
             LeaderRow("MOST ACTIVE", it, "${it.gamesPlayed} games")
         }
+        records.longestStreak?.let {
+            Spacer(Modifier.height(10.dp))
+            LeaderRow("LONGEST STREAK", it, "${it.bestStreak} in a row")
+        }
+        records.currentStreak?.let {
+            Spacer(Modifier.height(10.dp))
+            LeaderRow("HOT STREAK", it, "${it.currentStreak} in a row")
+        }
     }
 }
 
@@ -372,8 +380,17 @@ private fun CenteredMessage(text: String) {
 
 // ---- Previews ------------------------------------------------------------------
 
-private fun previewRanking(rank: Int, id: String, name: String, gp: Int, wins: Int, pf: Int, wr: Double) =
-    PlayerRanking(rank, id, name, null, "#9ADE28", gp, wins, gp - wins, pf, wr)
+private fun previewRanking(
+    rank: Int,
+    id: String,
+    name: String,
+    gp: Int,
+    wins: Int,
+    pf: Int,
+    wr: Double,
+    currentStreak: Int = 0,
+    bestStreak: Int = 0,
+) = PlayerRanking(rank, id, name, null, "#9ADE28", gp, wins, gp - wins, pf, wr, currentStreak, bestStreak)
 
 private val previewState = StatsUiState(
     isLoading = false,
@@ -381,9 +398,11 @@ private val previewState = StatsUiState(
     groupName = "Saturday Smashers",
     records = Records(
         totalMatches = 12,
-        winLeader = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0),
+        winLeader = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
         mostPoints = previewRanking(3, "u3", "Raj", 8, 4, 315, 0.5),
         mostActive = previewRanking(3, "u3", "Raj", 8, 4, 315, 0.5),
+        longestStreak = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
+        currentStreak = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
     ),
     bestPartnership = BestPartnership(
         player1 = MatchPlayer("u1", "Priya", "#FF3D8A", null),

@@ -14,6 +14,9 @@ internal const val MIN_PARTNERSHIP_GAMES = 2
 /** How many recent results a player's "form" shows. */
 internal const val FORM_WINDOW = 5
 
+/** Minimum run before a streak is worth showing as a record (a run of 0/1 isn't). */
+internal const val MIN_STREAK = 2
+
 /**
  * All-time [Records] from the server-sorted [rankings] (win rate desc, then wins
  * desc) and the group's [matchCount]. The win leader takes the top entry with at
@@ -26,6 +29,11 @@ internal fun computeRecords(rankings: List<PlayerRanking>, matchCount: Int): Rec
         winLeader = rankings.firstOrNull { it.gamesPlayed >= MIN_LEADER_GAMES } ?: rankings.firstOrNull(),
         mostPoints = rankings.maxByOrNull { it.pointsFor },
         mostActive = rankings.maxByOrNull { it.gamesPlayed },
+        // Streaks only count as a record from MIN_STREAK up; a negative currentStreak
+        // (a loss run) is naturally excluded. maxByOrNull returns the first max in
+        // leaderboard order, so ties break toward the higher-ranked player.
+        longestStreak = rankings.maxByOrNull { it.bestStreak }?.takeIf { it.bestStreak >= MIN_STREAK },
+        currentStreak = rankings.maxByOrNull { it.currentStreak }?.takeIf { it.currentStreak >= MIN_STREAK },
     )
 
 /**

@@ -27,4 +27,6 @@ private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
     losses = losses,
     pointsFor = pointsFor,
     winRate = winRate,
+    currentStreak = currentStreak,
+    bestStreak = bestStreak,
 )

@@ -75,7 +75,9 @@ public class StatsQueryService {
                     stats.getWins(),
                     stats.getLosses(),
                     stats.getPointsFor(),
-                    stats.getWinRate()));
+                    stats.getWinRate(),
+                    stats.getCurrentStreak(),
+                    stats.getBestStreak()));
         }
         return new LeaderboardResponse(rankings);
     }

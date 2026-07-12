@@ -35,6 +35,10 @@ data class Records(
     val winLeader: PlayerRanking?,
     val mostPoints: PlayerRanking?,
     val mostActive: PlayerRanking?,
+    /** Highest best (longest-ever) win streak; null unless someone reached [MIN_STREAK]. */
+    val longestStreak: PlayerRanking? = null,
+    /** Highest current win streak (who's hot now); null unless someone is on a [MIN_STREAK]+ run. */
+    val currentStreak: PlayerRanking? = null,
 )
 
 /** The teammate pair with the best win rate together (min [MIN_PARTNERSHIP_GAMES] games). */

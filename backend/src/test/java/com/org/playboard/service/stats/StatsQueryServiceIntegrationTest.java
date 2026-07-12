@@ -56,6 +56,9 @@ class StatsQueryServiceIntegrationTest {
         assertThat(devEntry.wins()).isEqualTo(3);
         assertThat(devEntry.losses()).isZero();
         assertThat(devEntry.winRate()).isEqualByComparingTo("1.0000");
+        // Dev won all three in a row → current and best win streak are both 3.
+        assertThat(devEntry.currentStreak()).isEqualTo(3);
+        assertThat(devEntry.bestStreak()).isEqualTo(3);
 
         // A member who never played doesn't clutter the leaderboard.
         assertThat(leaderboard.rankings()).extracting(LeaderboardEntryDto::userId)
