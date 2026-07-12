@@ -54,6 +54,25 @@ class TokenStore @Inject constructor(private val dataStore: DataStore<Preference
         }
     }
 
+    /**
+     * Updates the stored identity (display name / avatar) after a profile edit —
+     * the tokens are untouched, so the session stays signed in and every observer
+     * of [sessionState] sees the new name/photo immediately.
+     */
+    suspend fun updateUser(user: UserSession) {
+        dataStore.edit { prefs ->
+            prefs[Keys.USER_ID] = user.id
+            prefs[Keys.USER_DISPLAY_NAME] = user.displayName
+            prefs[Keys.USER_EMAIL] = user.email
+            if (user.photoUrl != null) {
+                prefs[Keys.USER_PHOTO_URL] = user.photoUrl
+            } else {
+                prefs.remove(Keys.USER_PHOTO_URL)
+            }
+            prefs[Keys.USER_AVATAR_COLOR] = user.avatarColor
+        }
+    }
+
     /** Called after a successful refresh — the user identity doesn't change, only the tokens. */
     suspend fun updateTokens(accessToken: String, refreshToken: String) {
         dataStore.edit { prefs ->
