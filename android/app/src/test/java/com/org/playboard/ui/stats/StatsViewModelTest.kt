@@ -74,8 +74,16 @@ private fun groupDto(id: String = "g1", name: String = "Smashers", matchCount: I
     myRole = "member",
 )
 
-private fun entry(rank: Int, id: String, gp: Int, wins: Int, pf: Int, wr: Double) =
-    LeaderboardEntryDto(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, wr)
+private fun entry(
+    rank: Int,
+    id: String,
+    gp: Int,
+    wins: Int,
+    pf: Int,
+    wr: Double,
+    currentStreak: Int = 0,
+    bestStreak: Int = 0,
+) = LeaderboardEntryDto(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, wr, currentStreak, bestStreak)
 
 private fun playerDto(id: String) = MatchPlayerDto(id, id, "#FF3D8A", null)
 
@@ -113,8 +121,8 @@ class StatsViewModelTest {
             leaderboardResult = {
                 LeaderboardResponseDto(
                     listOf(
-                        entry(1, "priya", 6, 6, 252, 1.0),
-                        entry(2, "raj", 8, 4, 315, 0.5),
+                        entry(1, "priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
+                        entry(2, "raj", 8, 4, 315, 0.5, currentStreak = -1, bestStreak = 3),
                     ),
                 )
             },
@@ -138,6 +146,9 @@ class StatsViewModelTest {
         assertEquals(12, state.records?.totalMatches)
         assertEquals("priya", state.records?.winLeader?.userId)
         assertEquals("raj", state.records?.mostPoints?.userId)
+        assertEquals("priya", state.records?.longestStreak?.userId)  // best_streak 6
+        assertEquals("priya", state.records?.currentStreak?.userId)  // only positive current run
+        assertEquals(6, state.records?.longestStreak?.bestStreak)
         assertNotNull(state.bestPartnership)                          // priya+dev, 2 games
         assertEquals(2, state.bestPartnership?.gamesTogether)
         assertTrue(state.recentForm.isNotEmpty())

@@ -16,6 +16,10 @@ data class PlayerRanking(
     val losses: Int,
     val pointsFor: Int,
     val winRate: Double,
+    /** Current run, signed: positive = win streak, negative = loss streak. */
+    val currentStreak: Int = 0,
+    /** Longest win streak ever (always ≥ 0). */
+    val bestStreak: Int = 0,
 ) {
     /** Win rate as a whole percentage for display (e.g. `0.83` → `83`). */
     val winRatePercent: Int get() = (winRate * 100).toInt()

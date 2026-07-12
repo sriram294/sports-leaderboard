@@ -135,7 +135,7 @@ list — no separate endpoint, so podium and table never disagree.
 { "rankings": [
   { "rank": 1, "userId": "uuid", "displayName": "Priya", "photoUrl": null,
     "avatarColor": "#FF3D8A", "gamesPlayed": 6, "wins": 6, "losses": 0,
-    "pointsFor": 252, "winRate": 1.0 }
+    "pointsFor": 252, "winRate": 1.0, "currentStreak": 6, "bestStreak": 6 }
 ] }
 ```
 

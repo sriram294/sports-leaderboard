@@ -27,8 +27,16 @@ private fun match(
     sets = sets.mapIndexed { i, (a, b) -> MatchSet(i + 1, a, b) },
 )
 
-private fun ranking(id: String, gp: Int, wins: Int, pf: Int, wr: Double, rank: Int = 1) =
-    PlayerRanking(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, wr)
+private fun ranking(
+    id: String,
+    gp: Int,
+    wins: Int,
+    pf: Int,
+    wr: Double,
+    rank: Int = 1,
+    currentStreak: Int = 0,
+    bestStreak: Int = 0,
+) = PlayerRanking(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, wr, currentStreak, bestStreak)
 
 class StatsComputationsTest {
 
@@ -146,6 +154,37 @@ class StatsComputationsTest {
         // Nobody has >= MIN_LEADER_GAMES -> fall back to the top-ranked entry.
         val allSmall = listOf(ranking("flash", gp = 1, wins = 1, pf = 21, wr = 1.0, rank = 1))
         assertEquals("flash", computeRecords(allSmall, 1).winLeader?.userId)
+    }
+
+    @Test
+    fun `records surface the highest best and current win streaks`() {
+        val rankings = listOf(
+            ranking("priya", gp = 8, wins = 7, pf = 300, wr = 0.87, rank = 1, currentStreak = 3, bestStreak = 5),
+            ranking("raj", gp = 8, wins = 5, pf = 315, wr = 0.62, rank = 2, currentStreak = -2, bestStreak = 6),
+            ranking("dev", gp = 4, wins = 2, pf = 120, wr = 0.5, rank = 3, currentStreak = 1, bestStreak = 1),
+        )
+        val records = computeRecords(rankings, matchCount = 20)
+        assertEquals("raj", records.longestStreak?.userId)  // best_streak 6 wins
+        assertEquals("priya", records.currentStreak?.userId) // current win run 3 (raj -2, dev 1)
+    }
+
+    @Test
+    fun `streak records skip runs below the minimum and negative current streaks`() {
+        val rankings = listOf(
+            ranking("a", gp = 3, wins = 1, pf = 40, wr = 0.33, currentStreak = -1, bestStreak = 1),
+        )
+        val records = computeRecords(rankings, matchCount = 3)
+        assertNull(records.longestStreak)  // best streak 1 < MIN_STREAK
+        assertNull(records.currentStreak)  // on a loss run
+    }
+
+    @Test
+    fun `streak record ties break toward the higher-ranked player`() {
+        val rankings = listOf(
+            ranking("top", gp = 6, wins = 5, pf = 200, wr = 0.83, rank = 1, bestStreak = 4),
+            ranking("next", gp = 6, wins = 5, pf = 200, wr = 0.83, rank = 2, bestStreak = 4),
+        )
+        assertEquals("top", computeRecords(rankings, 6).longestStreak?.userId)
     }
 
     @Test
