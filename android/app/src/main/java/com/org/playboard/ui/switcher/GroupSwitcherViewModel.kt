@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.remote.InvalidInviteCodeException
+import com.org.playboard.data.remote.MemberAlreadyExistsException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,6 +145,53 @@ class GroupSwitcherViewModel @Inject constructor(
     private inline fun updateInviteSheet(transform: (InviteSheetState) -> InviteSheetState) {
         _uiState.update { state ->
             state.inviteSheet?.let { state.copy(inviteSheet = transform(it)) } ?: state
+        }
+    }
+
+    /**
+     * Opens the "add member by email" sheet for the active group. No-op if there's
+     * no active group; the entry point is gated on
+     * [com.org.playboard.data.model.Group.canManage] so only owners/admins reach it.
+     */
+    fun onAddMemberClicked() {
+        if (_uiState.value.selectedGroup == null) return
+        _uiState.update { it.copy(isExpanded = false, addMemberSheet = AddMemberSheetState()) }
+    }
+
+    fun onAddMemberEmailChanged(email: String) = updateAddMemberSheet { it.copy(email = email, error = null) }
+
+    fun onAddMemberNameChanged(name: String) = updateAddMemberSheet { it.copy(name = name, error = null) }
+
+    fun onAddMemberDismissed() {
+        _uiState.update { it.copy(addMemberSheet = null) }
+    }
+
+    fun onAddMemberSubmit() {
+        val group = _uiState.value.selectedGroup ?: return
+        val sheet = _uiState.value.addMemberSheet ?: return
+        if (!sheet.canSubmit) return
+        // Cheap client-side sanity check; the backend is the real validator (@Email).
+        if (!sheet.email.trim().contains("@")) {
+            updateAddMemberSheet { it.copy(error = AddMemberError.INVALID_EMAIL) }
+            return
+        }
+        updateAddMemberSheet { it.copy(isSubmitting = true, error = null) }
+        viewModelScope.launch {
+            groupRepository.addMember(group.id, sheet.email, sheet.name)
+                .onSuccess { _uiState.update { state -> state.copy(addMemberSheet = null) } }
+                .onFailure { cause ->
+                    val error =
+                        if (cause is MemberAlreadyExistsException) AddMemberError.ALREADY_MEMBER
+                        else AddMemberError.NETWORK
+                    updateAddMemberSheet { it.copy(isSubmitting = false, error = error) }
+                }
+        }
+    }
+
+    /** Applies [transform] to the open add-member sheet; a no-op if it's already closed. */
+    private inline fun updateAddMemberSheet(transform: (AddMemberSheetState) -> AddMemberSheetState) {
+        _uiState.update { state ->
+            state.addMemberSheet?.let { state.copy(addMemberSheet = transform(it)) } ?: state
         }
     }
 

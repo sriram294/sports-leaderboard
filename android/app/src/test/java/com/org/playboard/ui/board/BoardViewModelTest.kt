@@ -54,6 +54,7 @@ private class FakePlayboardApi(
         error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = leaderboardResult(groupId)
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
+    override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("not used in this test")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("not used in this test")
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("recordMatch not used in this test")

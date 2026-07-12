@@ -2,6 +2,8 @@ package com.org.playboard.service.group;
 
 import com.org.playboard.common.ApiException;
 import com.org.playboard.common.AvatarColorPicker;
+import com.org.playboard.common.EmailNormalizer;
+import com.org.playboard.dto.group.AddMemberRequest;
 import com.org.playboard.dto.group.CreateGroupRequest;
 import com.org.playboard.dto.group.CreateInviteRequest;
 import com.org.playboard.dto.group.GroupListResponse;
@@ -164,6 +166,51 @@ public class GroupService {
         }
 
         return toSummary(group, member.getRole());
+    }
+
+    /**
+     * Adds a person to the group by email + name (owner/admin only). Onboards
+     * users who can't sign in yet (e.g. no iOS app): a real {@link GroupRole#MEMBER}
+     * is created so they show in the roster, are pickable for matches, and accrue
+     * stats. If a user with that email already exists their row is reused (their
+     * identity wins — the typed name is ignored); otherwise a provisional user is
+     * created with {@code google_sub = null}, which is linked to their Google
+     * account automatically on first sign-in (see
+     * {@link com.org.playboard.service.auth.AuthService#signInWithGoogle}).
+     */
+    @Transactional
+    public MemberDto addMemberByEmail(UUID groupId, UUID callerId, AddMemberRequest request) {
+        GroupMember caller = membershipGuard.requireRole(groupId, callerId, Set.of(GroupRole.OWNER, GroupRole.ADMIN));
+        Group group = caller.getGroup();
+
+        String email = EmailNormalizer.normalize(request.email());
+        User user = userRepository.findByEmail(email).orElseGet(() -> {
+            User created = new User();
+            created.setEmail(email);
+            created.setDisplayName(request.displayName().trim());
+            created.setAvatarColor(AvatarColorPicker.pick(email));
+            // google_sub stays null — set when they first sign in with this email.
+            return userRepository.save(created);
+        });
+
+        Optional<GroupMember> existing = groupMemberRepository.findByGroupIdAndUserId(group.getId(), user.getId());
+        if (existing.map(m -> m.getStatus() == MemberStatus.ACTIVE).orElse(false)) {
+            throw new ApiException(HttpStatus.CONFLICT, "GROUP_MEMBER_EXISTS", "That person is already in this group");
+        }
+
+        // Reactivate a previously-removed member in place (keeping their old role),
+        // else create a fresh MEMBER — mirrors joinGroup's upsert on (group, user).
+        GroupMember member = existing.orElseGet(() -> {
+            GroupMember created = new GroupMember();
+            created.setGroup(group);
+            created.setUser(user);
+            created.setRole(GroupRole.MEMBER);
+            return created;
+        });
+        member.setStatus(MemberStatus.ACTIVE);
+        groupMemberRepository.save(member);
+
+        return MemberDto.from(member);
     }
 
     /**

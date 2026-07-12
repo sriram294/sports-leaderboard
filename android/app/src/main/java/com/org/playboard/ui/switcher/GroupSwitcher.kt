@@ -74,8 +74,19 @@ fun GroupSwitcher(
         onGroupSelected = viewModel::onGroupSelected,
         onCreateOrJoinGroupClicked = viewModel::onCreateOrJoinGroupClicked,
         onInvitePlayersClicked = viewModel::onInvitePlayersClicked,
+        onAddMemberClicked = viewModel::onAddMemberClicked,
         onRetry = viewModel::refresh,
     )
+
+    uiState.addMemberSheet?.let { sheet ->
+        AddMemberSheet(
+            state = sheet,
+            onEmailChanged = viewModel::onAddMemberEmailChanged,
+            onNameChanged = viewModel::onAddMemberNameChanged,
+            onSubmit = viewModel::onAddMemberSubmit,
+            onDismiss = viewModel::onAddMemberDismissed,
+        )
+    }
 
     uiState.renameSheet?.let { sheet ->
         RenameGroupSheet(
@@ -114,6 +125,7 @@ private fun GroupSwitcherContent(
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
     onInvitePlayersClicked: () -> Unit,
+    onAddMemberClicked: () -> Unit,
     onRetry: () -> Unit,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -129,9 +141,11 @@ private fun GroupSwitcherContent(
                     groups = uiState.groups,
                     selectedGroupId = group.id,
                     canInviteSelected = group.canInvite,
+                    canManageSelected = group.canManage,
                     onGroupSelected = onGroupSelected,
                     onCreateOrJoinGroupClicked = onCreateOrJoinGroupClicked,
                     onInvitePlayersClicked = onInvitePlayersClicked,
+                    onAddMemberClicked = onAddMemberClicked,
                     onEditGroup = onEditGroup,
                 )
             }
@@ -226,9 +240,11 @@ private fun YourGroupsPanel(
     groups: List<Group>,
     selectedGroupId: String,
     canInviteSelected: Boolean,
+    canManageSelected: Boolean,
     onGroupSelected: (String) -> Unit,
     onCreateOrJoinGroupClicked: () -> Unit,
     onInvitePlayersClicked: () -> Unit,
+    onAddMemberClicked: () -> Unit,
     onEditGroup: (groupId: String, groupName: String) -> Unit
 ) {
     Surface(
@@ -302,6 +318,9 @@ private fun YourGroupsPanel(
             if (canInviteSelected) {
                 PanelActionRow(icon = "↗", label = "Invite players", onClick = onInvitePlayersClicked)
             }
+            if (canManageSelected) {
+                PanelActionRow(icon = "✉", label = "Add member by email", onClick = onAddMemberClicked)
+            }
             PanelActionRow(icon = "+", label = "Create or join a group", onClick = onCreateOrJoinGroupClicked)
         }
     }
@@ -347,6 +366,7 @@ private fun GroupSwitcherCollapsedPreview() {
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
+            onAddMemberClicked = {},
             onRetry = {},
         )
     }
@@ -368,6 +388,7 @@ private fun GroupSwitcherExpandedPreview() {
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
+            onAddMemberClicked = {},
             onRetry = {},
         )
     }
@@ -384,6 +405,7 @@ private fun GroupSwitcherNoGroupPreview() {
             onGroupSelected = {},
             onCreateOrJoinGroupClicked = {},
             onInvitePlayersClicked = {},
+            onAddMemberClicked = {},
             onRetry = {},
         )
     }

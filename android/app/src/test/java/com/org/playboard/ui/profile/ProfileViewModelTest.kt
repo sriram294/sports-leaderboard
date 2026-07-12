@@ -85,6 +85,7 @@ private open class FakePlayboardApi(
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto = error("unused")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
+    override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto {
         statsCalls++
         return stats[userId] ?: error("no stats for $userId")

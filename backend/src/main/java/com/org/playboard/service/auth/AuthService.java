@@ -3,6 +3,7 @@ package com.org.playboard.service.auth;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.org.playboard.common.ApiException;
 import com.org.playboard.common.AvatarColorPicker;
+import com.org.playboard.common.EmailNormalizer;
 import com.org.playboard.dto.auth.TokenResponse;
 import com.org.playboard.dto.user.UserSummaryDto;
 import com.org.playboard.entity.auth.RefreshToken;
@@ -38,7 +39,8 @@ public class AuthService {
     public TokenResponse signInWithGoogle(String googleIdToken) {
         GoogleIdToken.Payload payload = googleTokenVerifier.verify(googleIdToken);
         String googleSub = payload.getSubject();
-        String email = payload.getEmail();
+        // Normalize so the lookup agrees with any pre-created (add-by-email) row.
+        String email = EmailNormalizer.normalize(payload.getEmail());
 
         User user =
                 userRepository

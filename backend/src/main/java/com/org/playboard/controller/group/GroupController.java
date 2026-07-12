@@ -1,11 +1,13 @@
 package com.org.playboard.controller.group;
 
+import com.org.playboard.dto.group.AddMemberRequest;
 import com.org.playboard.dto.group.CreateGroupRequest;
 import com.org.playboard.dto.group.CreateInviteRequest;
 import com.org.playboard.dto.group.GroupListResponse;
 import com.org.playboard.dto.group.GroupSummaryDto;
 import com.org.playboard.dto.group.InviteResponse;
 import com.org.playboard.dto.group.JoinGroupRequest;
+import com.org.playboard.dto.group.MemberDto;
 import com.org.playboard.dto.group.MembersResponse;
 import com.org.playboard.dto.group.RenameGroupRequest;
 import com.org.playboard.service.group.GroupService;
@@ -68,5 +70,14 @@ public class GroupController {
     @GetMapping("/{groupId}/members")
     public MembersResponse listMembers(@AuthenticationPrincipal UUID userId, @PathVariable UUID groupId) {
         return groupService.listMembers(groupId, userId);
+    }
+
+    @PostMapping("/{groupId}/members")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MemberDto addMember(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID groupId,
+            @Valid @RequestBody AddMemberRequest request) {
+        return groupService.addMemberByEmail(groupId, userId, request);
     }
 }
