@@ -6,6 +6,13 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Name the built artifacts "Playboard" instead of the module name "app", so the
+// APK is e.g. Playboard-debug.apk / Playboard-release.apk. This is the modern
+// (non-deprecated) replacement for `archivesBaseName`.
+base {
+    archivesName = "Playboard"
+}
+
 android {
     namespace = "com.org.playboard"
     compileSdk {

@@ -422,6 +422,7 @@ private fun SetRow(
             color = TextPrimary,
             modifier = Modifier.width(64.dp),
         )
+        Spacer(Modifier.weight(1f))
         ScoreField(value = team1, onChange = { onScoreChanged(index, 1, it) })
         Text(
             text = "–",
