@@ -114,15 +114,16 @@ private fun PlayerRow(member: Member, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
+        val label = member.slotLabel()
         PlayerAvatar(
-            displayName = member.displayName,
+            displayName = label,
             photoUrl = member.photoUrl,
             avatarColorHex = member.avatarColor,
             size = 40.dp,
         )
         Spacer(Modifier.width(14.dp))
         Text(
-            text = member.displayName,
+            text = label,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary,
@@ -157,8 +158,8 @@ private fun PlayerRowsPreview() {
             modifier = Modifier.padding(20.dp),
         ) {
             PlayerRow(Member("u1", "Sriram", null, "#9ADE28", "owner"), onClick = {})
+            // The 3 guest fillers collapse to one generic "Guest" row.
             PlayerRow(Member("g1", "Guest 1", null, "#9AA0A6", "guest"), onClick = {})
-            PlayerRow(Member("g2", "Guest 2", null, "#9AA0A6", "guest"), onClick = {})
         }
     }
 }

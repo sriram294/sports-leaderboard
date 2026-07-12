@@ -8,6 +8,7 @@ import com.org.playboard.data.auth.TokenStore
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.match.MatchRepository
+import com.org.playboard.data.model.Member
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
@@ -239,6 +240,41 @@ class AddMatchViewModelTest {
         viewModel.onRemovePlayer("u1")
         assertEquals(listOf("u2"), viewModel.uiState.value.team1)
         assertTrue(viewModel.uiState.value.availablePlayers.map { it.id }.contains("u1"))
+    }
+
+    @Test
+    fun `guest fillers collapse to a single available entry`() {
+        // A real member plus the group's 3 interchangeable guest fillers.
+        val roster = listOf(
+            Member("u1", "Sriram", null, "#9ADE28", "owner"),
+            Member("g1", "Guest 1", null, "#9AA0A6", "guest"),
+            Member("g2", "Guest 2", null, "#9AA0A6", "guest"),
+            Member("g3", "Guest 3", null, "#9AA0A6", "guest"),
+        )
+        val fresh = AddMatchUiState(roster = roster)
+
+        // Nobody assigned: exactly one guest entry (the first), after the real member.
+        assertEquals(listOf("u1", "g1"), fresh.availablePlayers.map { it.id })
+
+        // Picking the guest consumes one distinct id; the next guest becomes the entry.
+        val oneUsed = fresh.copy(team1 = listOf("g1"))
+        assertEquals(listOf("u1", "g2"), oneUsed.availablePlayers.map { it.id })
+
+        // All three guests placed: no guest entry remains in the picker.
+        val allUsed = fresh.copy(team1 = listOf("g1", "g2"), team2 = listOf("g3"))
+        assertEquals(listOf("u1"), allUsed.availablePlayers.map { it.id })
+        assertTrue(allUsed.availablePlayers.none { it.isGuest })
+
+        // Removing a placed guest (g2 freed) brings a single guest entry back.
+        val afterRemoval = allUsed.copy(team1 = listOf("g1"))
+        assertEquals(1, afterRemoval.availablePlayers.count { it.isGuest })
+        assertEquals("g2", afterRemoval.availablePlayers.first { it.isGuest }.id)
+    }
+
+    @Test
+    fun `slotLabel hides guest numbering but keeps real names`() {
+        assertEquals("Guest", Member("g1", "Guest 1", null, "#9AA0A6", "guest").slotLabel())
+        assertEquals("Sriram", Member("u1", "Sriram", null, "#9ADE28", "owner").slotLabel())
     }
 
     @Test

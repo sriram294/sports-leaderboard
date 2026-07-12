@@ -33,8 +33,16 @@ data class AddMatchUiState(
 
     val assignedIds: Set<String> get() = (team1 + team2).toSet()
 
-    /** Roster members not yet on a team — the choices shown in the picker. */
-    val availablePlayers: List<Member> get() = roster.filter { it.id !in assignedIds }
+    /**
+     * Roster members not yet on a team — the choices shown in the picker. The
+     * group's interchangeable guest fillers are collapsed to a **single** "Guest"
+     * entry (the first still-unassigned guest): picking it consumes one distinct
+     * guest id, so the entry stays until all guests are used, then disappears.
+     */
+    val availablePlayers: List<Member> get() {
+        val (guests, realMembers) = roster.filter { it.id !in assignedIds }.partition { it.isGuest }
+        return realMembers + listOfNotNull(guests.firstOrNull())
+    }
 
     val teamsComplete: Boolean get() = team1.size == TEAM_SIZE && team2.size == TEAM_SIZE
 
@@ -73,6 +81,9 @@ data class AddMatchUiState(
         const val TEAM_SIZE = 2
     }
 }
+
+/** Guests are shown generically as "Guest"; their internal Guest 1/2/3 numbering is hidden. */
+fun Member.slotLabel(): String = if (isGuest) "Guest" else displayName
 
 private fun SetScoreInput.parsed(): Pair<Int, Int>? {
     val a = team1.toIntOrNull() ?: return null
