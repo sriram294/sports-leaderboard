@@ -34,6 +34,11 @@ fun avatarColor(hex: String): Color =
  * Global avatar rule (docs/requirements/00-overview.md § Player / Avatar):
  * the uploaded photo if set, else a colored-initial circle. The ring always
  * uses the player's assigned color so a player is recognizable everywhere.
+ *
+ * The colored initial is always drawn as the base layer, so it also serves as
+ * the fallback while the photo loads or if it fails to load (e.g. the file is
+ * gone) — the [AsyncImage] simply paints over it once it loads successfully,
+ * and draws nothing on error, leaving the initial visible instead of a blank.
  */
 @Composable
 fun PlayerAvatar(
@@ -52,18 +57,17 @@ fun PlayerAvatar(
             .border(width = size / 18, color = color, shape = CircleShape),
         contentAlignment = Alignment.Center,
     ) {
+        Text(
+            text = displayName.take(1).uppercase(),
+            color = color,
+            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = (size.value * 0.4).sp),
+        )
         if (photoUrl != null) {
             AsyncImage(
                 model = photoUrl,
                 contentDescription = displayName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size).clip(CircleShape),
-            )
-        } else {
-            Text(
-                text = displayName.take(1).uppercase(),
-                color = color,
-                style = TextStyle(fontWeight = FontWeight.Bold, fontSize = (size.value * 0.4).sp),
             )
         }
     }
