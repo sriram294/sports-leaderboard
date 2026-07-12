@@ -123,6 +123,19 @@ Requires `owner`/`admin` (`403 GROUP_ROLE_FORBIDDEN` otherwise). Request:
 ] }
 ```
 
+### `POST /groups/{groupId}/members`
+Add a person to the group by email + name — onboards someone who can't sign in
+yet (e.g. no iOS app). Requires `owner`/`admin` (`403 GROUP_ROLE_FORBIDDEN`
+otherwise). Request: `{ "email": "sam@gmail.com", "displayName": "Sam" }` →
+`201` `MemberDto` (the added member, role `member`).
+Creates the person as a real member: they appear in the roster, are pickable for
+matches, and accrue stats (they join the leaderboard after their first match).
+The email is normalized (trimmed + lowercased); if a user with that email already
+exists it's reused (their existing identity wins). When that person later signs
+in with Google using the same email, their `google_sub` is linked to this
+pre-created row — membership and stats carry over, no duplicate. `409
+GROUP_MEMBER_EXISTS` if they're already an active member.
+
 ---
 
 ## Leaderboard & Player Stats
@@ -248,6 +261,7 @@ players. `204`. Same permission rule as edit.
 | PATCH | `/groups/{groupId}` | Rename a group (owner/admin) |
 | POST | `/groups/{groupId}/invites` | Create invite code |
 | GET | `/groups/{groupId}/members` | Roster (Add Match player chips) |
+| POST | `/groups/{groupId}/members` | Add a member by email (owner/admin) |
 | GET | `/groups/{groupId}/leaderboard` | Board tab |
 | GET | `/groups/{groupId}/members/{userId}/stats` | Profile tab / tapped player |
 | GET | `/groups/{groupId}/matches` | Matches tab list |

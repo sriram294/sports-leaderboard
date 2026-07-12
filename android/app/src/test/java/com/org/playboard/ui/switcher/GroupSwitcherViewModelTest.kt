@@ -3,6 +3,7 @@ package com.org.playboard.ui.switcher
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.remote.dto.AddMemberRequestDto
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
@@ -14,6 +15,7 @@ import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
+import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -46,6 +48,7 @@ private class FakePlayboardApi(
     var createGroupResult: suspend (CreateGroupRequestDto) -> GroupDto = { error("createGroup not stubbed") },
     var joinGroupResult: suspend (JoinGroupRequestDto) -> GroupDto = { error("joinGroup not stubbed") },
     var createInviteResult: suspend (String) -> InviteResponseDto = { error("createInvite not stubbed") },
+    var addMemberResult: suspend (AddMemberRequestDto) -> MemberDto = { error("addMember not stubbed") },
 ) : PlayboardApi {
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         error("not used in this test")
@@ -59,6 +62,7 @@ private class FakePlayboardApi(
         createInviteResult(groupId)
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
+    override suspend fun addMember(groupId: String, request: AddMemberRequestDto): MemberDto = addMemberResult(request)
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("not used in this test")
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("not used in this test")
@@ -77,6 +81,12 @@ private class FakePlayboardApi(
 private fun invalidInviteHttpException(): HttpException {
     val body = """{"code":"GROUP_INVITE_INVALID"}""".toResponseBody("application/json".toMediaType())
     return HttpException(Response.error<Any>(404, body))
+}
+
+/** A `409` with `GROUP_MEMBER_EXISTS`, as `addMember` returns when the person is already in the group. */
+private fun memberExistsHttpException(): HttpException {
+    val body = """{"code":"GROUP_MEMBER_EXISTS"}""".toResponseBody("application/json".toMediaType())
+    return HttpException(Response.error<Any>(409, body))
 }
 
 private fun groupDto(id: String, name: String, myRole: String = "member") = GroupDto(
@@ -260,6 +270,67 @@ class GroupSwitcherViewModelTest {
         assertFalse(sheet.isLoading)
         assertEquals("SMASH42", sheet.code)
         assertFalse(sheet.hasFailed)
+    }
+
+    @Test
+    fun `adding a member by email closes the sheet on success`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers", myRole = "owner"))) },
+            addMemberResult = { request ->
+                assertEquals("sam@gmail.com", request.email)
+                assertEquals("Sam", request.displayName)
+                MemberDto(userId = "u-sam", displayName = "Sam", photoUrl = null, avatarColor = "#7ED321", role = "member")
+            },
+        )
+        val viewModel = viewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onAddMemberClicked()
+        viewModel.onAddMemberEmailChanged("sam@gmail.com")
+        viewModel.onAddMemberNameChanged("Sam")
+        viewModel.onAddMemberSubmit()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.addMemberSheet) // closed on success
+    }
+
+    @Test
+    fun `adding an already-active member shows the already-member error`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers", myRole = "owner"))) },
+            addMemberResult = { throw memberExistsHttpException() },
+        )
+        val viewModel = viewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onAddMemberClicked()
+        viewModel.onAddMemberEmailChanged("dupe@gmail.com")
+        viewModel.onAddMemberNameChanged("Dupe")
+        viewModel.onAddMemberSubmit()
+        advanceUntilIdle()
+
+        val sheet = viewModel.uiState.value.addMemberSheet
+        assertNotNull(sheet)
+        assertEquals(AddMemberError.ALREADY_MEMBER, sheet?.error)
+        assertFalse(sheet!!.isSubmitting)
+    }
+
+    @Test
+    fun `an invalid email is caught client-side without calling the api`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers", myRole = "owner"))) },
+            addMemberResult = { error("must not call the api for an invalid email") },
+        )
+        val viewModel = viewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onAddMemberClicked()
+        viewModel.onAddMemberEmailChanged("notanemail")
+        viewModel.onAddMemberNameChanged("Nope")
+        viewModel.onAddMemberSubmit()
+        advanceUntilIdle()
+
+        assertEquals(AddMemberError.INVALID_EMAIL, viewModel.uiState.value.addMemberSheet?.error)
     }
 
     @Test

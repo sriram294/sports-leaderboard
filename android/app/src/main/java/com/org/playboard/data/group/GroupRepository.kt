@@ -4,6 +4,7 @@ import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.Member
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.apiErrorCode
+import com.org.playboard.data.remote.dto.AddMemberRequestDto
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GroupDto
@@ -11,6 +12,7 @@ import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.InvalidInviteCodeException
+import com.org.playboard.data.remote.MemberAlreadyExistsException
 import com.org.playboard.di.AppScope
 import com.org.playboard.di.AuthenticatedApi
 import javax.inject.Inject
@@ -172,6 +174,23 @@ class GroupRepository @Inject constructor(
      */
     suspend fun createInvite(groupId: String): Result<String> =
         runCatching { api.createInvite(groupId, CreateInviteRequestDto()).code }
+
+    /**
+     * Adds a person to [groupId] by email + name (owner/admin only — gate callers
+     * on [Group.canManage]). Onboards someone who can't sign in yet; their account
+     * is claimed automatically when they later sign in with the same email. On
+     * success, [refresh] so the member count and the Add-Match roster pick them up.
+     * An already-active member (`GROUP_MEMBER_EXISTS`) surfaces as
+     * [MemberAlreadyExistsException] so the UI can tell it apart from a network error.
+     */
+    suspend fun addMember(groupId: String, email: String, name: String): Result<Member> {
+        val result = runCatching { api.addMember(groupId, AddMemberRequestDto(email.trim(), name.trim())).toMember() }
+            .recoverCatching { cause ->
+                throw if (cause.apiErrorCode(json) == "GROUP_MEMBER_EXISTS") MemberAlreadyExistsException() else cause
+            }
+        if (result.isSuccess) refresh()
+        return result
+    }
 
     fun selectGroup(groupId: String) {
         _selectedGroupId.value = groupId

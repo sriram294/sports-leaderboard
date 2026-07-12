@@ -50,6 +50,24 @@ data class InviteSheetState(
     val hasFailed: Boolean = false,
 )
 
+/** Reason an add-member attempt failed, mapped to a user-facing message in the sheet. */
+enum class AddMemberError { INVALID_EMAIL, ALREADY_MEMBER, NETWORK }
+
+/**
+ * State of the "add member by email" bottom sheet. `null` on [GroupSwitcherUiState]
+ * means it's closed. [email] + [name] are the typed fields; [error] marks a
+ * (retryable) failure to surface inline.
+ */
+data class AddMemberSheetState(
+    val email: String = "",
+    val name: String = "",
+    val isSubmitting: Boolean = false,
+    val error: AddMemberError? = null,
+) {
+    /** Submit is allowed only with both fields filled and no in-flight request. */
+    val canSubmit: Boolean get() = email.isNotBlank() && name.isNotBlank() && !isSubmitting
+}
+
 /**
  * State of the shared group switcher shown at the top of every tab
  * (docs/requirements/00-overview.md § Group). The active group and the group
@@ -64,4 +82,5 @@ data class GroupSwitcherUiState(
     val groupActionSheet: GroupActionSheetState? = null,
     val inviteSheet: InviteSheetState? = null,
     val renameSheet: RenameSheetState? = null,
+    val addMemberSheet: AddMemberSheetState? = null,
 )

@@ -4,15 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.org.playboard.common.ApiException;
+import com.org.playboard.dto.group.AddMemberRequest;
 import com.org.playboard.dto.group.CreateGroupRequest;
 import com.org.playboard.dto.group.CreateInviteRequest;
 import com.org.playboard.dto.group.GroupSummaryDto;
 import com.org.playboard.dto.group.InviteResponse;
 import com.org.playboard.dto.group.JoinGroupRequest;
+import com.org.playboard.dto.group.MemberDto;
 import com.org.playboard.dto.group.MembersResponse;
 import com.org.playboard.dto.group.RenameGroupRequest;
+import com.org.playboard.entity.group.GroupMember;
+import com.org.playboard.entity.group.MemberStatus;
 import com.org.playboard.entity.user.User;
+import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.user.UserRepository;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +35,7 @@ class GroupServiceIntegrationTest {
 
     @Autowired private GroupService groupService;
     @Autowired private UserRepository userRepository;
+    @Autowired private GroupMemberRepository groupMemberRepository;
 
     @Test
     void createJoinInviteAndRosterFlow() {
@@ -129,6 +136,90 @@ class GroupServiceIntegrationTest {
         assertThatThrownBy(() -> groupService.joinGroup(second.getId(), new JoinGroupRequest(invite.code())))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("GROUP_INVITE_INVALID"));
+    }
+
+    @Test
+    void addMemberByEmailCreatesRealMemberAndNormalizesEmail() {
+        User owner = userRepository.save(newUser());
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Add By Email", "badminton_doubles"));
+
+        // Mixed-case, padded email + padded name -> real MEMBER, normalized + trimmed.
+        MemberDto added = groupService.addMemberByEmail(
+                group.id(), owner.getId(), new AddMemberRequest("  New.Person+X@GMAIL.com ", "  New Person  "));
+        assertThat(added.role()).isEqualTo("member");
+        assertThat(added.displayName()).isEqualTo("New Person");
+
+        User createdUser = userRepository.findById(added.userId()).orElseThrow();
+        assertThat(createdUser.getEmail()).isEqualTo("new.person+x@gmail.com"); // trimmed + lowercased
+        assertThat(createdUser.getGoogleSub()).isNull(); // provisional — claimed on first sign-in
+        assertThat(createdUser.getAvatarColor()).isNotBlank();
+
+        // Shows in the roster as a real member (not a guest) and counts toward memberCount.
+        MembersResponse roster = groupService.listMembers(group.id(), owner.getId());
+        assertThat(roster.members()).extracting("userId").contains(added.userId());
+        assertThat(roster.guests()).extracting("userId").doesNotContain(added.userId());
+        assertThat(groupService.listGroupsForUser(owner.getId()).groups().get(0).memberCount()).isEqualTo(2);
+
+        // Re-adding the same email (any casing) is a 409, never a duplicate.
+        assertThatThrownBy(() -> groupService.addMemberByEmail(
+                        group.id(), owner.getId(), new AddMemberRequest("NEW.PERSON+x@gmail.com", "Dup")))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("GROUP_MEMBER_EXISTS"));
+    }
+
+    @Test
+    void addMemberByEmailReusesExistingUserRow() {
+        User owner = userRepository.save(newUser());
+        User existing = userRepository.save(newUser()); // already a Playboard user
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Reuse", "badminton_doubles"));
+
+        MemberDto added = groupService.addMemberByEmail(
+                group.id(), owner.getId(),
+                new AddMemberRequest(existing.getEmail().toUpperCase(Locale.ROOT), "Ignored Name"));
+
+        assertThat(added.userId()).isEqualTo(existing.getId()); // reused, not duplicated
+        assertThat(added.displayName()).isEqualTo(existing.getDisplayName()); // their identity wins
+    }
+
+    @Test
+    void addMemberByEmailReactivatesRemovedMember() {
+        User owner = userRepository.save(newUser());
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Reactivate", "badminton_doubles"));
+        MemberDto added = groupService.addMemberByEmail(
+                group.id(), owner.getId(), new AddMemberRequest("gone@example.com", "Gone"));
+
+        GroupMember membership =
+                groupMemberRepository.findByGroupIdAndUserId(group.id(), added.userId()).orElseThrow();
+        membership.setStatus(MemberStatus.REMOVED);
+        groupMemberRepository.save(membership);
+
+        // Re-adding reactivates the same row — no 409, no duplicate.
+        MemberDto readded = groupService.addMemberByEmail(
+                group.id(), owner.getId(), new AddMemberRequest("gone@example.com", "Gone"));
+        assertThat(readded.userId()).isEqualTo(added.userId());
+        assertThat(groupService.listMembers(group.id(), owner.getId()).members())
+                .extracting("userId")
+                .contains(added.userId());
+    }
+
+    @Test
+    void addMemberByEmailRejectsPlainMember() {
+        User owner = userRepository.save(newUser());
+        User plain = userRepository.save(newUser());
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Gated", "badminton_doubles"));
+        InviteResponse invite =
+                groupService.createInvite(group.id(), owner.getId(), new CreateInviteRequest(null, null));
+        groupService.joinGroup(plain.getId(), new JoinGroupRequest(invite.code()));
+
+        // Owner/admin only — a plain member can't add others.
+        assertThatThrownBy(() -> groupService.addMemberByEmail(
+                        group.id(), plain.getId(), new AddMemberRequest("someone@example.com", "Someone")))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("GROUP_ROLE_FORBIDDEN"));
     }
 
     private static User newUser() {

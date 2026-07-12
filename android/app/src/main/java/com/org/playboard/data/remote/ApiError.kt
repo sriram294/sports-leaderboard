@@ -24,3 +24,6 @@ fun Throwable.apiErrorCode(json: Json): String? {
 
 /** A `POST /groups/join` failed because the invite code was wrong, expired, or exhausted. */
 class InvalidInviteCodeException : Exception("Invite code is invalid, expired, or exhausted")
+
+/** A `POST /groups/{id}/members` failed because that person is already an active member. */
+class MemberAlreadyExistsException : Exception("That person is already in this group")
