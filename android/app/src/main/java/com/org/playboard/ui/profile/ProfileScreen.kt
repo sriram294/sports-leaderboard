@@ -248,10 +248,9 @@ private fun StatTilesGrid(stats: PlayerStats) {
             modifier = Modifier.height(IntrinsicSize.Min),
         ) {
             StatTile(
-                "STREAK",
+                "CURRENT STREAK",
                 stats.currentStreak.toString(),
                 valueColor = BrandLime,
-                subLabel = "Best: ${stats.bestStreak}",
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             StatTile("BEST STREAK", stats.bestStreak.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
