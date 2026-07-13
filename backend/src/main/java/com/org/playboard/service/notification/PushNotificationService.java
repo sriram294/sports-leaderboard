@@ -115,6 +115,7 @@ public class PushNotificationService {
     private void collectFailures(
             List<String> batch, BatchResponse response, List<String> deadTokens, Set<String> errors) {
         List<SendResponse> responses = response.getResponses();
+        boolean loggedTrace = false;
         for (int i = 0; i < responses.size(); i++) {
             SendResponse sr = responses.get(i);
             if (sr.isSuccessful() || sr.getException() == null) {
@@ -124,6 +125,12 @@ public class PushNotificationService {
             errors.add(code == null ? sr.getException().getMessage() : code.name());
             if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
                 deadTokens.add(batch.get(i));
+            }
+            // Full stack for the first failure — pinpoints transport/gzip errors whose
+            // one-line message ("Not in GZIP format") doesn't say where they originate.
+            if (!loggedTrace) {
+                log.warn("FCM send failure (full trace, code={}):", code, sr.getException());
+                loggedTrace = true;
             }
         }
     }
