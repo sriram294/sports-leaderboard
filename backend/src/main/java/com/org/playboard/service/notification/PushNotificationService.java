@@ -13,11 +13,11 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,11 +36,14 @@ public class PushNotificationService {
     // FCM caps a multicast at 500 tokens per request.
     private static final int MAX_TOKENS_PER_MULTICAST = 500;
 
-    private final Optional<FirebaseMessaging> firebaseMessaging;
+    // ObjectProvider (not Optional<FirebaseMessaging>) because Spring resolves an
+    // Optional<T> injection point by looking up the inner type T, which would make
+    // a hand-built Optional bean unreachable and always inject Optional.empty().
+    private final ObjectProvider<FirebaseMessaging> firebaseMessaging;
     private final DeviceTokenRepository deviceTokenRepository;
 
     public PushNotificationService(
-            Optional<FirebaseMessaging> firebaseMessaging, DeviceTokenRepository deviceTokenRepository) {
+            ObjectProvider<FirebaseMessaging> firebaseMessaging, DeviceTokenRepository deviceTokenRepository) {
         this.firebaseMessaging = firebaseMessaging;
         this.deviceTokenRepository = deviceTokenRepository;
     }
@@ -53,7 +56,8 @@ public class PushNotificationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PushResult sendToUsers(Collection<UUID> userIds, String title, String body, Map<String, String> data) {
-        if (firebaseMessaging.isEmpty()) {
+        FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
+        if (messaging == null) {
             log.info("Firebase disabled; skipping push \"{}\" to {} user(s).", title, userIds.size());
             return PushResult.disabled();
         }
@@ -83,7 +87,7 @@ public class PushNotificationService {
                         .putAllData(data == null ? Map.of() : data)
                         .addAllTokens(batch)
                         .build();
-                BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
+                BatchResponse response = messaging.sendEachForMulticast(message);
                 sent += response.getSuccessCount();
                 failed += response.getFailureCount();
                 collectFailures(batch, response, deadTokens, errors);
