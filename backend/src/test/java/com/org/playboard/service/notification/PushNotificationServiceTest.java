@@ -18,18 +18,26 @@ import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.device.DeviceTokenRepository;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
 
 class PushNotificationServiceTest {
 
     private final DeviceTokenRepository repo = mock(DeviceTokenRepository.class);
 
+    /** An ObjectProvider that yields {@code messaging} (or null when Firebase is "disabled"). */
+    @SuppressWarnings("unchecked")
+    private ObjectProvider<FirebaseMessaging> provider(FirebaseMessaging messaging) {
+        ObjectProvider<FirebaseMessaging> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(messaging);
+        return provider;
+    }
+
     @Test
     void noOpWhenFirebaseDisabled() {
-        var service = new PushNotificationService(Optional.empty(), repo);
+        var service = new PushNotificationService(provider(null), repo);
 
         var result = service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
 
@@ -41,7 +49,7 @@ class PushNotificationServiceTest {
     @Test
     void noOpWhenNoTokens() throws Exception {
         var messaging = mock(FirebaseMessaging.class);
-        var service = new PushNotificationService(Optional.of(messaging), repo);
+        var service = new PushNotificationService(provider(messaging), repo);
         when(repo.findByUserIdIn(anyCollection())).thenReturn(List.of());
 
         service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
@@ -52,7 +60,7 @@ class PushNotificationServiceTest {
     @Test
     void prunesUnregisteredTokens() throws Exception {
         var messaging = mock(FirebaseMessaging.class);
-        var service = new PushNotificationService(Optional.of(messaging), repo);
+        var service = new PushNotificationService(provider(messaging), repo);
         when(repo.findByUserIdIn(anyCollection()))
                 .thenReturn(List.of(deviceToken("good"), deviceToken("dead")));
 

@@ -6,12 +6,12 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 import java.io.ByteArrayInputStream;
 import java.util.Base64;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.Nullable;
 
 /**
  * Initializes the Firebase Admin SDK from a base64-encoded service-account key
@@ -19,9 +19,14 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>Firebase is <b>optional at runtime</b>: local dev and {@code @SpringBootTest}
  * integration tests run without credentials. When the key is blank (or fails to
- * parse), this exposes an empty {@code Optional<FirebaseMessaging>} and push
- * notifications become a logged no-op (see {@code PushNotificationService}) rather
- * than preventing the app from booting.
+ * parse), this returns a {@code null} {@link FirebaseMessaging} bean, and consumers
+ * inject it via {@code ObjectProvider} so push notifications become a logged no-op
+ * (see {@code PushNotificationService}) rather than preventing the app from booting.
+ *
+ * <p>Note: the bean type is {@code FirebaseMessaging} (nullable), <b>not</b>
+ * {@code Optional<FirebaseMessaging>} — Spring special-cases {@code Optional<T>}
+ * injection points to resolve the inner type {@code T}, so an {@code Optional} bean
+ * is never actually injected and consumers would always see {@code Optional.empty()}.
  */
 @Configuration
 public class FirebaseConfig {
@@ -30,12 +35,13 @@ public class FirebaseConfig {
     private static final String APP_NAME = "playboard";
 
     @Bean
-    public Optional<FirebaseMessaging> firebaseMessaging(
+    @Nullable
+    public FirebaseMessaging firebaseMessaging(
             @Value("${playboard.firebase.credentials-base64:}") String credentialsBase64) {
         if (credentialsBase64 == null || credentialsBase64.isBlank()) {
             log.info("Firebase not configured (playboard.firebase.credentials-base64 is blank); "
                     + "push notifications are disabled.");
-            return Optional.empty();
+            return null;
         }
         try {
             byte[] json = Base64.getDecoder().decode(credentialsBase64.trim());
@@ -48,13 +54,13 @@ public class FirebaseConfig {
                     .findFirst()
                     .orElseGet(() -> FirebaseApp.initializeApp(options, APP_NAME));
             log.info("Firebase initialized; push notifications enabled.");
-            return Optional.of(FirebaseMessaging.getInstance(app));
+            return FirebaseMessaging.getInstance(app);
         } catch (Exception e) {
             // Never fail startup over a bad key — degrade to no-op push instead.
             log.error("Failed to initialize Firebase from credentials-base64; "
                     + "push notifications disabled. Check FIREBASE_CREDENTIALS_BASE64.",
                     e);
-            return Optional.empty();
+            return null;
         }
     }
 }
