@@ -21,11 +21,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,7 +53,7 @@ import com.org.playboard.ui.theme.TextMuted
  * Stats, which shows an "Insights coming soon" placeholder until its slice lands.
  */
 @Composable
-fun MainScreen() {
+fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Board) }
     // Set when the user taps "Edit" on a match → the Add tab opens pre-filled in
     // edit mode; null means a fresh "record a match" form.
@@ -58,6 +61,20 @@ fun MainScreen() {
     // Set when a leaderboard row is tapped → the Board tab drills into that player's
     // profile in place; null shows the leaderboard (docs/requirements/02 §2).
     var viewingProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Switching the active group must pop any open leaderboard drill-down — the
+    // viewed player belongs to the previous group. Only clears on a real id change
+    // (not the initial resolve or a same-group silent refresh), so rotation and
+    // process-death restore keep the drill-down.
+    val selectedGroupId by viewModel.selectedGroupId.collectAsState()
+    var lastGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(selectedGroupId) {
+        val current = selectedGroupId ?: return@LaunchedEffect
+        if (lastGroupId != null && lastGroupId != current) {
+            viewingProfileUserId = null
+        }
+        lastGroupId = current
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
