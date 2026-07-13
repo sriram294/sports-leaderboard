@@ -31,8 +31,9 @@ class PushNotificationServiceTest {
     void noOpWhenFirebaseDisabled() {
         var service = new PushNotificationService(Optional.empty(), repo);
 
-        service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
+        var result = service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
 
+        org.junit.jupiter.api.Assertions.assertFalse(result.firebaseEnabled());
         // Never even looks up tokens when Firebase isn't configured.
         verify(repo, never()).findByUserIdIn(anyCollection());
     }

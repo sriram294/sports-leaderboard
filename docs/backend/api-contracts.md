@@ -262,6 +262,12 @@ Body `{ "token": string }`. Unregisters the token (only the caller's own) so a
 signed-out device stops receiving pushes. → `204`. Unknown/foreign tokens are a
 no-op.
 
+### `POST /devices/test`
+Diagnostic. Sends a test push to the **caller's own** registered devices and
+returns FCM's result → `200` `{ firebaseEnabled, tokens, sent, failed, errors[] }`.
+Isolates FCM delivery from the match/event pipeline: `sent > 0` with nothing shown
+means an on-device issue; `failed > 0` surfaces the FCM error codes.
+
 ---
 
 ## Endpoint summary

@@ -7,12 +7,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> {
 
     Optional<GroupMember> findByGroupIdAndUserId(UUID groupId, UUID userId);
 
     List<GroupMember> findByGroupIdAndStatus(UUID groupId, MemberStatus status);
+
+    /**
+     * Just the member user ids — used by push-notification recipient resolution,
+     * which runs on a post-commit async thread with no open session, so it must
+     * avoid touching lazy {@code GroupMember.user} associations.
+     */
+    @Query("select gm.user.id from GroupMember gm where gm.group.id = :groupId and gm.status = :status")
+    List<UUID> findUserIdsByGroupIdAndStatus(@Param("groupId") UUID groupId, @Param("status") MemberStatus status);
 
     List<GroupMember> findByUserIdAndStatus(UUID userId, MemberStatus status);
 
