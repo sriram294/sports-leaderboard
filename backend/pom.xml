@@ -20,7 +20,46 @@
 
     <properties>
         <java.version>25</java.version>
+        <!-- Stable line for the whole google-http-client family. firebase-admin 9.4.3
+             and google-api-client 2.9.0 drag in google-http-client 2.0.0 (a brand-new
+             major) whose gzip response handling breaks FCM sends with
+             "Not in GZIP format". Pin the family to the mature 1.x line, which the
+             FCM/token paths run against fine (they use only stable HTTP APIs). -->
+        <google-http-client.version>1.45.3</google-http-client.version>
     </properties>
+
+    <!-- Force a single, internally-consistent google-http-client version (Maven would
+         otherwise split core=2.0.0 with jackson2/appengine=1.45.3). Overrides the
+         Spring Boot parent's and the Google libs' transitive versions. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.http-client</groupId>
+                <artifactId>google-http-client</artifactId>
+                <version>${google-http-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.http-client</groupId>
+                <artifactId>google-http-client-gson</artifactId>
+                <version>${google-http-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.http-client</groupId>
+                <artifactId>google-http-client-apache-v2</artifactId>
+                <version>${google-http-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.http-client</groupId>
+                <artifactId>google-http-client-jackson2</artifactId>
+                <version>${google-http-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.http-client</groupId>
+                <artifactId>google-http-client-appengine</artifactId>
+                <version>${google-http-client.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
