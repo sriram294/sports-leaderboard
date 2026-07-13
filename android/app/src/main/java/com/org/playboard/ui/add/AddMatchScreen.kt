@@ -357,10 +357,11 @@ private fun TeamSlotRow(
 
 @Composable
 private fun FilledSlot(member: Member, onRemove: () -> Unit) {
+    val label = member.slotLabel()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.TopEnd) {
             PlayerAvatar(
-                displayName = member.displayName,
+                displayName = label,
                 photoUrl = member.photoUrl,
                 avatarColorHex = member.avatarColor,
                 size = 52.dp,
@@ -380,7 +381,7 @@ private fun FilledSlot(member: Member, onRemove: () -> Unit) {
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = member.displayName,
+            text = label,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp),
             color = TextPrimary,
             maxLines = 1,
