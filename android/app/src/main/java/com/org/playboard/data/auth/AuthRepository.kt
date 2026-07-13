@@ -1,5 +1,6 @@
 package com.org.playboard.data.auth
 
+import com.org.playboard.data.device.DeviceRegistrar
 import com.org.playboard.data.model.SessionState
 import com.org.playboard.data.model.UserSession
 import com.org.playboard.data.remote.PlayboardApi
@@ -14,11 +15,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @Singleton
 class AuthRepository @Inject constructor(
     @AuthApi private val authApi: PlayboardApi,
     private val tokenStore: TokenStore,
+    private val deviceRegistrar: DeviceRegistrar,
 ) {
     // Tied to this singleton's lifetime (the process), same as an
     // application-scoped coroutine scope would be — kept local rather than
@@ -32,9 +35,15 @@ class AuthRepository @Inject constructor(
         val response = authApi.signInWithGoogle(GoogleSignInRequestDto(idToken))
         val user = requireNotNull(response.user) { "Sign-in response missing user" }
         tokenStore.save(response.accessToken, response.refreshToken, user.toUserSession())
+        // Best-effort, off the sign-in path: the session is now valid, so the
+        // authenticated register call will carry a bearer token.
+        repositoryScope.launch { deviceRegistrar.register() }
     }
 
     suspend fun signOut() {
+        // Drop this device's push token while the session is still valid — the
+        // unregister call is authenticated, so it must run before clearing tokens.
+        deviceRegistrar.unregister()
         tokenStore.clear()
     }
 }

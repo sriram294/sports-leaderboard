@@ -31,6 +31,8 @@ import com.org.playboard.repository.match.MatchSetRepository;
 import com.org.playboard.repository.match.MatchTeamRepository;
 import com.org.playboard.repository.user.UserRepository;
 import com.org.playboard.service.group.GroupMembershipGuard;
+import com.org.playboard.service.notification.events.MatchRecordedEvent;
+import com.org.playboard.service.notification.events.MatchUpdatedEvent;
 import com.org.playboard.service.stats.StatsRecalculationService;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -44,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -65,6 +68,7 @@ public class MatchService {
     private final UserRepository userRepository;
     private final GroupMembershipGuard membershipGuard;
     private final StatsRecalculationService statsRecalculationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public MatchService(
             MatchRepository matchRepository,
@@ -75,7 +79,8 @@ public class MatchService {
             GroupMemberRepository groupMemberRepository,
             UserRepository userRepository,
             GroupMembershipGuard membershipGuard,
-            StatsRecalculationService statsRecalculationService) {
+            StatsRecalculationService statsRecalculationService,
+            ApplicationEventPublisher eventPublisher) {
         this.matchRepository = matchRepository;
         this.matchTeamRepository = matchTeamRepository;
         this.matchParticipantRepository = matchParticipantRepository;
@@ -85,6 +90,7 @@ public class MatchService {
         this.userRepository = userRepository;
         this.membershipGuard = membershipGuard;
         this.statsRecalculationService = statsRecalculationService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -144,6 +150,9 @@ public class MatchService {
         recordEvent(match, caller.getUser(), MatchAction.CREATED);
         statsRecalculationService.recompute(group, affectedPlayers);
 
+        eventPublisher.publishEvent(new MatchRecordedEvent(
+                group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
+
         return toDetail(match);
     }
 
@@ -178,6 +187,9 @@ public class MatchService {
         Set<UUID> affectedPlayers = new HashSet<>(oldPlayers);
         affectedPlayers.addAll(newPlayers);
         statsRecalculationService.recompute(group, affectedPlayers);
+
+        eventPublisher.publishEvent(new MatchUpdatedEvent(
+                group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
 
         return toDetail(match);
     }
@@ -349,6 +361,25 @@ public class MatchService {
         return matchSetRepository.findByMatchIdOrderBySetNo(match.getId()).stream()
                 .map(s -> new SetDto(s.getSetNo(), s.getTeam1Score(), s.getTeam2Score()))
                 .toList();
+    }
+
+    /** A short human summary for a push notification, e.g. "Alice &amp; Bob beat Carol &amp; Dave". */
+    private String buildMatchSummary(Match match) {
+        List<TeamDto> teams = buildTeams(match);
+        String winners = teamNames(teams, true);
+        String losers = teamNames(teams, false);
+        if (winners.isBlank() || losers.isBlank()) {
+            return "A new match was recorded";
+        }
+        return winners + " beat " + losers;
+    }
+
+    private String teamNames(List<TeamDto> teams, boolean winner) {
+        return teams.stream()
+                .filter(t -> t.winner() == winner)
+                .flatMap(t -> t.players().stream())
+                .map(PlayerRefDto::displayName)
+                .collect(Collectors.joining(" & "));
     }
 
     private ApiException invalidTeams(String message) {

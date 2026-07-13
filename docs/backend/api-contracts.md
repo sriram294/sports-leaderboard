@@ -245,6 +245,25 @@ players. `204`. Same permission rule as edit.
 
 ---
 
+## Devices (push notifications)
+
+FCM registration tokens for the caller's devices. Used to deliver push
+notifications (a match is recorded/edited → active group members except the
+actor; a member is added → the added user). Registration is an idempotent
+upsert on the token — the same token re-registered by a different user (shared
+device) is reassigned, not duplicated.
+
+### `POST /devices`
+Body `{ "token": string, "platform"?: string }` (`platform` defaults to
+`"android"`). Registers/refreshes the caller's device token. → `204`.
+
+### `DELETE /devices`
+Body `{ "token": string }`. Unregisters the token (only the caller's own) so a
+signed-out device stops receiving pushes. → `204`. Unknown/foreign tokens are a
+no-op.
+
+---
+
 ## Endpoint summary
 
 | Method | Path | Purpose |
@@ -269,6 +288,8 @@ players. `204`. Same permission rule as edit.
 | POST | `/groups/{groupId}/matches` | Record match (Add tab) |
 | PATCH | `/groups/{groupId}/matches/{matchId}` | Edit match |
 | DELETE | `/groups/{groupId}/matches/{matchId}` | Delete match |
+| POST | `/devices` | Register this device's FCM token |
+| DELETE | `/devices` | Unregister this device's FCM token |
 
 ## Open questions
 

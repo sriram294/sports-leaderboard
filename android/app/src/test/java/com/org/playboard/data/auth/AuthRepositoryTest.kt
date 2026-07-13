@@ -57,6 +57,8 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
     override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
+    override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("not used in this test")
+    override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("not used in this test")
 }
 
 class AuthRepositoryTest {
@@ -83,7 +85,7 @@ class AuthRepositoryTest {
                 user = UserSummaryDto("user-1", "Raj", "raj@example.com", null, "#7ED321"),
             )
         }
-        val repository = AuthRepository(api, tokenStore)
+        val repository = AuthRepository(api, tokenStore, com.org.playboard.data.device.DeviceRegistrar(api))
 
         val result = repository.signInWithGoogle("google-id-token")
 
@@ -96,7 +98,7 @@ class AuthRepositoryTest {
     @Test
     fun `sign in failure does not persist a session`() = runTest {
         val api = FakePlayboardApi { throw RuntimeException("network error") }
-        val repository = AuthRepository(api, tokenStore)
+        val repository = AuthRepository(api, tokenStore, com.org.playboard.data.device.DeviceRegistrar(api))
 
         val result = repository.signInWithGoogle("google-id-token")
 
@@ -114,7 +116,7 @@ class AuthRepositoryTest {
                 UserSummaryDto("user-1", "Raj", "raj@example.com", null, "#7ED321"),
             )
         }
-        val repository = AuthRepository(api, tokenStore)
+        val repository = AuthRepository(api, tokenStore, com.org.playboard.data.device.DeviceRegistrar(api))
         repository.signInWithGoogle("google-id-token")
 
         repository.signOut()

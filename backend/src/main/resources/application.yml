@@ -41,3 +41,9 @@ playboard:
     # Prefixed onto stored avatar paths so `photoUrl` is directly loadable by
     # the Android client. Must be the externally reachable origin of this API.
     public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
+  firebase:
+    # Base64-encoded Firebase service-account JSON, used to send FCM push
+    # notifications. Left blank in dev/tests — when blank, push is a logged
+    # no-op (see FirebaseConfig / PushNotificationService). Encode the key with
+    # e.g. `base64 -w0 service-account.json` and set it on Railway.
+    credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
