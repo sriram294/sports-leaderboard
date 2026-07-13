@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 // Name the built artifacts "Playboard" instead of the module name "app", so the
@@ -61,6 +62,14 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests {
+            // Return defaults for un-mocked android.* framework calls (e.g. the
+            // android.util.Log statements in DeviceRegistrar's FCM-unavailable
+            // path) instead of throwing "not mocked" in JVM unit tests.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -102,6 +111,10 @@ dependencies {
 
     // Local storage (session tokens)
     implementation(libs.androidx.datastore.preferences)
+
+    // Push notifications (Firebase Cloud Messaging)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

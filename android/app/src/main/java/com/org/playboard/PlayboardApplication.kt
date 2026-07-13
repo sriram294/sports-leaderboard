@@ -2,6 +2,7 @@ package com.org.playboard
 
 import android.app.Application
 import com.org.playboard.data.auth.ActivityProvider
+import com.org.playboard.notifications.NotificationChannels
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -11,5 +12,7 @@ class PlayboardApplication : Application() {
         // Track the foreground Activity so Credential Manager (Google Sign-In) can
         // launch its picker with an Activity-based context — see [ActivityProvider].
         registerActivityLifecycleCallbacks(ActivityProvider)
+        // Notification channels must exist before the first push is shown.
+        NotificationChannels.ensureCreated(this)
     }
 }

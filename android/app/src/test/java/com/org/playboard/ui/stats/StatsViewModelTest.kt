@@ -55,6 +55,8 @@ private class FakePlayboardApi(
     override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("unused")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto = error("unused")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = leaderboardResult(groupId)
+    override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("unused")
+    override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")

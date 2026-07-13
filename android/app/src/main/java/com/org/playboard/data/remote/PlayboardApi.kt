@@ -17,14 +17,17 @@ import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
+import com.org.playboard.data.remote.dto.RegisterDeviceRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
+import com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto
 import com.org.playboard.data.remote.dto.UpdateUserRequestDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -123,4 +126,12 @@ interface PlayboardApi {
         @Path("groupId") groupId: String,
         @Path("matchId") matchId: String,
     )
+
+    /** Register this device's FCM token for push notifications (idempotent upsert). */
+    @POST("api/v1/devices")
+    suspend fun registerDevice(@Body request: RegisterDeviceRequestDto)
+
+    /** Unregister this device's FCM token on sign-out. DELETE carries a body by design. */
+    @HTTP(method = "DELETE", path = "api/v1/devices", hasBody = true)
+    suspend fun unregisterDevice(@Body request: UnregisterDeviceRequestDto)
 }

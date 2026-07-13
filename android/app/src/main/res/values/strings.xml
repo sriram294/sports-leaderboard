@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Playboard</string>
+
+    <!-- Notification channel for group activity pushes (new/edited matches, group adds). -->
+    <string name="notification_channel_match_activity" translatable="false">match_activity</string>
+    <string name="notification_channel_match_activity_name">Match activity</string>
+    <string name="notification_channel_match_activity_desc">New matches, edits, and group updates</string>
 </resources>

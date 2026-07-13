@@ -80,6 +80,8 @@ private class FakePlayboardApi(
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         error("not used in this test")
     override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("not used in this test")
+    override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("not used in this test")
+    override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("not used in this test")
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(members)
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("not used in this test")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("not used in this test")
@@ -156,7 +158,7 @@ class AddMatchViewModelTest {
             produceFile = { tempFolder.newFile("test.preferences_pb") },
         )
         val json = Json { ignoreUnknownKeys = true }
-        val auth = AuthRepository(api, TokenStore(dataStore))
+        val auth = AuthRepository(api, TokenStore(dataStore), com.org.playboard.data.device.DeviceRegistrar(api))
         val groups = testGroupRepository(api, json)
         val matches = MatchRepository(api, groups, json)
         return Triple(auth, groups, matches)

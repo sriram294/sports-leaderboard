@@ -69,6 +69,15 @@
             <version>2.9.0</version>
         </dependency>
 
+        <!-- Firebase Admin SDK — sends FCM push notifications. Initialized from a
+             service-account key (FIREBASE_CREDENTIALS_BASE64); optional at runtime
+             (see FirebaseConfig) so the app boots without it. -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.4.3</version>
+        </dependency>
+
         <!-- Issues/verifies our own access + refresh JWTs (Google's token is never used as an ongoing API credential) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

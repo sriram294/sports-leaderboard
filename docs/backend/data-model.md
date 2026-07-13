@@ -41,6 +41,7 @@ product requirements this schema serves).
 | `match_events` | Audit log: created / edited / deleted, by whom, when |
 | `member_stats` | Materialized per-group-per-player stats (leaderboard source) |
 | `refresh_tokens` | Server-side record backing refresh-token rotation/revocation |
+| `device_tokens` | FCM registration tokens per user's device (push notifications) |
 
 `member_stats` is the only denormalized/derived table. Everything else is
 normalized; `member_stats` is rebuilt from `matches`/`match_teams`/

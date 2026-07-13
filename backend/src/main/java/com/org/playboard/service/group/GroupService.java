@@ -26,6 +26,7 @@ import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.user.UserRepository;
+import com.org.playboard.service.notification.events.MemberAddedEvent;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Comparator;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +63,7 @@ public class GroupService {
     private final UserRepository userRepository;
     private final MatchRepository matchRepository;
     private final GroupMembershipGuard membershipGuard;
+    private final ApplicationEventPublisher eventPublisher;
     private final SecureRandom random = new SecureRandom();
 
     public GroupService(
@@ -70,7 +73,8 @@ public class GroupService {
             SportRepository sportRepository,
             UserRepository userRepository,
             MatchRepository matchRepository,
-            GroupMembershipGuard membershipGuard) {
+            GroupMembershipGuard membershipGuard,
+            ApplicationEventPublisher eventPublisher) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupInviteRepository = groupInviteRepository;
@@ -78,6 +82,7 @@ public class GroupService {
         this.userRepository = userRepository;
         this.matchRepository = matchRepository;
         this.membershipGuard = membershipGuard;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -222,6 +227,8 @@ public class GroupService {
         });
         member.setStatus(MemberStatus.ACTIVE);
         groupMemberRepository.save(member);
+
+        eventPublisher.publishEvent(new MemberAddedEvent(group.getId(), group.getName(), user.getId()));
 
         return MemberDto.from(member);
     }
