@@ -1,5 +1,6 @@
 package com.org.playboard.config;
 
+import com.google.api.client.http.apache.v2.ApacheHttpTransport;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -47,8 +48,15 @@ public class FirebaseConfig {
             byte[] json = Base64.getDecoder().decode(credentialsBase64.trim());
             GoogleCredentials credentials =
                     GoogleCredentials.fromStream(new ByteArrayInputStream(json));
-            FirebaseOptions options =
-                    FirebaseOptions.builder().setCredentials(credentials).build();
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(credentials)
+                    // Use the Apache HTTP transport instead of the default NetHttpTransport.
+                    // NetHttpTransport routes through java.net.HttpURLConnection, whose gzip
+                    // handling is environment-sensitive; on Railway the FCM send failed with
+                    // "Not in GZIP format" (works locally). ApacheHttpTransport decodes gzip
+                    // itself and sidesteps HttpURLConnection entirely.
+                    .setHttpTransport(new ApacheHttpTransport())
+                    .build();
             FirebaseApp app = FirebaseApp.getApps().stream()
                     .filter(a -> APP_NAME.equals(a.getName()))
                     .findFirst()
