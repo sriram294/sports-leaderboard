@@ -6,9 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.org.playboard.entity.group.GroupMember;
 import com.org.playboard.entity.group.MemberStatus;
-import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.service.notification.events.MatchRecordedEvent;
 import com.org.playboard.service.notification.events.MemberAddedEvent;
@@ -29,12 +27,8 @@ class NotificationEventListenerTest {
         UUID groupId = UUID.randomUUID();
         UUID actor = UUID.randomUUID();
         UUID other = UUID.randomUUID();
-        // Build the member mocks first — constructing them inside the thenReturn(...)
-        // argument would nest stubbing and trip Mockito's UnfinishedStubbing check.
-        GroupMember actorMember = member(actor);
-        GroupMember otherMember = member(other);
-        when(memberRepo.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE))
-                .thenReturn(List.of(actorMember, otherMember));
+        when(memberRepo.findUserIdsByGroupIdAndStatus(groupId, MemberStatus.ACTIVE))
+                .thenReturn(List.of(actor, other));
 
         listener.onMatchRecorded(new MatchRecordedEvent(groupId, "Sunday Club", actor, "A beat B", UUID.randomUUID()));
 
@@ -53,13 +47,5 @@ class NotificationEventListenerTest {
         listener.onMemberAdded(new MemberAddedEvent(groupId, "Sunday Club", added));
 
         verify(push).sendToUsers(eq(List.of(added)), eq("Sunday Club"), any(), any(Map.class));
-    }
-
-    private GroupMember member(UUID userId) {
-        var user = mock(User.class);
-        when(user.getId()).thenReturn(userId);
-        var member = mock(GroupMember.class);
-        when(member.getUser()).thenReturn(user);
-        return member;
     }
 }
