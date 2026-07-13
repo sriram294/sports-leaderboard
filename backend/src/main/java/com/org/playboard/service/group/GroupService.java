@@ -46,9 +46,11 @@ public class GroupService {
     private static final int INVITE_CODE_LENGTH = 6;
     private static final int INVITE_CODE_MAX_ATTEMPTS = 5;
 
-    // Per-group filler players for one-off non-members. Enough for "1 regular +
-    // 3 guests" in a doubles match. Kept in sync with V4__group_guests.sql, which
-    // backfills the same count/naming/color into pre-existing groups.
+    // Filler players for one-off non-members. Enough for "1 regular + 3 guests"
+    // in a doubles match. Guests are a single global pool shared by every group
+    // (they carry no stats/identity, so "Guest N" is identical everywhere) —
+    // V5__shared_guest_fillers.sql seeds these users; keep the count/naming/color
+    // and the email pattern below in sync with it.
     private static final int GUEST_FILLER_COUNT = 3;
     private static final String GUEST_AVATAR_COLOR = "#9AA0A6";
 
@@ -115,26 +117,37 @@ public class GroupService {
     }
 
     /**
-     * Creates this group's pool of guest fillers (see {@link GroupRole#GUEST}).
-     * Each is a synthetic user with a deterministic per-group email — matching
-     * the backfill in V4__group_guests.sql — so a match can reference it like any
-     * player while it stays out of counts and stats.
+     * Links this group to the shared pool of guest fillers (see {@link GroupRole#GUEST}).
+     * Each guest is a global synthetic user reused by every group, so no new user
+     * rows are created per group — only the per-group {@code group_members} rows
+     * that make each guest an active member (required for match validation and to
+     * keep guests out of counts/stats via their role).
      */
     private void seedGuestFillers(Group group) {
         for (int n = 1; n <= GUEST_FILLER_COUNT; n++) {
-            User guestUser = new User();
-            guestUser.setDisplayName("Guest " + n);
-            guestUser.setEmail("guest-" + n + "+" + group.getId() + "@playboard.local");
-            guestUser.setAvatarColor(GUEST_AVATAR_COLOR);
-            guestUser = userRepository.save(guestUser);
-
             GroupMember guest = new GroupMember();
             guest.setGroup(group);
-            guest.setUser(guestUser);
+            guest.setUser(globalGuestUser(n));
             guest.setRole(GroupRole.GUEST);
             guest.setStatus(MemberStatus.ACTIVE);
             groupMemberRepository.save(guest);
         }
+    }
+
+    /**
+     * The shared guest user #{@code n} (1-based), normally seeded by
+     * V5__shared_guest_fillers.sql. Defensively created here if absent (e.g. a
+     * fresh DB whose first group is made before/without that seed).
+     */
+    private User globalGuestUser(int n) {
+        String email = "guest-" + n + "@playboard.local";
+        return userRepository.findByEmail(email).orElseGet(() -> {
+            User guestUser = new User();
+            guestUser.setDisplayName("Guest " + n);
+            guestUser.setEmail(email);
+            guestUser.setAvatarColor(GUEST_AVATAR_COLOR);
+            return userRepository.save(guestUser);
+        });
     }
 
     @Transactional
