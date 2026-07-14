@@ -75,7 +75,7 @@ class PlayboardMessagingService : FirebaseMessagingService() {
         )
 
         val builder = NotificationCompat.Builder(this, NotificationChannels.matchActivityId(this))
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.app_icon_large)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

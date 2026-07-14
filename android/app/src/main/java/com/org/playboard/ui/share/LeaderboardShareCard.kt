@@ -70,7 +70,7 @@ fun LeaderboardShareCard(
         modifier = modifier
             .fillMaxWidth()
             .background(BackgroundDark)
-            .padding(28.dp),
+            .padding(15.dp),
     ) {
         // Header — wordmark, group name, date.
         Text(
