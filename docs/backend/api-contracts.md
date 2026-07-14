@@ -6,7 +6,7 @@ against the schema in [data-model.md](data-model.md).
 
 ## Conventions
 
-- **Auth**: every endpoint except `POST /auth/google` and `POST /auth/refresh`
+- **Auth**: every endpoint except `GET /app/update`, `POST /auth/google`, and `POST /auth/refresh`
   requires `Authorization: Bearer <accessToken>`.
 - **Google Sign-In flow**: Android gets a Google ID token via Credential
   Manager (`GetGoogleIdOption`, using a Web-application OAuth Client ID as
@@ -66,6 +66,30 @@ Response `200`: same shape as above minus `user`.
 
 ### `POST /auth/logout`
 Revokes the refresh token. `204`.
+
+## App updates
+
+### `GET /app/update`
+
+Public endpoint used by distributed debug builds. When no release is configured,
+it returns `{ "versionCode": null, "versionName": null, "downloadUrl": null,
+"available": false }`. A configured response contains the integer `versionCode`,
+display `versionName`, and an HTTPS GitHub Release asset `downloadUrl`, with
+`available: true`. Invalid or partial server configuration returns `500` rather
+than advertising an unusable APK.
+
+Configure the current debug release with:
+
+```text
+PLAYBOARD_UPDATE_DEBUG_VERSION_CODE=2
+PLAYBOARD_UPDATE_DEBUG_VERSION_NAME=1.1
+PLAYBOARD_UPDATE_DEBUG_DOWNLOAD_URL=https://github.com/<owner>/<repo>/releases/download/v1.1/Playboard-debug.apk
+```
+
+Release sequence: increment Android `versionCode` and set `versionName`, build
+with the same debug signing key used by installed testers, publish the APK as a
+GitHub Release asset, then update these backend variables. Never point this
+debug endpoint at an APK signed with a different key.
 
 ---
 
@@ -282,6 +306,7 @@ means an on-device issue; `failed > 0` surfaces the FCM error codes.
 | POST | `/auth/google` | Sign in |
 | POST | `/auth/refresh` | Refresh access token |
 | POST | `/auth/logout` | Revoke refresh token |
+| GET | `/app/update` | Public latest debug APK metadata |
 | GET | `/users/me` | Own profile identity |
 | PATCH | `/users/me` | Update display name |
 | POST | `/users/me/photo` | Upload avatar photo |

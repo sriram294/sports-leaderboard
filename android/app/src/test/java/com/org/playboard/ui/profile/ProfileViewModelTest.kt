@@ -59,6 +59,8 @@ private open class FakePlayboardApi(
     var groups: List<GroupDto> = emptyList(),
     var stats: Map<String, PlayerStatsDto> = emptyMap(),
 ) : PlayboardApi {
+    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
+    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     var statsCalls = 0
     var userName = "Raj"
     var userPhotoUrl: String? = null

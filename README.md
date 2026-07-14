@@ -30,6 +30,14 @@ The backend defaults to `jdbc:postgresql://localhost:5432/playboard` with the
 `DB_PASSWORD` as needed. Flyway applies migrations on startup. Android's API
 base URL is defined in `android/app/build.gradle.kts`.
 
+### Sideloaded debug updates
+
+The public `GET /api/v1/app/update` endpoint advertises the latest debug APK.
+Set `PLAYBOARD_UPDATE_DEBUG_VERSION_CODE`, `PLAYBOARD_UPDATE_DEBUG_VERSION_NAME`,
+and `PLAYBOARD_UPDATE_DEBUG_DOWNLOAD_URL` on the backend after publishing the
+APK as an HTTPS GitHub Release asset. Increment `versionCode` for every build
+and keep the same debug signing key; otherwise Android will reject the upgrade.
+
 ## Verify changes
 
 ```bash

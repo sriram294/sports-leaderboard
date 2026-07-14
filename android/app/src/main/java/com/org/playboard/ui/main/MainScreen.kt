@@ -46,6 +46,7 @@ import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
+import com.org.playboard.ui.update.AppUpdateViewModel
 
 /**
  * Post-login shell: the 5-tab bottom bar present on every screen
@@ -53,7 +54,7 @@ import com.org.playboard.ui.theme.TextMuted
  * Stats provides the group Insights dashboard.
  */
 @Composable
-fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppUpdateViewModel? = null) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Board) }
     // Set when the user taps "Edit" on a match → the Add tab opens pre-filled in
     // edit mode; null means a fresh "record a match" form.
@@ -128,7 +129,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                         },
                     )
                     MainTab.Stats -> StatsScreen()
-                    MainTab.Profile -> ProfileScreen()
+                    MainTab.Profile -> ProfileScreen(updateViewModel = updateViewModel)
                 }
             }
         }

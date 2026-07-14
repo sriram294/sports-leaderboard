@@ -59,6 +59,8 @@ private class FakePlayboardApi(
     val matches: MutableList<MatchSummaryDto> = mutableListOf(),
     var details: Map<String, MatchDetailDto> = emptyMap(),
 ) : PlayboardApi {
+    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
+    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     val deletedIds = mutableListOf<String>()
 
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = error("unused")

@@ -50,6 +50,8 @@ private class FakePlayboardApi(
     var createInviteResult: suspend (String) -> InviteResponseDto = { error("createInvite not stubbed") },
     var addMemberResult: suspend (AddMemberRequestDto) -> MemberDto = { error("addMember not stubbed") },
 ) : PlayboardApi {
+    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
+    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         error("not used in this test")
 

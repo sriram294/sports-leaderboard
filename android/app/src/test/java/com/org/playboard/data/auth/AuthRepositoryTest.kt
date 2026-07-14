@@ -34,6 +34,8 @@ import org.junit.rules.TemporaryFolder
 
 private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRequestDto) -> TokenResponseDto) :
     PlayboardApi {
+    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
+    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = signInResult(request)
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("not used in this test")
     override suspend fun getGroups(): GroupsResponseDto = error("not used in this test")
