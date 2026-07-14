@@ -6,7 +6,7 @@ Source: `docs/prototype/login.pdf`
 Entry point / auth gate. First screen shown to a signed-out user.
 
 ## Layout
-- App branding: "SHUTTLE STATS — DOUBLES TRACKER"
+- App branding: "PLAYBOARD"
 - Tagline: "Track every doubles match, climb the win-rate leaderboard,
   across all your groups."
 - Single primary action: **Continue with Google**

@@ -9,7 +9,7 @@ top-level package, with one subfolder per feature underneath — e.g.
 earlier package-by-feature draft, applied consistently across every layer.
 
 **Status: every endpoint in api-contracts.md is now built** (auth, users,
-groups, matches, stats/leaderboard) **and self-documented live** via
+groups, matches, stats/leaderboard, and device registration) **and self-documented live** via
 springdoc-openapi (`/v3/api-docs`, `/swagger-ui.html`). Remaining gaps are
 smaller cross-cutting polish (Jackson config, a shared `CursorPage`
 helper), not missing product functionality — see § Open questions.
@@ -28,8 +28,7 @@ backend/
     │   │   │   ├── SecurityConfig.java          (built — stateless JWT filter chain; permits only POST /auth/google, POST /auth/refresh, /avatars/**, and the OpenAPI/Swagger paths)
     │   │   │   ├── JwtAuthenticationFilter.java (built — reads Bearer <accessToken>, sets caller principal)
     │   │   │   ├── WebConfig.java               (built — serves uploaded avatars back out at /avatars/**)
-    │   │   │   ├── OpenApiConfig.java           (built — API metadata + bearer security scheme for /v3/api-docs, /swagger-ui.html)
-    │   │   │   └── JacksonConfig.java           (not yet built)
+    │   │   │   └── OpenApiConfig.java           (built — API metadata + bearer security scheme for /v3/api-docs, /swagger-ui.html)
     │   │   │
     │   │   ├── common/             # shared kernel — used across every layer
     │   │   │   ├── ApiExceptionHandler.java   (built — maps ApiException -> ProblemDetail + `code`)
@@ -60,7 +59,8 @@ backend/
     │   │   │   ├── stats/
     │   │   │   │   ├── MemberStats.java              (composite key via @EmbeddedId/@MapsId; win_rate needs @Generated — see hibernate-jpa-mapping-gotchas)
     │   │   │   │   └── MemberStatsId.java
-    │   │   │   └── auth/RefreshToken.java            (id doubles as the refresh JWT's `jti`; see data-model.md)
+    │   │   │   ├── auth/RefreshToken.java            (id doubles as the refresh JWT's `jti`; see data-model.md)
+    │   │   │   └── device/DeviceToken.java           (FCM registration token)
     │   │   │
     │   │   ├── repository/                    (all built)
     │   │   │   ├── sport/SportRepository.java
@@ -76,7 +76,8 @@ backend/
     │   │   │   │   ├── MatchSetRepository.java       (+ deleteByMatchId, + sumScoresByMatchIds projection)
     │   │   │   │   └── MatchEventRepository.java
     │   │   │   ├── stats/MemberStatsRepository.java
-    │   │   │   └── auth/RefreshTokenRepository.java
+    │   │   │   ├── auth/RefreshTokenRepository.java
+    │   │   │   └── device/DeviceTokenRepository.java
     │   │   │
     │   │   ├── service/                       (all built)
     │   │   │   ├── auth/
@@ -91,6 +92,8 @@ backend/
     │   │   │   │   └── GroupMembershipGuard.java    (shared "is caller an active member/role" check — plain method calls, not @PreAuthorize; see § Why this shape)
     │   │   │   ├── match/
     │   │   │   │   └── MatchService.java            (list/detail/create/edit/delete; cursor pagination; validation; calls service.stats in the same @Transactional; findRecentMatches() is a cross-service helper for StatsQueryService)
+    │   │   │   ├── device/DeviceService.java          (FCM token register/unregister)
+    │   │   │   ├── notification/                     (FCM send service + domain event listener)
     │   │   │   └── stats/
     │   │   │       ├── StatsRecalculationService.java  (write path — full rescan per affected player on every match write; see data-model.md § Recompute strategy)
     │   │   │       └── StatsQueryService.java          (read path — leaderboard ranking, player stats, on-demand Best Partner computation)
@@ -100,6 +103,7 @@ backend/
     │   │   │   ├── user/UserController.java   (GET/PATCH /users/me, POST /users/me/photo)
     │   │   │   ├── group/GroupController.java (GET/POST /groups, POST /groups/join, POST /groups/{id}/invites, GET /groups/{id}/members)
     │   │   │   ├── match/MatchController.java (GET/POST /groups/{id}/matches, GET/PATCH/DELETE .../matches/{id})
+    │   │   │   ├── device/DeviceController.java (POST/DELETE /devices, POST /devices/test)
     │   │   │   └── stats/
     │   │   │       ├── LeaderboardController.java   (GET /groups/{id}/leaderboard)
     │   │   │       └── PlayerStatsController.java   (GET /groups/{id}/members/{userId}/stats)
@@ -139,11 +143,13 @@ backend/
     │   │
     │   └── resources/
     │       ├── application.yml
-    │       ├── application-local.yml
-    │       └── db/migration/             # Flyway — versioned, matches data-model.md 1:1
+    │       └── db/migration/             # Flyway — versioned schema changes
     │           ├── V1__init_schema.sql
     │           ├── V2__refresh_tokens.sql
-    │           └── V3__group_avatar_color.sql
+    │           ├── V3__group_avatar_color.sql
+    │           ├── V4__group_guests.sql
+    │           ├── V5__shared_guest_fillers.sql
+    │           └── V6__device_tokens.sql
     │
     └── test
         └── java/com/org/playboard/
@@ -206,9 +212,8 @@ backend/
   id) — a normal Java method reads more clearly than a SpEL expression
   calling into a bean, and is trivial to hit directly in an integration
   test without standing up Spring Security's method-security machinery.
-- **Match edit/delete permission is recorder-OR-owner/admin**, resolving
-  the open question api-contracts.md left as "exact rule still open" — both
-  `PATCH` and `DELETE` raise `MATCH_EDIT_FORBIDDEN` otherwise.
+- **Match edit/delete permission is recorder-OR-owner/admin** — both `PATCH`
+  and `DELETE` raise `MATCH_EDIT_FORBIDDEN` otherwise.
 - **The leaderboard excludes members with zero matches played** — a
   reasonable reading of api-contracts.md that wasn't explicit; a "ranking"
   of players who haven't played is noise, not signal.

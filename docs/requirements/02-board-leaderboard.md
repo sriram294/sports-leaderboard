@@ -15,6 +15,8 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
 - **Top Players podium**: #1/#2/#3 players by win rate, each showing
   avatar, name, win rate %, W-L record. #1 is visually emphasized
   (larger, glowing highlight).
+- **Share** action: renders the active group's leaderboard as an image and
+  opens the Android share sheet.
 - **Rankings table**: all players in the group, columns: Rank, Player
   (avatar + name), GP, W, L, PF, Win% (sortable — shown with a dropdown
   arrow on the Win% column header).
@@ -27,8 +29,7 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
    partner, recent matches), scoped to the tapped player instead of the
    signed-in user. Read-only (no sign-out/account section, since it isn't
    "your" profile).
-3. Rankings table is sortable by column (Win% shown expanded by default;
-   confirm which other columns are sortable — GP, W, L, PF candidates).
+3. Rankings table is sortable by GP, W, L, PF, and Win%; Win% is the default.
 4. Avatar rendering follows the global rule: uploaded photo, else colored
    initial ([00-overview.md](00-overview.md)).
 
@@ -37,9 +38,13 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
   table today but present on Profile — confirm if it should show here too).
 - Ranking order/tie-break rule (e.g. win% desc, then wins desc, then PF desc).
 
+## Current ranking behavior
+
+- Canonical ranking ties use win rate, then wins; UI-only column sorts retain
+  that canonical relative order for equal values.
+
 ## Open questions
-- Tie-break rule for identical win% (e.g. Marcus/Kiran both 29% in sample
-  data — what determines display order?).
+
 - Minimum games threshold before a player appears/ranks (a 1-game 100%
   player outranking a 6-game 100% player may need a minimum GP rule).
 - Empty state: group with zero matches played.

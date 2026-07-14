@@ -24,10 +24,10 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 2. **Viewed via Board tap** (another player): same stats layout, no
    account section — see [02-board-leaderboard.md](02-board-leaderboard.md)
    requirement #2.
-3. Avatar follows global rule: uploaded photo if set, else colored initial
-   circle ([00-overview.md](00-overview.md)). **Own profile should expose
-   an action to upload/change the photo** (not shown in prototype — needs
-   an edit-avatar affordance, e.g. tap avatar or an edit icon).
+3. Avatar follows the global rule: uploaded photo if set, else colored initial
+   circle ([00-overview.md](00-overview.md)). On an own profile, tap the
+   avatar to select and upload a replacement photo; the profile name can also
+   be changed through the edit-name sheet.
 4. Stats (matches played, win rate, W/L, PF/PA, streak, best streak, best
    partner, recent matches) are scoped to the **currently selected group**
    — switching groups via the header recalculates all of it for the player
@@ -44,8 +44,7 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 - Recent matches: last N matches involving this player, most recent first.
 
 ## Open questions
-- Where/how does a user change their display photo (upload flow, crop,
-  remove-photo-to-revert-to-initial)?
+- Photo crop and remove-photo-to-revert-to-initial are not implemented.
 - Best Partner minimum-games threshold (a 1-game 100% "best partner" may
   be misleading — same concern as leaderboard ranking).
 - Do stats aggregate across all groups anywhere, or always per-group only?

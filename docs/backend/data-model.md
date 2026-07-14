@@ -107,7 +107,7 @@ create table group_members (
     id          uuid primary key default gen_random_uuid(),
     group_id    uuid not null references groups(id),
     user_id     uuid not null references users(id),
-    role        text not null default 'member' check (role in ('owner', 'admin', 'member')),
+    role        text not null default 'member' check (role in ('owner', 'admin', 'member', 'guest')),
     status      text not null default 'active' check (status in ('active', 'removed')),
     joined_at   timestamptz not null default now(),
     unique (group_id, user_id)
@@ -228,6 +228,19 @@ create table refresh_tokens (
 );
 
 create index idx_refresh_tokens_user on refresh_tokens(user_id) where revoked_at is null;
+
+-- FCM registration tokens. A token is globally unique and can be reassigned
+-- when a shared device registers it for another user.
+create table device_tokens (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references users(id) on delete cascade,
+    token       text not null unique,
+    platform    text not null default 'android',
+    created_at  timestamptz not null default now(),
+    updated_at  timestamptz not null default now()
+);
+
+create index idx_device_tokens_user on device_tokens(user_id);
 ```
 
 ## Recompute strategy
@@ -273,9 +286,8 @@ pattern as `member_stats` without touching anything else.
   `team_size`/scoring; existing tables need no migration since team
   structure already comes from `match_teams`/`match_participants`, not
   fixed columns.
-- **Match edit/delete permissions** ([03-matches.md](../requirements/03-matches.md)
-  open question): `group_members.role` already exists to gate this once
-  the rule is decided — no schema change needed either way.
+- **Match edit/delete permissions**: `group_members.role` gates the implemented
+  recorder-or-owner/admin rule; no schema change is needed.
 - **Deep-linking a Recent Match to its expanded Matches entry**: matches
   are already addressable by `id`; just a client-side navigation detail.
 - **Group avatar / branding**: resolved via `groups.avatar_color` (V3) —

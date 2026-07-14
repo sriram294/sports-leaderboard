@@ -1,4 +1,4 @@
-# Shuttle Stats — App Overview
+# Playboard — App Overview
 
 Source prototypes: `docs/prototype/*.pdf`
 
@@ -15,7 +15,7 @@ in the middle so it stays centered:
 | Board | leaderboard | Group leaderboard / rankings (home) |
 | Matches | crossed rackets | Chronological match history |
 | Add (center, floating) | + | Record a new match |
-| Stats | insights | Group analytics dashboard (planned — placeholder for now) |
+| Stats | insights | Group analytics dashboard: records, partnerships, recent form, and biggest win |
 | Profile | person | Signed-in user's stats & account |
 
 Per-page requirement docs:
@@ -29,9 +29,11 @@ Per-page requirement docs:
 ## Cross-cutting concepts
 
 ### Group
-- A user can belong to multiple groups, switch via a dropdown (shown on
-  Board/Matches/Add/Profile header).
-- Group has: name, member count, match count.
+- A user can belong to multiple groups, switch via a dropdown in the shared
+  header on every tab.
+- Group has: name, colored-initial avatar, real-member count, and match count.
+- Each new group includes three reusable **Guest** fillers. Guests may fill a
+  match slot but are excluded from member counts, leaderboards, and stats.
 - Group switcher dropdown shows all "Your Groups" the user belongs to, plus a
   "Create or join a group" action.
 
@@ -48,11 +50,11 @@ Per-page requirement docs:
   derived from sets won or explicitly selected.
 - Has an audit trail: who recorded it, when.
 
-## Open questions (carried across all pages)
-- Auth: Google Sign-In only, or additional providers later?
-- Permissions: who can edit/delete a match — recorder only, or any group
-  member/admin? (raised in [03-matches.md](03-matches.md))
-- Group roles: is there an "admin"/"owner" concept for group management
-  (approving join requests, removing members)?
-- Sports/format scope: doubles-only for v1, or should the data model stay
-  open to singles / other sports later?
+## Current product rules
+- Authentication is Google Sign-In; the API exchanges the Google ID token for
+  Playboard access and refresh tokens.
+- Owners and admins can rename groups, create invites, and add members.
+- A match can be edited or deleted by its recorder, the group owner, or an
+  admin. Deletion is soft and recalculates affected player stats.
+- v1 records badminton doubles; the backend's sport model remains extensible
+  for future formats.

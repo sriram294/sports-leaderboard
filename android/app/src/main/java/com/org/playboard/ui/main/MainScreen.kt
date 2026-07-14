@@ -49,8 +49,8 @@ import com.org.playboard.ui.theme.TextMuted
 
 /**
  * Post-login shell: the 5-tab bottom bar present on every screen
- * (docs/requirements/00-overview.md § Navigation). All tabs are real except
- * Stats, which shows an "Insights coming soon" placeholder until its slice lands.
+ * (docs/requirements/00-overview.md § Navigation). Every tab is implemented;
+ * Stats provides the group Insights dashboard.
  */
 @Composable
 fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
@@ -227,4 +227,3 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
         )
     }
 }
-
