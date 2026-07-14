@@ -36,10 +36,12 @@ Chronological log of every doubles match recorded in the current group.
   ids), sets (array of score pairs), winning team, recordedBy (user id),
   recordedAt, editHistory (list of {userId, action, timestamp}).
 
+## Current rules
+
+- **Permissions**: the recorder, group owner, or group admin may edit or
+  delete a match; other members receive `MATCH_EDIT_FORBIDDEN`.
+- Delete is a soft delete: the match stays available to the audit trail but is
+  excluded from history, leaderboard, and profile-stat queries.
+
 ## Open questions
-- **Permissions**: who can edit/delete a match — only the recorder, any
-  player in the match, or any group member/admin? Affects whether
-  Edit/Delete controls even render for a given viewer.
-- Does deleting a match hard-delete or soft-delete (keep for audit but
-  exclude from stats)?
 - Any edit window/lock (e.g. can't edit a match older than N days)?

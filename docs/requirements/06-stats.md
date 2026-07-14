@@ -1,8 +1,7 @@
 # Stats (Insights) Screen
 
-Status: **planned / not yet built.** The 5th bottom-nav tab exists but currently
-shows an "Insights coming soon" placeholder. This doc is the spec for the real
-screen.
+Status: **implemented.** The Stats tab is an Insights dashboard backed by the
+leaderboard and the current first page of match history.
 
 ## Purpose
 A group-level analytics dashboard — the "so who's actually winning / who plays
@@ -17,10 +16,9 @@ best together" view — scoped to the currently selected group. Complements the
   - Win leader (top leaderboard entry — server-sorted by win rate)
   - Most points (max `pointsFor`)
   - Most active (max `gamesPlayed`)
-- **Best partnership** — the teammate pair with the best win rate together
-  (min 2 games together, tie-break by games), with both avatars + "Nw / M games".
-  Same rule the backend uses for Profile's Best Partner
-  (`StatsQueryService.computeBestPartner`).
+  - Longest streak and current hot streak
+- **Best partnership** — the recent teammate pair with the best win rate
+  together, tie-broken by games, with both avatars + "Nw / M games".
 - **Recent form** — each ranked player's last-5 W/L as colored pills
   (`StatWinGreen` / `StatLossRed`), most-recent-first.
 - **Biggest win** — the match with the largest total-points margin (teams + score).
@@ -42,12 +40,12 @@ best together" view — scoped to the currently selected group. Complements the
   returns only the first page (newest ~20) — a reasonable "recent" window; label
   those sections accordingly. Improves automatically once Matches pagination is
   wired (see [03-matches.md](03-matches.md)).
-- Keep the derivations as pure functions (`computeBestPartnership`, `computeForm`,
-  `computeBiggestWin`) so they're unit-testable without the network.
-- Mirror the Board slice shape: `ui/stats/StatsUiState.kt` +
-  `ui/stats/StatsViewModel.kt` (`@HiltViewModel`, observes `selectedGroup` +
-  `groupsLoadState` + `dataRevision`, like `BoardViewModel`) + `StatsScreen.kt`
-  (previewable content). Add `StatsViewModelTest`.
+- The derivations are pure functions (`computeBestPartnership`, `computeForm`,
+  `computeBiggestWin`) and are covered by unit tests without the network.
+- Implementation: `ui/stats/StatsUiState.kt`, `StatsViewModel.kt`,
+  `StatsComputations.kt`, and `StatsScreen.kt`. The ViewModel observes the
+  selected group and data revision; `StatsComputationsTest` and
+  `StatsViewModelTest` cover the derivations and state flow.
 - If any section becomes an actual chart (e.g. a win-rate bar), consult the
   dataviz guidance first.
 

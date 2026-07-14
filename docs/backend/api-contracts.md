@@ -120,8 +120,14 @@ Requires `owner`/`admin` (`403 GROUP_ROLE_FORBIDDEN` otherwise). Request:
 { "members": [
   { "userId": "uuid", "displayName": "Priya", "photoUrl": null,
     "avatarColor": "#FF3D8A", "role": "member" }
+], "guests": [
+  { "userId": "uuid", "displayName": "Guest 1", "photoUrl": null,
+    "avatarColor": "#9AA0A6", "role": "guest" }
 ] }
 ```
+`members` contains real players; `guests` contains the group's reusable filler
+players. Guests are valid match participants but never count toward membership,
+leaderboard, or player-stat results.
 
 ### `POST /groups/{groupId}/members`
 Add a person to the group by email + name — onboards someone who can't sign in
@@ -236,8 +242,7 @@ for all 4 players in the same transaction (see
 Same request shape as `POST`, full replace. → `200` `MatchDetailDto`.
 Recomputes `member_stats` for the union of old + new players (a roster
 edit can affect players no longer on the match). `403 MATCH_EDIT_FORBIDDEN`
-if the caller isn't the recorder/an admin (exact rule still open per
-[03-matches.md](../requirements/03-matches.md)).
+unless the caller is the match recorder, group owner, or group admin.
 
 ### `DELETE /groups/{groupId}/matches/{matchId}`
 Soft-deletes (`is_deleted = true`), recomputes `member_stats` for its
@@ -296,11 +301,9 @@ means an on-device issue; `failed > 0` surfaces the FCM error codes.
 | DELETE | `/groups/{groupId}/matches/{matchId}` | Delete match |
 | POST | `/devices` | Register this device's FCM token |
 | DELETE | `/devices` | Unregister this device's FCM token |
+| POST | `/devices/test` | Send a diagnostic push to the caller's devices |
 
 ## Open questions
 
-- Exact edit/delete permission rule (recorder-only vs. admin-override) —
-  endpoint contract stays the same either way, just the `403` condition
-  changes server-side.
 - Whether `POST /users/me/photo` should return a pre-signed upload URL
   instead of accepting the file directly, once photo volume justifies it.
