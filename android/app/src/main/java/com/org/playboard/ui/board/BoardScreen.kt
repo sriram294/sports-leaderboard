@@ -22,6 +22,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,11 +31,13 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +51,7 @@ import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
+import com.org.playboard.ui.share.renderAndShareLeaderboard
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
@@ -57,6 +62,7 @@ import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.theme.TextPrimary
 import com.org.playboard.ui.theme.WinRateLowBlue
 import com.org.playboard.ui.theme.WinRateMidAmber
+import kotlinx.coroutines.launch
 
 /** Board (home) tab — see docs/requirements/02-board-leaderboard.md, docs/prototype/leaderboard.pdf. */
 @Composable
@@ -65,12 +71,18 @@ fun BoardScreen(
     viewModel: BoardViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     BoardContent(
         uiState = uiState,
         onSortColumnSelected = viewModel::onSortColumnSelected,
         onRetry = viewModel::refresh,
         onPullRefresh = viewModel::onPullRefresh,
         onPlayerClick = onPlayerClick,
+        onShare = {
+            val group = uiState.selectedGroup ?: return@BoardContent
+            scope.launch { renderAndShareLeaderboard(context, group, uiState.rankings) }
+        },
     )
 }
 
@@ -82,6 +94,7 @@ private fun BoardContent(
     onRetry: () -> Unit,
     onPullRefresh: () -> Unit,
     onPlayerClick: (String) -> Unit,
+    onShare: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -103,7 +116,7 @@ private fun BoardContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item { TopPlayersPodium(podium = uiState.podium, onPlayerClick = onPlayerClick) }
+                    item { TopPlayersPodium(podium = uiState.podium, onPlayerClick = onPlayerClick, onShare = onShare) }
                     item {
                         RankingsCard(
                             rows = uiState.tableRows,
@@ -120,9 +133,24 @@ private fun BoardContent(
 }
 
 @Composable
-private fun TopPlayersPodium(podium: List<PlayerRanking>, onPlayerClick: (String) -> Unit) {
+private fun TopPlayersPodium(
+    podium: List<PlayerRanking>,
+    onPlayerClick: (String) -> Unit,
+    onShare: () -> Unit,
+) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
-        Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_share),
+                    contentDescription = "Share leaderboard",
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
             PodiumSlot(entry = podium.getOrNull(1), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
@@ -473,6 +501,7 @@ private fun BoardContentPreview() {
             onRetry = {},
             onPullRefresh = {},
             onPlayerClick = {},
+            onShare = {},
         )
     }
 }

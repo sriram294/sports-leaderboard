@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paths the FileProvider (see AndroidManifest) may expose to other apps.
+     Only the cache subdir holding the rendered share images is shared. -->
+<paths>
+    <cache-path name="shared_images" path="shared/" />
+</paths>
