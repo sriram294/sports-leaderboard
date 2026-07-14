@@ -65,6 +65,8 @@ private class FakePlayboardApi(
     },
     var matchDetail: MatchDetailDto? = null,
 ) : PlayboardApi {
+    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
+    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     var lastRecordRequest: RecordMatchRequestDto? = null
     var lastEditRequest: RecordMatchRequestDto? = null
     var lastEditMatchId: String? = null

@@ -42,6 +42,8 @@ import org.junit.Test
 private class FakePlayboardApi(
     var groupsResult: suspend () -> GroupsResponseDto = { GroupsResponseDto(emptyList()) },
 ) : PlayboardApi {
+    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
+    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = error("unused")
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")
     override suspend fun getGroups(): GroupsResponseDto = groupsResult()

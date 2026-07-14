@@ -3,4 +3,5 @@
      Only the cache subdir holding the rendered share images is shared. -->
 <paths>
     <cache-path name="shared_images" path="shared/" />
+    <cache-path name="update_apks" path="updates/" />
 </paths>

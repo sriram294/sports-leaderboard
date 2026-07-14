@@ -34,9 +34,19 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Url
+import retrofit2.http.Streaming
+import okhttp3.ResponseBody
 
 /** Mirrors `docs/backend/api-contracts.md`. Grows with each page slice. */
 interface PlayboardApi {
+
+    @GET("api/v1/app/update")
+    suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto
+
+    @Streaming
+    @GET
+    suspend fun downloadApk(@Url url: String): ResponseBody
 
     @POST("api/v1/auth/google")
     suspend fun signInWithGoogle(@Body request: GoogleSignInRequestDto): TokenResponseDto

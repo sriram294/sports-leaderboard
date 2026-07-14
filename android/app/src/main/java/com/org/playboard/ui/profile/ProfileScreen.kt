@@ -68,6 +68,8 @@ import com.org.playboard.ui.theme.StatLossRed
 import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.theme.TextPrimary
+import com.org.playboard.ui.update.AppUpdateState
+import com.org.playboard.ui.update.AppUpdateViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -83,6 +85,7 @@ fun ProfileScreen(
     viewedUserId: String? = null,
     onBack: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
+    updateViewModel: AppUpdateViewModel? = null,
 ) {
     // Drive whose profile the shared ViewModel loads whenever we (re)enter with a
     // new target; setting null when already own is suppressed downstream.
@@ -98,6 +101,7 @@ fun ProfileScreen(
         onRenameInputChanged = viewModel::onRenameInputChanged,
         onRenameSubmit = viewModel::onRenameSubmitted,
         onRenameDismiss = viewModel::onRenameDismissed,
+        onCheckForUpdates = updateViewModel?.let { { it.checkForUpdate() } } ?: {},
     )
 }
 
@@ -113,6 +117,7 @@ private fun ProfileContent(
     onRenameInputChanged: (String) -> Unit = {},
     onRenameSubmit: () -> Unit = {},
     onRenameDismiss: () -> Unit = {},
+    onCheckForUpdates: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -162,6 +167,7 @@ private fun ProfileContent(
                 state = state,
                 stats = state.stats,
                 onSignOut = onSignOut,
+                onCheckForUpdates = onCheckForUpdates,
                 onEditName = onEditName,
                 onEditPhoto = pickPhoto,
             )
@@ -185,13 +191,14 @@ private fun StatsList(
     onSignOut: () -> Unit,
     onEditName: () -> Unit,
     onEditPhoto: () -> Unit,
+    onCheckForUpdates: () -> Unit,
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
         if (state.isOwnProfile) {
-            item { AccountRow(email = state.email, onSignOut = onSignOut) }
+            item { AccountRow(email = state.email, onSignOut = onSignOut, onCheckForUpdates = onCheckForUpdates) }
         }
         item {
             IdentityCard(
@@ -226,7 +233,7 @@ private fun StatsList(
 }
 
 @Composable
-private fun AccountRow(email: String?, onSignOut: () -> Unit) {
+private fun AccountRow(email: String?, onSignOut: () -> Unit, onCheckForUpdates: () -> Unit) {
     Surface(shape = RoundedCornerShape(16.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -252,15 +259,9 @@ private fun AccountRow(email: String?, onSignOut: () -> Unit) {
                     color = TextMuted,
                 )
             }
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, TextMuted.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                    .clickable(onClick = onSignOut)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Text("Sign out", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onCheckForUpdates) { Text("Check for updates", color = BrandLime) }
+                TextButton(onClick = onSignOut) { Text("Sign out", color = TextMuted) }
             }
         }
     }

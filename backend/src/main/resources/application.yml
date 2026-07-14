@@ -47,3 +47,8 @@ playboard:
     # no-op (see FirebaseConfig / PushNotificationService). Encode the key with
     # e.g. `base64 -w0 service-account.json` and set it on Railway.
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+  update:
+    debug:
+      version-code: ${PLAYBOARD_UPDATE_DEBUG_VERSION_CODE:}
+      version-name: ${PLAYBOARD_UPDATE_DEBUG_VERSION_NAME:}
+      download-url: ${PLAYBOARD_UPDATE_DEBUG_DOWNLOAD_URL:}

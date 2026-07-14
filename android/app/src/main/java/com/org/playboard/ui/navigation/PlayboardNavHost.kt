@@ -19,6 +19,8 @@ import androidx.navigation.compose.rememberNavController
 import com.org.playboard.data.model.SessionState
 import com.org.playboard.ui.login.LoginScreen
 import com.org.playboard.ui.main.MainScreen
+import com.org.playboard.ui.update.AppUpdatePrompt
+import com.org.playboard.ui.update.AppUpdateViewModel
 
 /**
  * Start destination is a splash gate, not Login directly — otherwise a
@@ -31,6 +33,7 @@ import com.org.playboard.ui.main.MainScreen
 fun PlayboardNavHost(
     navController: NavHostController = rememberNavController(),
     sessionViewModel: SessionViewModel = hiltViewModel(),
+    updateViewModel: AppUpdateViewModel = hiltViewModel(),
 ) {
     val sessionState by sessionViewModel.sessionState.collectAsState()
 
@@ -48,11 +51,16 @@ fun PlayboardNavHost(
         }
     }
 
+    LaunchedEffect(sessionState) {
+        if (sessionState is SessionState.SignedIn) updateViewModel.checkForUpdate()
+    }
+
     NavHost(navController = navController, startDestination = PlayboardDestination.Splash.route) {
         composable(PlayboardDestination.Splash.route) { SplashScreen() }
         composable(PlayboardDestination.Login.route) { LoginScreen() }
-        composable(PlayboardDestination.Home.route) { MainScreen() }
+        composable(PlayboardDestination.Home.route) { MainScreen(updateViewModel = updateViewModel) }
     }
+    AppUpdatePrompt(viewModel = updateViewModel)
 }
 
 @Composable
