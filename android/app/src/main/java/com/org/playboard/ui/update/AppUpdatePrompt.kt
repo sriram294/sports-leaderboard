@@ -43,12 +43,23 @@ fun AppUpdatePrompt(viewModel: AppUpdateViewModel = hiltViewModel()) {
             text = { Text("${current.progress}%") },
             confirmButton = { CircularProgressIndicator(color = BrandLime) },
         )
-        is AppUpdateState.Checking -> Unit
+        is AppUpdateState.Checking -> if (current.showProgress) AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Checking for updates") },
+            text = { Text("Please wait…") },
+            confirmButton = { CircularProgressIndicator(color = BrandLime) },
+        )
+        is AppUpdateState.UpToDate -> if (current.showConfirmation) AlertDialog(
+            onDismissRequest = viewModel::dismiss,
+            title = { Text("You're up to date") },
+            text = { Text("You’re using the latest version of Playboard.") },
+            confirmButton = { TextButton(onClick = viewModel::dismiss) { Text("OK") } },
+        )
         is AppUpdateState.Error -> AlertDialog(
             onDismissRequest = viewModel::dismiss,
             title = { Text("Update unavailable") },
             text = { Text(current.message) },
-            confirmButton = { TextButton(onClick = viewModel::checkForUpdate) { Text("Retry") } },
+            confirmButton = { TextButton(onClick = { viewModel.checkForUpdate(showResult = true) }) { Text("Retry") } },
             dismissButton = { TextButton(onClick = viewModel::dismiss) { Text("Close") } },
         )
         else -> Unit

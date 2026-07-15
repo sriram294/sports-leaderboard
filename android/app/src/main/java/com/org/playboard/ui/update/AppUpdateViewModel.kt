@@ -14,8 +14,8 @@ import kotlinx.coroutines.launch
 
 sealed interface AppUpdateState {
     data object Idle : AppUpdateState
-    data object Checking : AppUpdateState
-    data object UpToDate : AppUpdateState
+    data class Checking(val showProgress: Boolean) : AppUpdateState
+    data class UpToDate(val showConfirmation: Boolean) : AppUpdateState
     data class Available(val update: AppUpdate) : AppUpdateState
     data class Downloading(val update: AppUpdate, val progress: Int) : AppUpdateState
     data class ReadyToInstall(val file: File) : AppUpdateState
@@ -30,12 +30,12 @@ class AppUpdateViewModel @Inject constructor(
     private val _state = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
     val state: StateFlow<AppUpdateState> = _state.asStateFlow()
 
-    fun checkForUpdate() {
+    fun checkForUpdate(showResult: Boolean = false) {
         if (_state.value is AppUpdateState.Checking || _state.value is AppUpdateState.Downloading) return
         viewModelScope.launch {
-            _state.value = AppUpdateState.Checking
+            _state.value = AppUpdateState.Checking(showResult)
             runCatching { repository.findUpdate() }
-                .onSuccess { _state.value = it?.let(AppUpdateState::Available) ?: AppUpdateState.UpToDate }
+                .onSuccess { _state.value = it?.let(AppUpdateState::Available) ?: AppUpdateState.UpToDate(showResult) }
                 .onFailure { _state.value = AppUpdateState.Error("Couldn't check for updates.") }
         }
     }
