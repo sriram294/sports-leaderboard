@@ -40,6 +40,7 @@ import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
 import com.org.playboard.ui.matches.MatchesScreen
 import com.org.playboard.ui.profile.ProfileScreen
+import com.org.playboard.ui.profile.SettingsScreen
 import com.org.playboard.ui.stats.StatsScreen
 import com.org.playboard.ui.switcher.GroupSwitcher
 import com.org.playboard.ui.theme.BrandLime
@@ -62,6 +63,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
     // Set when a leaderboard row is tapped → the Board tab drills into that player's
     // profile in place; null shows the leaderboard (docs/requirements/02 §2).
     var viewingProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showingProfileSettings by rememberSaveable { mutableStateOf(false) }
 
     // Switching the active group must pop any open leaderboard drill-down — the
     // viewed player belongs to the previous group. Only clears on a real id change
@@ -87,6 +89,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                     if (tab == MainTab.Add) pendingEditMatchId = null
                     // Any tab tap leaves a leaderboard drill-down (so Board returns home).
                     viewingProfileUserId = null
+                    showingProfileSettings = false
                     selectedTab = tab
                 },
             )
@@ -129,7 +132,14 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                         },
                     )
                     MainTab.Stats -> StatsScreen()
-                    MainTab.Profile -> ProfileScreen(updateViewModel = updateViewModel)
+                    MainTab.Profile -> if (showingProfileSettings) {
+                        SettingsScreen(
+                            updateViewModel = updateViewModel,
+                            onBack = { showingProfileSettings = false },
+                        )
+                    } else {
+                        ProfileScreen(onOpenSettings = { showingProfileSettings = true })
+                    }
                 }
             }
         }

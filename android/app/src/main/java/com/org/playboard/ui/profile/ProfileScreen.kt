@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -68,8 +70,6 @@ import com.org.playboard.ui.theme.StatLossRed
 import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.theme.TextPrimary
-import com.org.playboard.ui.update.AppUpdateState
-import com.org.playboard.ui.update.AppUpdateViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -85,7 +85,7 @@ fun ProfileScreen(
     viewedUserId: String? = null,
     onBack: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
-    updateViewModel: AppUpdateViewModel? = null,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     // Drive whose profile the shared ViewModel loads whenever we (re)enter with a
     // new target; setting null when already own is suppressed downstream.
@@ -93,7 +93,6 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     ProfileContent(
         state = uiState,
-        onSignOut = viewModel::onSignOutClicked,
         onRetry = viewModel::retry,
         onBack = onBack,
         onEditName = viewModel::onEditNameClicked,
@@ -101,7 +100,7 @@ fun ProfileScreen(
         onRenameInputChanged = viewModel::onRenameInputChanged,
         onRenameSubmit = viewModel::onRenameSubmitted,
         onRenameDismiss = viewModel::onRenameDismissed,
-        onCheckForUpdates = updateViewModel?.let { { it.checkForUpdate() } } ?: {},
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -109,7 +108,6 @@ fun ProfileScreen(
 @Composable
 private fun ProfileContent(
     state: ProfileUiState,
-    onSignOut: () -> Unit,
     onRetry: () -> Unit,
     onBack: (() -> Unit)? = null,
     onEditName: () -> Unit = {},
@@ -117,7 +115,7 @@ private fun ProfileContent(
     onRenameInputChanged: (String) -> Unit = {},
     onRenameSubmit: () -> Unit = {},
     onRenameDismiss: () -> Unit = {},
-    onCheckForUpdates: () -> Unit = {},
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -153,6 +151,20 @@ private fun ProfileContent(
         if (onBack != null) {
             BackRow(onBack = onBack)
         }
+        if (state.isOwnProfile && onBack == null && onOpenSettings != null) {
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_settings),
+                        contentDescription = "Settings",
+                        tint = TextPrimary,
+                    )
+                }
+            }
+        }
         when {
             state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
             state.noGroup -> CenteredMessage("Create or join a group to see your stats.")
@@ -166,8 +178,6 @@ private fun ProfileContent(
             state.stats != null -> StatsList(
                 state = state,
                 stats = state.stats,
-                onSignOut = onSignOut,
-                onCheckForUpdates = onCheckForUpdates,
                 onEditName = onEditName,
                 onEditPhoto = pickPhoto,
             )
@@ -188,18 +198,13 @@ private fun ProfileContent(
 private fun StatsList(
     state: ProfileUiState,
     stats: PlayerStats,
-    onSignOut: () -> Unit,
     onEditName: () -> Unit,
     onEditPhoto: () -> Unit,
-    onCheckForUpdates: () -> Unit,
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (state.isOwnProfile) {
-            item { AccountRow(email = state.email, onSignOut = onSignOut, onCheckForUpdates = onCheckForUpdates) }
-        }
         item {
             IdentityCard(
                 stats = stats,
@@ -229,41 +234,6 @@ private fun StatsList(
             items(state.recentMatches, key = { it.matchId }) { row -> RecentMatchRowCard(row = row) }
         }
         item { Spacer(Modifier.height(12.dp)) }
-    }
-}
-
-@Composable
-private fun AccountRow(email: String?, onSignOut: () -> Unit, onCheckForUpdates: () -> Unit) {
-    Surface(shape = RoundedCornerShape(16.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(TextPrimary),
-            ) {
-                Text("G", color = SurfaceDark, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Signed in with Google",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                )
-                Text(
-                    email ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                TextButton(onClick = onCheckForUpdates) { Text("Check for updates", color = BrandLime) }
-                TextButton(onClick = onSignOut) { Text("Sign out", color = TextMuted) }
-            }
-        }
     }
 }
 
@@ -676,7 +646,6 @@ private fun ProfileContentPreview() {
                 email = "raj@gmail.com",
                 stats = previewStats,
             ),
-            onSignOut = {},
             onRetry = {},
         )
     }
@@ -694,7 +663,6 @@ private fun ViewedPlayerProfilePreview() {
                 isOwnProfile = false,
                 stats = previewStats,
             ),
-            onSignOut = {},
             onRetry = {},
             onBack = {},
         )
