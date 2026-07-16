@@ -7,11 +7,17 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-// Name the built artifacts "Playboard" instead of the module name "app", so the
-// APK is e.g. Playboard-debug.apk / Playboard-release.apk. This is the modern
-// (non-deprecated) replacement for `archivesBaseName`.
+// Single source of truth for the app version — reused by both defaultConfig
+// (below) and the artifact name, so the two never drift.
+val appVersionName = "1.6"
+
+// Name the built artifacts "Playboard-<version>" instead of the module name
+// "app", so the APK is e.g. Playboard-1.5-debug.apk / Playboard-1.5-release.apk.
+// archivesName sits before the build-type suffix; this is the modern
+// (non-deprecated) replacement for `archivesBaseName` and avoids the
+// applicationVariants output-rename API.
 base {
-    archivesName = "Playboard"
+    archivesName = "Playboard-$appVersionName"
 }
 
 android {
@@ -26,8 +32,8 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.5"
+        versionCode = 7
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
