@@ -21,10 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.org.playboard.BuildConfig
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.theme.TextMuted
@@ -43,6 +45,7 @@ fun SettingsScreen(
 
     SettingsScreenContent(
         email = state.email.orEmpty(),
+        versionName = BuildConfig.VERSION_NAME,
         onBack = onBack,
         onSignOut = { (onSignOut ?: viewModel::onSignOutClicked)() },
         onCheckForUpdates = { updateViewModel?.checkForUpdate(showResult = true) },
@@ -52,6 +55,7 @@ fun SettingsScreen(
 @Composable
 private fun SettingsScreenContent(
     email: String,
+    versionName: String,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
     onCheckForUpdates: () -> Unit,
@@ -128,6 +132,28 @@ private fun SettingsScreenContent(
                 Text("›", color = TextMuted, fontSize = 28.sp)
             }
         }
+        Spacer(Modifier.weight(1f))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+        ) {
+            Text(
+                text = "Playboard v$versionName",
+                color = TextMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.size(4.dp))
+            Text(
+                text = "Made by Sriram Elangovan",
+                color = TextMuted.copy(alpha = 0.7f),
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -151,6 +177,7 @@ private fun SettingsScreenPreview() {
     PlayboardTheme {
         SettingsScreenContent(
             email = "raj@gmail.com",
+            versionName = "1.8",
             onBack = {},
             onSignOut = {},
             onCheckForUpdates = {},
