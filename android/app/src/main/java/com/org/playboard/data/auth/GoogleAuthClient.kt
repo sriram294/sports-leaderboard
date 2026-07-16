@@ -16,7 +16,8 @@ sealed interface GoogleAuthResult {
     data class Success(val idToken: String) : GoogleAuthResult
     data object Cancelled : GoogleAuthResult
     data object NoCredentialAvailable : GoogleAuthResult
-    data class Failed(val message: String) : GoogleAuthResult
+    /** [detail] is a short, non-sensitive code shown on the login screen. */
+    data class Failed(val message: String, val detail: String = "sign-in") : GoogleAuthResult
 }
 
 interface GoogleAuthClient {
@@ -37,7 +38,10 @@ class CredentialManagerGoogleAuthClient @Inject constructor() : GoogleAuthClient
         // "Failed to launch the selector UI" on stricter OEM builds. Grab the
         // foreground Activity (see [ActivityProvider]).
         val activity = ActivityProvider.currentActivity
-            ?: return GoogleAuthResult.Failed("No foreground activity available for sign-in")
+            ?: run {
+                Log.e(TAG, "No foreground activity available for sign-in")
+                return GoogleAuthResult.Failed("No foreground activity available for sign-in", "no-activity")
+            }
 
         // GetSignInWithGoogleOption is the explicit "Sign in with Google" button
         // flow: it always shows the account picker. GetGoogleIdOption is the
@@ -47,24 +51,35 @@ class CredentialManagerGoogleAuthClient @Inject constructor() : GoogleAuthClient
         val option = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
 
+        Log.i(TAG, "Requesting Google credential (clientId=${BuildConfig.GOOGLE_WEB_CLIENT_ID})")
         return try {
             val credential = CredentialManager.create(activity).getCredential(activity, request).credential
             if (credential is CustomCredential &&
                 credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
             ) {
+                Log.i(TAG, "Google credential obtained; got id token")
                 GoogleAuthResult.Success(GoogleIdTokenCredential.createFrom(credential.data).idToken)
             } else {
-                GoogleAuthResult.Failed("Unexpected credential type: ${credential.type}")
+                Log.e(TAG, "Unexpected credential type: ${credential.type}")
+                GoogleAuthResult.Failed("Unexpected credential type: ${credential.type}", "bad-credential")
             }
         } catch (e: GetCredentialCancellationException) {
+            Log.i(TAG, "User cancelled the Google account picker")
             GoogleAuthResult.Cancelled
         } catch (e: NoCredentialException) {
+            // No Google account/credential the device can offer — distinct from a
+            // real failure, but worth recording since users read it as "login broke".
+            Log.w(TAG, "No credential available: ${e.message}", e)
             GoogleAuthResult.NoCredentialAvailable
         } catch (e: GetCredentialException) {
             // Log the real cause (type + message) so a field sign-in failure is
             // diagnosable in Logcat rather than silently generic.
-            Log.e("PlayboardAuth", "getCredential failed: ${e.type} / ${e.message}", e)
-            GoogleAuthResult.Failed(e.message ?: "Sign-in failed")
+            Log.e(TAG, "getCredential failed: ${e.type} / ${e.message}", e)
+            GoogleAuthResult.Failed(e.message ?: "Sign-in failed", e.type.substringAfterLast('.'))
         }
+    }
+
+    private companion object {
+        const val TAG = "PlayboardAuth"
     }
 }

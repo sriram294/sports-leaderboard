@@ -1,5 +1,6 @@
 package com.org.playboard.ui.login
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.org.playboard.data.auth.AuthRepository
@@ -33,13 +34,29 @@ class LoginViewModel @Inject constructor(
                 is GoogleAuthResult.Success -> {
                     authRepository.signInWithGoogle(result.idToken)
                         .onSuccess { _uiState.value = LoginUiState() }
-                        .onFailure { _uiState.value = LoginUiState(error = LoginError.Generic) }
+                        .onFailure {
+                            // AuthRepository already logs the detailed cause; this
+                            // marks that the failure reached the UI as a generic error
+                            // and carries a short code onto the screen for field reports.
+                            Log.e(TAG, "Sign-in failed at backend exchange, showing generic error", it)
+                            val detail = authRepository.describeSignInFailure(it)
+                            _uiState.value = LoginUiState(error = LoginError.Generic(detail))
+                        }
                 }
                 GoogleAuthResult.Cancelled -> _uiState.value = LoginUiState()
-                GoogleAuthResult.NoCredentialAvailable ->
+                GoogleAuthResult.NoCredentialAvailable -> {
+                    Log.w(TAG, "No Google account available, showing NoGoogleAccount error")
                     _uiState.value = LoginUiState(error = LoginError.NoGoogleAccount)
-                is GoogleAuthResult.Failed -> _uiState.value = LoginUiState(error = LoginError.Generic)
+                }
+                is GoogleAuthResult.Failed -> {
+                    Log.e(TAG, "Google credential step failed: ${result.message}")
+                    _uiState.value = LoginUiState(error = LoginError.Generic(result.detail))
+                }
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "PlayboardAuth"
     }
 }

@@ -142,7 +142,9 @@ class LoginViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(false, state.isLoading)
-        assertEquals(LoginError.Generic, state.error)
+        // The thrown RuntimeException is classified into a short diagnostic code
+        // that is surfaced on the login screen for field bug reports.
+        assertEquals(LoginError.Generic("RuntimeException"), state.error)
     }
 
     @Test
