@@ -32,10 +32,10 @@ private const val TAG = "LeaderboardShare"
  *
  * The card is composed in a throwaway [ComposeView] attached to the current
  * Activity's content root (via [ActivityProvider]) — attaching gives Compose the
- * lifecycle/owners it needs and lets a card taller than the screen lay out fully,
- * which a plain in-screen capture couldn't. The view is drawn at alpha 0 so it
- * never flashes, then removed. Avatars are initials-only, so there is no async
- * image load to wait on before capturing.
+ * lifecycle/owners it needs. It is then re-measured unbounded so a card taller than
+ * the screen is captured whole rather than clipped to the content root. The view is
+ * drawn at alpha 0 so it never flashes, then removed. Avatars are initials-only, so
+ * there is no async image load to wait on before capturing.
  *
  * Kept out of the ViewModel deliberately: it touches Android `View`/`Context`,
  * which the ViewModels must stay free of (see PROJECT_RULES).
@@ -88,7 +88,16 @@ private suspend fun captureCard(activity: Activity, group: Group, rankings: List
     root.addView(composeView)
     try {
         composeView.awaitFirstDraw()
-        val bitmap = Bitmap.createBitmap(composeView.width, composeView.height, Bitmap.Config.ARGB_8888)
+        // Attaching gets Compose its lifecycle owners, but the content root is only as tall
+        // as the screen and measures children against that — a card with a full rankings
+        // table is taller, so the parent's pass clips its bottom rows. Re-measure with an
+        // unbounded height and lay the card out at its true size before snapshotting.
+        composeView.measure(
+            View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        )
+        composeView.layout(0, 0, composeView.measuredWidth, composeView.measuredHeight)
+        val bitmap = Bitmap.createBitmap(composeView.measuredWidth, composeView.measuredHeight, Bitmap.Config.ARGB_8888)
         composeView.draw(Canvas(bitmap))
         return bitmap
     } finally {
