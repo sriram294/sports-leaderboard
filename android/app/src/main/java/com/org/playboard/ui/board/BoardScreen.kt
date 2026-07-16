@@ -117,7 +117,7 @@ private fun BoardContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 10.dp),
     ) {
         when {
             uiState.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
@@ -130,7 +130,7 @@ private fun BoardContent(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
                     // Owns the bottom slack (was a trailing Spacer item): 24.dp reproduces the
                     // old 16.dp arrangement + 8.dp spacer, plus room for the form bar overlay.
                     contentPadding = PaddingValues(bottom = formBarHeight + 24.dp),
@@ -188,7 +188,6 @@ private fun TopPlayersPodium(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
             PodiumSlot(entry = podium.getOrNull(1), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
             PodiumSlot(entry = podium.getOrNull(0), isChampion = true, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1.2f))
