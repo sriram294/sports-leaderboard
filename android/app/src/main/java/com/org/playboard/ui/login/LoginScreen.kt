@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,13 +77,31 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
             Spacer(modifier = Modifier.weight(1f))
 
             if (uiState.error != null) {
-                Text(
-                    text = uiState.error.toMessage(),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                )
+                ) {
+                    Text(
+                        text = uiState.error.toMessage(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    // Short, non-sensitive diagnostic code so a user hitting a login
+                    // failure in the field can screenshot/copy it into a bug report.
+                    val detail = (uiState.error as? LoginError.Generic)?.detail
+                    if (detail != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        SelectionContainer {
+                            Text(
+                                text = "Error code: $detail",
+                                color = TextMuted,
+                                style = MaterialTheme.typography.labelSmall,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
             }
 
             Button(
@@ -120,7 +139,7 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
 
 private fun LoginError.toMessage(): String = when (this) {
     LoginError.NoGoogleAccount -> "No Google account found on this device."
-    LoginError.Generic -> "Something went wrong. Please try again."
+    is LoginError.Generic -> "Something went wrong. Please try again."
 }
 
 @Preview(showBackground = true)
@@ -136,5 +155,16 @@ private fun LoginContentPreview() {
 private fun LoginContentErrorPreview() {
     PlayboardTheme {
         LoginContent(uiState = LoginUiState(error = LoginError.NoGoogleAccount), onContinueWithGoogleClicked = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoginContentGenericErrorPreview() {
+    PlayboardTheme {
+        LoginContent(
+            uiState = LoginUiState(error = LoginError.Generic("backend 401")),
+            onContinueWithGoogleClicked = {},
+        )
     }
 }
