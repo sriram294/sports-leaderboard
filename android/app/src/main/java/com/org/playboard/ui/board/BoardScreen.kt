@@ -284,7 +284,8 @@ private fun PodiumSlot(
 private val GpColumnWidth = 32.dp
 private val WinsColumnWidth = 26.dp
 private val LossesColumnWidth = 26.dp
-private val PointsForColumnWidth = 42.dp
+// Wider than the PF column it replaced: values carry a sign ("+135", "-104").
+private val PointsDiffColumnWidth = 46.dp
 private val WinRateColumnWidth = 56.dp
 
 @Composable
@@ -318,7 +319,7 @@ private fun RankingsHeaderRow(
         SortableHeaderLabel("GP", RankingSortColumn.GAMES_PLAYED, sortColumn, onSortColumnSelected, GpColumnWidth)
         SortableHeaderLabel("W", RankingSortColumn.WINS, sortColumn, onSortColumnSelected, WinsColumnWidth)
         SortableHeaderLabel("L", RankingSortColumn.LOSSES, sortColumn, onSortColumnSelected, LossesColumnWidth)
-        SortableHeaderLabel("PF", RankingSortColumn.POINTS_FOR, sortColumn, onSortColumnSelected, PointsForColumnWidth)
+        SortableHeaderLabel("DIFF", RankingSortColumn.POINTS_DIFF, sortColumn, onSortColumnSelected, PointsDiffColumnWidth)
         SortableHeaderLabel("WIN%", RankingSortColumn.WIN_RATE, sortColumn, onSortColumnSelected, WinRateColumnWidth)
     }
 }
@@ -391,7 +392,7 @@ private fun RankingRow(entry: PlayerRanking, onPlayerClick: (String) -> Unit) {
         StatCell(text = entry.gamesPlayed.toString(), color = TextPrimary, width = GpColumnWidth)
         StatCell(text = entry.wins.toString(), color = StatWinGreen, width = WinsColumnWidth)
         StatCell(text = entry.losses.toString(), color = StatLossRed, width = LossesColumnWidth)
-        StatCell(text = entry.pointsFor.toString(), color = TextPrimary, width = PointsForColumnWidth)
+        StatCell(text = entry.pointsDiffLabel, color = pointsDiffColor(entry.pointsDiff), width = PointsDiffColumnWidth)
         StatCell(
             text = "${entry.winRatePercent}%",
             color = winRateColor(entry.winRatePercent),
@@ -424,6 +425,13 @@ private fun winRateColor(percent: Int): Color = when {
     percent >= 50 -> BrandLime
     percent >= 25 -> WinRateMidAmber
     else -> WinRateLowBlue
+}
+
+// Matches the W/L columns: outscoring opponents reads green, being outscored red.
+private fun pointsDiffColor(diff: Int): Color = when {
+    diff > 0 -> StatWinGreen
+    diff < 0 -> StatLossRed
+    else -> TextMuted
 }
 
 @Composable
@@ -477,12 +485,12 @@ private val previewGroups = listOf(
 )
 
 private val previewRankings = listOf(
-    PlayerRanking(1, "u1", "Priya", null, "#FF3D8A", 6, 6, 0, 252, 1.0),
-    PlayerRanking(2, "u2", "Dev", null, "#3DB4FF", 6, 5, 1, 245, 0.83),
-    PlayerRanking(3, "u3", "Raj", null, "#9ADE28", 8, 4, 4, 315, 0.5),
-    PlayerRanking(4, "u4", "Marcus", null, "#FF8A3D", 7, 2, 5, 265, 0.29),
-    PlayerRanking(5, "u5", "Kiran", null, "#EAC72B", 7, 2, 5, 263, 0.29),
-    PlayerRanking(6, "u6", "Sam", null, "#8A6CFF", 6, 1, 5, 226, 0.17),
+    PlayerRanking(1, "u1", "Priya", null, "#FF3D8A", 6, 6, 0, 252, 180, 1.0),
+    PlayerRanking(2, "u2", "Dev", null, "#3DB4FF", 6, 5, 1, 245, 205, 0.83),
+    PlayerRanking(3, "u3", "Raj", null, "#9ADE28", 8, 4, 4, 315, 310, 0.5),
+    PlayerRanking(4, "u4", "Marcus", null, "#FF8A3D", 7, 2, 5, 265, 290, 0.29),
+    PlayerRanking(5, "u5", "Kiran", null, "#EAC72B", 7, 2, 5, 263, 295, 0.29),
+    PlayerRanking(6, "u6", "Sam", null, "#8A6CFF", 6, 1, 5, 226, 270, 0.17),
 )
 
 private val previewState = BoardUiState(

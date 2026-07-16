@@ -36,7 +36,8 @@ private fun ranking(
     rank: Int = 1,
     currentStreak: Int = 0,
     bestStreak: Int = 0,
-) = PlayerRanking(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, wr, currentStreak, bestStreak)
+    pa: Int = 0,
+) = PlayerRanking(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
 
 class StatsComputationsTest {
 

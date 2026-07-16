@@ -75,6 +75,7 @@ public class StatsQueryService {
                     stats.getWins(),
                     stats.getLosses(),
                     stats.getPointsFor(),
+                    stats.getPointsAgainst(),
                     stats.getWinRate(),
                     stats.getCurrentStreak(),
                     stats.getBestStreak()));

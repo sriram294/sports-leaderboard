@@ -90,7 +90,8 @@ private fun entry(
     wr: Double,
     currentStreak: Int = 0,
     bestStreak: Int = 0,
-) = LeaderboardEntryDto(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, wr, currentStreak, bestStreak)
+    pa: Int = 0,
+) = LeaderboardEntryDto(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
 
 private fun playerDto(id: String) = MatchPlayerDto(id, id, "#FF3D8A", null)
 

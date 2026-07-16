@@ -195,7 +195,8 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
 private val GpColumnWidth = 32.dp
 private val WinsColumnWidth = 26.dp
 private val LossesColumnWidth = 26.dp
-private val PointsForColumnWidth = 42.dp
+// Wider than the PF column it replaced: values carry a sign ("+135", "-104").
+private val PointsDiffColumnWidth = 46.dp
 private val WinRateColumnWidth = 52.dp
 
 @Composable
@@ -210,7 +211,7 @@ private fun ShareRankingsCard(rows: List<PlayerRanking>) {
                 ShareHeaderLabel("GP", Modifier.width(GpColumnWidth), TextAlign.End)
                 ShareHeaderLabel("W", Modifier.width(WinsColumnWidth), TextAlign.End)
                 ShareHeaderLabel("L", Modifier.width(LossesColumnWidth), TextAlign.End)
-                ShareHeaderLabel("PF", Modifier.width(PointsForColumnWidth), TextAlign.End)
+                ShareHeaderLabel("DIFF", Modifier.width(PointsDiffColumnWidth), TextAlign.End)
                 ShareHeaderLabel("WIN%", Modifier.width(WinRateColumnWidth), TextAlign.End)
             }
             rows.forEach { row ->
@@ -265,7 +266,7 @@ private fun ShareRankingRow(entry: PlayerRanking) {
         ShareStatCell(entry.gamesPlayed.toString(), TextPrimary, GpColumnWidth)
         ShareStatCell(entry.wins.toString(), StatWinGreen, WinsColumnWidth)
         ShareStatCell(entry.losses.toString(), StatLossRed, LossesColumnWidth)
-        ShareStatCell(entry.pointsFor.toString(), TextPrimary, PointsForColumnWidth)
+        ShareStatCell(entry.pointsDiffLabel, pointsDiffColor(entry.pointsDiff), PointsDiffColumnWidth)
         ShareStatCell("${entry.winRatePercent}%", winRateColor(entry.winRatePercent), WinRateColumnWidth, FontWeight.Bold)
     }
 }
@@ -295,15 +296,24 @@ private fun winRateColor(percent: Int): Color = when {
     else -> WinRateLowBlue
 }
 
+// Matches the W/L columns: outscoring opponents reads green, being outscored red.
+private fun pointsDiffColor(diff: Int): Color = when {
+    diff > 0 -> StatWinGreen
+    diff < 0 -> StatLossRed
+    else -> TextMuted
+}
+
 private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
 
+// deenesh and Mani are the tiebreak case: both 50%, and Mani has the higher PF but
+// the worse difference, so he ranks below.
 private val previewRankings = listOf(
-    PlayerRanking(1, "u1", "Sriram", null, "#F59E0B", 6, 5, 1, 122, 0.83),
-    PlayerRanking(2, "u2", "deenesh", null, "#3DB4FF", 6, 3, 3, 107, 0.50),
-    PlayerRanking(3, "u3", "Mani", null, "#9ADE28", 6, 3, 3, 108, 0.50),
-    PlayerRanking(4, "u4", "Dinesh K", null, "#C026D3", 7, 3, 4, 135, 0.42),
-    PlayerRanking(5, "u5", "Balaji", null, "#FB923C", 5, 2, 3, 93, 0.40),
-    PlayerRanking(6, "u6", "Pari", null, "#8A6CFF", 6, 2, 4, 101, 0.33),
+    PlayerRanking(1, "u1", "Sriram", null, "#F59E0B", 6, 5, 1, 122, 95, 0.83),
+    PlayerRanking(2, "u2", "deenesh", null, "#3DB4FF", 6, 3, 3, 107, 102, 0.50),
+    PlayerRanking(3, "u3", "Mani", null, "#9ADE28", 6, 3, 3, 108, 110, 0.50),
+    PlayerRanking(4, "u4", "Dinesh K", null, "#C026D3", 7, 3, 4, 135, 140, 0.42),
+    PlayerRanking(5, "u5", "Balaji", null, "#FB923C", 5, 2, 3, 93, 100, 0.40),
+    PlayerRanking(6, "u6", "Pari", null, "#8A6CFF", 6, 2, 4, 101, 112, 0.33),
 )
 
 @Preview(widthDp = 380, heightDp = 900, showBackground = true)

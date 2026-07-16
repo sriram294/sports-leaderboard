@@ -390,7 +390,8 @@ private fun previewRanking(
     wr: Double,
     currentStreak: Int = 0,
     bestStreak: Int = 0,
-) = PlayerRanking(rank, id, name, null, "#9ADE28", gp, wins, gp - wins, pf, wr, currentStreak, bestStreak)
+    pa: Int = 0,
+) = PlayerRanking(rank, id, name, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
 
 private val previewState = StatsUiState(
     isLoading = false,
