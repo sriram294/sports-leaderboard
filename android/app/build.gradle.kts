@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -7,9 +9,20 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+// Release signing credentials live in a gitignored keystore.properties (never in
+// git — see .gitignore). When it's absent (fresh clone / CI without the secret),
+// the release build is simply left unsigned instead of failing, so debug builds
+// and `assembleDebug` are unaffected.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
 // Single source of truth for the app version — reused by both defaultConfig
 // (below) and the artifact name, so the two never drift.
-val appVersionName = "1.6"
+val appVersionName = "1.7"
 
 // Name the built artifacts "Playboard-<version>" instead of the module name
 // "app", so the APK is e.g. Playboard-1.5-debug.apk / Playboard-1.5-release.apk.
@@ -32,7 +45,7 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
+        versionCode = 8
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -53,10 +66,25 @@ android {
         )
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
             optimization {
                 enable = false
+            }
+            // Only sign when the keystore is present; otherwise the release APK
+            // is built unsigned (uninstallable) rather than the build failing.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }
