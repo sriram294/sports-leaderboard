@@ -35,7 +35,9 @@ import com.org.playboard.data.stats.StatsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -394,6 +396,38 @@ class BoardViewModelTest {
         assertEquals(listOf(true, true), viewModel.uiState.value.recentForm)
 
         repo.selectGroup("g2")
+        advanceUntilIdle()
+        assertEquals(listOf(false), viewModel.uiState.value.recentForm)
+    }
+
+    @Test
+    fun `switching group cancels an in-flight form fetch and loads the new group's now`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"), groupDto("g2", "Office League"))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+            // g1's form fetch hangs; g2's is immediate.
+            statsResult = { groupId, _ ->
+                if (groupId == "g1") {
+                    delay(10_000)
+                    statsWithForm(listOf(true, true))
+                } else {
+                    statsWithForm(listOf(false))
+                }
+            },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        // g1's form fetch is now in flight (suspended); switch before it could return.
+        advanceTimeBy(1_000)
+        repo.selectGroup("g2")
+        // Advance only a little — still well within g1's 10s hang. collectLatest must have
+        // cancelled g1's fetch and loaded g2's immediately; plain collect would stay blocked
+        // on g1 and leave the form empty until t=10s.
+        advanceTimeBy(1_000)
+        assertEquals(listOf(false), viewModel.uiState.value.recentForm)
+
+        // Drain the (cancelled) g1 timer so runTest ends cleanly; the stale result never lands.
         advanceUntilIdle()
         assertEquals(listOf(false), viewModel.uiState.value.recentForm)
     }
