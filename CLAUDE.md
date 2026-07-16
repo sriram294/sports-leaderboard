@@ -43,7 +43,7 @@ insights. It's an Android app backed by a custom REST API.
 ## Feature workflow (per slice)
 Build one requirement slice at a time: read `docs/requirements/0X-*.md` + the matching
 prototype PDF → branch off `master` → implement (data → ViewModel/UiState → Compose screen)
-→ add unit tests → `:app:testDebugUnitTest` + `:app:assembleDebug` → open a PR **against
+→ add unit tests → `:app:testDebugUnitTest` + `:app:assembleDebug` → always increment the versioncode and versionname when opening a PR → open a PR **against
 `master`**. **Never self-merge** — the user reviews/merges; Railway then redeploys the
 backend. Full-stack features go in a single PR (backend + Android). Confirm a Railway
 deploy landed by reading the live schema:
