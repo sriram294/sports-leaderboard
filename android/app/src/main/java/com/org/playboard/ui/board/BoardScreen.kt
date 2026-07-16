@@ -1,5 +1,8 @@
 package com.org.playboard.ui.board
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,13 +35,18 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,7 +105,15 @@ private fun BoardContent(
     onPlayerClick: (String) -> Unit,
     onShare: () -> Unit,
 ) {
-    Column(
+    // Measure the pinned form bar so the list reserves exactly enough bottom space
+    // to scroll clear of it; falls back to the pre-existing slack when the bar is hidden.
+    var formBarHeightPx by remember { mutableIntStateOf(0) }
+    val formBarHeight = if (uiState.showFormBar) {
+        with(LocalDensity.current) { formBarHeightPx.toDp() }
+    } else {
+        0.dp
+    }
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
@@ -114,6 +131,9 @@ private fun BoardContent(
             ) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
+                    // Owns the bottom slack (was a trailing Spacer item): 24.dp reproduces the
+                    // old 16.dp arrangement + 8.dp spacer, plus room for the form bar overlay.
+                    contentPadding = PaddingValues(bottom = formBarHeight + 24.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item { TopPlayersPodium(podium = uiState.podium, onPlayerClick = onPlayerClick, onShare = onShare) }
@@ -125,8 +145,25 @@ private fun BoardContent(
                             onPlayerClick = onPlayerClick,
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
+            }
+        }
+        AnimatedVisibility(
+            visible = uiState.showFormBar,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    // Clears the bottom bar's lime "+", which MainScreen lifts ~10.dp above the
+                    // nav bar and the Scaffold draws over this content.
+                    .padding(bottom = 12.dp)
+                    .onSizeChanged { formBarHeightPx = it.height },
+            ) {
+                FormBar(results = uiState.recentForm)
             }
         }
     }
@@ -497,6 +534,7 @@ private val previewState = BoardUiState(
     isLoading = false,
     selectedGroup = previewGroups.first(),
     rankings = previewRankings,
+    recentForm = listOf(true, true, false, true, false),
 )
 
 @Preview(showBackground = true, heightDp = 1400)

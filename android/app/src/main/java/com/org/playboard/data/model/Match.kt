@@ -11,6 +11,10 @@ data class Match(
 ) {
     val winningTeamNo: Int? get() = teams.firstOrNull { it.isWinner }?.teamNo
     fun team(teamNo: Int): MatchTeam? = teams.firstOrNull { it.teamNo == teamNo }
+
+    /** Whether [userId]'s team won, or `null` if they didn't play in this match. */
+    fun isWinFor(userId: String): Boolean? =
+        teams.firstOrNull { team -> team.players.any { it.userId == userId } }?.isWinner
 }
 
 data class MatchTeam(
