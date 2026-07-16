@@ -1,0 +1,83 @@
+name: Release APK
+
+# Builds a signed release APK and publishes it to GitHub Releases.
+#
+# Triggers when you push a tag like `v1.8` (matching the app version). You can
+# also run it manually from the Actions tab (workflow_dispatch) to get a build
+# artifact without cutting a release.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   KEYSTORE_BASE64    - base64 of android/app/playboard-release.jks
+#                        generate with: base64 -w0 android/app/playboard-release.jks
+#   KEYSTORE_PASSWORD  - store password (keystore.properties: storePassword)
+#   KEY_ALIAS          - key alias      (keystore.properties: keyAlias)
+#   KEY_PASSWORD       - key password   (keystore.properties: keyPassword)
+#
+# The signing keystore is never committed (see android/.gitignore); CI
+# reconstructs both the .jks and keystore.properties from the secrets above so
+# the existing Gradle signing path in app/build.gradle.kts works unchanged.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to create the GitHub Release
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode signing keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/playboard-release.jks
+
+      - name: Write keystore.properties
+        run: |
+          cat > keystore.properties <<EOF
+          storeFile=playboard-release.jks
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+
+      - name: Build signed release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Verify APK is signed
+        run: |
+          apk=$(ls app/build/outputs/apk/release/Playboard-*-release.apk)
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk"
+
+      - name: Upload APK as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: playboard-release-apk
+          path: android/app/build/outputs/apk/release/Playboard-*-release.apk
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            app/build/outputs/apk/release/Playboard-*-release.apk \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
