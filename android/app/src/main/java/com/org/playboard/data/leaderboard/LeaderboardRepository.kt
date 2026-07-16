@@ -7,7 +7,10 @@ import com.org.playboard.di.AuthenticatedApi
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Fetches a group's leaderboard. Rankings arrive server-sorted (win rate desc, then wins desc). */
+/**
+ * Fetches a group's leaderboard. Rankings arrive server-sorted
+ * (win rate desc, then points difference desc, then wins desc).
+ */
 @Singleton
 class LeaderboardRepository @Inject constructor(
     @AuthenticatedApi private val api: PlayboardApi,
@@ -26,6 +29,7 @@ private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
     wins = wins,
     losses = losses,
     pointsFor = pointsFor,
+    pointsAgainst = pointsAgainst,
     winRate = winRate,
     currentStreak = currentStreak,
     bestStreak = bestStreak,

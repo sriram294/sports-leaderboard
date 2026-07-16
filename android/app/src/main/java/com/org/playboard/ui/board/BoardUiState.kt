@@ -5,7 +5,7 @@ import com.org.playboard.data.model.PlayerRanking
 
 /** Columns the rankings table can be sorted by (docs/requirements/02-board-leaderboard.md #3). */
 enum class RankingSortColumn {
-    GAMES_PLAYED, WINS, LOSSES, POINTS_FOR, WIN_RATE
+    GAMES_PLAYED, WINS, LOSSES, POINTS_DIFF, WIN_RATE
 }
 
 /**
@@ -36,6 +36,6 @@ data class BoardUiState(
         RankingSortColumn.GAMES_PLAYED -> rankings.sortedByDescending { it.gamesPlayed }
         RankingSortColumn.WINS -> rankings.sortedByDescending { it.wins }
         RankingSortColumn.LOSSES -> rankings.sortedByDescending { it.losses }
-        RankingSortColumn.POINTS_FOR -> rankings.sortedByDescending { it.pointsFor }
+        RankingSortColumn.POINTS_DIFF -> rankings.sortedByDescending { it.pointsDiff }
     }
 }

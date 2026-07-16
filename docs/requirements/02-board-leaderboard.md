@@ -18,8 +18,9 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
 - **Share** action: renders the active group's leaderboard as an image and
   opens the Android share sheet.
 - **Rankings table**: all players in the group, columns: Rank, Player
-  (avatar + name), GP, W, L, PF, Win% (sortable — shown with a dropdown
-  arrow on the Win% column header).
+  (avatar + name), GP, W, L, DIFF, Win% (sortable — shown with a dropdown
+  arrow on the Win% column header). DIFF is points for − against, signed
+  (`+27` / `-14`), green when positive and red when negative.
 
 ## Behavior / Requirements
 1. Switching groups reloads podium + rankings for the selected group.
@@ -29,19 +30,28 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
    partner, recent matches), scoped to the tapped player instead of the
    signed-in user. Read-only (no sign-out/account section, since it isn't
    "your" profile).
-3. Rankings table is sortable by GP, W, L, PF, and Win%; Win% is the default.
+3. Rankings table is sortable by GP, W, L, DIFF, and Win%; Win% is the default.
 4. Avatar rendering follows the global rule: uploaded photo, else colored
    initial ([00-overview.md](00-overview.md)).
 
 ## Data needed
-- Per group: list of players with GP, W, L, PF, PA, win% (PA not shown in
-  table today but present on Profile — confirm if it should show here too).
-- Ranking order/tie-break rule (e.g. win% desc, then wins desc, then PF desc).
+- Per group: list of players with GP, W, L, PF, PA, win%. The table shows the
+  PF − PA difference rather than PF itself; both raw totals remain on Profile.
 
 ## Current ranking behavior
 
-- Canonical ranking ties use win rate, then wins; UI-only column sorts retain
-  that canonical relative order for equal values.
+- Canonical order is **win rate desc, then points difference (PF − PA) desc,
+  then wins desc**, with a final user-id key so fully tied rows can't shuffle
+  between requests. UI-only column sorts retain that canonical relative order
+  for equal values.
+- Points difference rather than wins breaks a win-rate tie because win rate
+  already normalises for games played — at an equal rate, "more wins" only
+  means "played more", whereas the difference reflects how decisively the
+  matches were won. Note the difference is a running total, so it still
+  rewards volume somewhat; a per-game difference would be the pure form.
+- Win% is **rounded** for display, not truncated. Truncating showed 42.86%
+  and 42.11% both as "42%", making distinct rates look tied while the server
+  ranked them apart.
 
 ## Open questions
 

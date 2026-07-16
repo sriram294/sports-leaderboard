@@ -13,6 +13,7 @@ public record LeaderboardEntryDto(
         int wins,
         int losses,
         int pointsFor,
+        int pointsAgainst,
         BigDecimal winRate,
         int currentStreak,
         int bestStreak) {}

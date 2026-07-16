@@ -8,7 +8,7 @@ import org.junit.Test
 class LeaderboardShareTest {
 
     private fun ranking(rank: Int) =
-        PlayerRanking(rank, "u$rank", "P$rank", null, "#9ADE28", 6, 3, 3, 100, 0.5)
+        PlayerRanking(rank, "u$rank", "P$rank", null, "#9ADE28", 6, 3, 3, 100, 90, 0.5)
 
     @Test
     fun `topRankings caps at ten rows`() {

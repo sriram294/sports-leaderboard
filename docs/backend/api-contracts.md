@@ -171,16 +171,26 @@ GROUP_MEMBER_EXISTS` if they're already an active member.
 ## Leaderboard & Player Stats
 
 ### `GET /groups/{groupId}/leaderboard`
-Server-sorted by win rate desc, then wins desc (matches the `member_stats`
-index). The Board screen's podium is just the first 3 entries of this same
-list — no separate endpoint, so podium and table never disagree.
+Server-sorted by win rate desc, then points difference (`pointsFor` −
+`pointsAgainst`) desc, then wins desc, with a final user-id key so fully tied
+rows keep a stable order across requests. `rank` is the position in that list
+(1-based, no shared ranks); members with zero matches are omitted. The Board
+screen's podium is just the first 3 entries of this same list — no separate
+endpoint, so podium and table never disagree.
+
+Note the `member_stats` index covers `(group_id, win_rate desc, wins desc)`
+only, so the difference key is sorted in memory — negligible at group sizes.
 ```json
 { "rankings": [
   { "rank": 1, "userId": "uuid", "displayName": "Priya", "photoUrl": null,
     "avatarColor": "#FF3D8A", "gamesPlayed": 6, "wins": 6, "losses": 0,
-    "pointsFor": 252, "winRate": 1.0, "currentStreak": 6, "bestStreak": 6 }
+    "pointsFor": 252, "pointsAgainst": 180, "winRate": 1.0,
+    "currentStreak": 6, "bestStreak": 6 }
 ] }
 ```
+`pointsAgainst` was added alongside the difference tiebreak; `pointsFor` is
+retained (rather than replaced by a computed difference) so clients built
+against the earlier shape keep deserializing.
 
 ### `GET /groups/{groupId}/members/{userId}/stats`
 Backs both the Profile tab (own stats) and tapping a player from the

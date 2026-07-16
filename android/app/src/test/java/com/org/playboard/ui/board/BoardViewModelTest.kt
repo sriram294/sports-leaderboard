@@ -83,19 +83,27 @@ private fun groupDto(id: String, name: String, myRole: String = "member") = Grou
     myRole = myRole,
 )
 
-private fun entryDto(rank: Int, name: String, gamesPlayed: Int, wins: Int, pointsFor: Int, winRate: Double) =
-    LeaderboardEntryDto(
-        rank = rank,
-        userId = "user-$name",
-        displayName = name,
-        photoUrl = null,
-        avatarColor = "#FF3D8A",
-        gamesPlayed = gamesPlayed,
-        wins = wins,
-        losses = gamesPlayed - wins,
-        pointsFor = pointsFor,
-        winRate = winRate,
-    )
+private fun entryDto(
+    rank: Int,
+    name: String,
+    gamesPlayed: Int,
+    wins: Int,
+    pointsFor: Int,
+    winRate: Double,
+    pointsAgainst: Int = 0,
+) = LeaderboardEntryDto(
+    rank = rank,
+    userId = "user-$name",
+    displayName = name,
+    photoUrl = null,
+    avatarColor = "#FF3D8A",
+    gamesPlayed = gamesPlayed,
+    wins = wins,
+    losses = gamesPlayed - wins,
+    pointsFor = pointsFor,
+    pointsAgainst = pointsAgainst,
+    winRate = winRate,
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BoardViewModelTest {
@@ -211,9 +219,12 @@ class BoardViewModelTest {
             leaderboardResult = {
                 LeaderboardResponseDto(
                     listOf(
-                        entryDto(1, "Priya", 6, 6, 252, 1.0),
-                        entryDto(2, "Dev", 6, 5, 245, 0.83),
-                        entryDto(3, "Raj", 8, 4, 315, 0.5),
+                        // Diff order (Dev +145, Priya +72, Raj +5) deliberately differs from
+                        // both canonical order and points-for order (Raj has the most points
+                        // but the worst difference), so this pins the sort to the difference.
+                        entryDto(1, "Priya", 6, 6, 252, 1.0, pointsAgainst = 180),
+                        entryDto(2, "Dev", 6, 5, 245, 0.83, pointsAgainst = 100),
+                        entryDto(3, "Raj", 8, 4, 315, 0.5, pointsAgainst = 310),
                     ),
                 )
             },
@@ -223,10 +234,10 @@ class BoardViewModelTest {
         repo.refreshGroups()
         advanceUntilIdle()
 
-        viewModel.onSortColumnSelected(RankingSortColumn.POINTS_FOR)
+        viewModel.onSortColumnSelected(RankingSortColumn.POINTS_DIFF)
 
         val state = viewModel.uiState.value
-        assertEquals(listOf("Raj", "Priya", "Dev"), state.tableRows.map { it.displayName })
+        assertEquals(listOf("Dev", "Priya", "Raj"), state.tableRows.map { it.displayName })
         assertEquals(listOf("Priya", "Dev", "Raj"), state.podium.map { it.displayName })
     }
 

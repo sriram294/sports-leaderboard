@@ -42,7 +42,7 @@ class StatsQueryServiceIntegrationTest {
     @Autowired private SportRepository sportRepository;
 
     @Test
-    void leaderboardOrdersByWinRateThenWins() {
+    void leaderboardOrdersByWinRateThenPointsDifference() {
         Fixture f = newFixture();
         playThreeMatches(f);
 
@@ -101,6 +101,91 @@ class StatsQueryServiceIntegrationTest {
         assertThat(newbieStats.winRate()).isEqualByComparingTo("0");
         assertThat(newbieStats.bestPartner()).isNull();
         assertThat(newbieStats.recentMatches()).isEmpty();
+    }
+
+    /**
+     * Everyone ends on exactly 50%, so the win-rate key can't separate anyone and the
+     * points difference has to. Carl and Dina take the most wins (2 apiece) but the
+     * worst difference — under the old "win rate, then wins" rule they'd have led the
+     * board; ranking last is what proves difference now outranks wins.
+     */
+    @Test
+    void pointsDifferenceBreaksWinRateTiesAheadOfWins() {
+        Sport sport = sportRepository.findByCode("badminton_doubles").orElseThrow();
+        User ann = userRepository.save(newUser("ann"));
+        User bob = userRepository.save(newUser("bob"));
+        User carl = userRepository.save(newUser("carl"));
+        User dina = userRepository.save(newUser("dina"));
+        User eve = userRepository.save(newUser("eve"));
+        User finn = userRepository.save(newUser("finn"));
+
+        Group group = new Group();
+        group.setSport(sport);
+        group.setName("Tiebreak Test Group");
+        group.setCreatedBy(ann);
+        group.setAvatarColor("#7ED321");
+        group = groupRepository.save(group);
+        addMember(group, ann, GroupRole.OWNER);
+        for (User u : List.of(bob, carl, dina, eve, finn)) {
+            addMember(group, u, GroupRole.MEMBER);
+        }
+
+        // ann+bob thrash carl+dina, then lose narrowly: 1W-1L, diff +14.
+        recordMatch(group, ann, List.of(ann, bob), List.of(carl, dina), 21, 5, 1);
+        recordMatch(group, ann, List.of(carl, dina), List.of(ann, bob), 21, 19, 1);
+        // eve+finn trade narrow results with carl+dina: 1W-1L, diff 0.
+        recordMatch(group, ann, List.of(eve, finn), List.of(carl, dina), 21, 19, 1);
+        recordMatch(group, ann, List.of(carl, dina), List.of(eve, finn), 21, 19, 1);
+        // carl+dina finish 2W-2L, diff -14 — most wins, worst difference.
+
+        LeaderboardResponse leaderboard = statsQueryService.getLeaderboard(group.getId(), ann.getId());
+
+        assertThat(leaderboard.rankings())
+                .allSatisfy(entry -> assertThat(entry.winRate()).isEqualByComparingTo("0.5000"));
+
+        List<UUID> order = leaderboard.rankings().stream().map(LeaderboardEntryDto::userId).toList();
+        assertThat(order).hasSize(6);
+        // Pairs share identical stats, so their internal order is the arbitrary-but-stable id key.
+        assertThat(order.subList(0, 2)).containsExactlyInAnyOrder(ann.getId(), bob.getId());
+        assertThat(order.subList(2, 4)).containsExactlyInAnyOrder(eve.getId(), finn.getId());
+        assertThat(order.subList(4, 6)).containsExactlyInAnyOrder(carl.getId(), dina.getId());
+
+        LeaderboardEntryDto annEntry = leaderboard.rankings().get(0);
+        assertThat(annEntry.pointsFor()).isEqualTo(40);
+        assertThat(annEntry.pointsAgainst()).isEqualTo(26);
+
+        LeaderboardEntryDto lastEntry = leaderboard.rankings().get(5);
+        assertThat(lastEntry.wins()).isEqualTo(2);
+        assertThat(lastEntry.pointsFor() - lastEntry.pointsAgainst()).isEqualTo(-14);
+    }
+
+    /** Ordering is fully determined, so repeated reads of a tied board can't shuffle. */
+    @Test
+    void tiedRowsComeBackInAStableOrder() {
+        Fixture f = newFixture();
+        playThreeMatches(f);
+
+        List<UUID> first = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId()).rankings().stream()
+                .map(LeaderboardEntryDto::userId)
+                .toList();
+        List<UUID> second = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId()).rankings().stream()
+                .map(LeaderboardEntryDto::userId)
+                .toList();
+
+        assertThat(second).containsExactlyElementsOf(first);
+    }
+
+    private void recordMatch(Group group, User recorder, List<User> team1, List<User> team2, int t1, int t2, int winner) {
+        matchService.createMatch(
+                group.getId(),
+                recorder.getId(),
+                new RecordMatchRequest(
+                        Instant.now(),
+                        List.of(
+                                new TeamInput((short) 1, team1.stream().map(User::getId).toList()),
+                                new TeamInput((short) 2, team2.stream().map(User::getId).toList())),
+                        List.of(new SetInput((short) 1, (short) t1, (short) t2)),
+                        (short) winner));
     }
 
     private void playThreeMatches(Fixture f) {
