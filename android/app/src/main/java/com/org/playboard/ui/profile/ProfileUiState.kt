@@ -82,7 +82,7 @@ private fun Match.toRow(userId: String): RecentMatchRow {
     return RecentMatchRow(
         matchId = id,
         playedAt = playedAt,
-        isWin = myTeam?.isWinner == true,
+        isWin = isWinFor(userId) == true,
         partnerNames = partners.joinToString(" & ") { it.displayName },
         opponentNames = opponents?.players.orEmpty().joinToString(" & ") { it.displayName },
         sets = sets,

@@ -2,10 +2,14 @@ package com.org.playboard.ui.board
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.model.Group
+import com.org.playboard.data.model.SessionState
+import com.org.playboard.data.model.UserSession
+import com.org.playboard.data.stats.StatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -28,10 +33,14 @@ import kotlinx.coroutines.launch
 class BoardViewModel @Inject constructor(
     private val groupRepository: GroupRepository,
     private val leaderboardRepository: LeaderboardRepository,
+    private val authRepository: AuthRepository,
+    private val statsRepository: StatsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BoardUiState())
     val uiState: StateFlow<BoardUiState> = _uiState.asStateFlow()
+
+    private val currentUser = authRepository.sessionState.map { (it as? SessionState.SignedIn)?.user }
 
     init {
         // Follow the active group; also react to the group-list load status so we
@@ -44,12 +53,24 @@ class BoardViewModel @Inject constructor(
                 .distinctUntilChanged { old, new -> old.first?.id == new.first?.id && old.second == new.second }
                 .collect { (group, loadState) -> applySelection(group, loadState) }
         }
+        // The form bar is secondary to the rankings, so it loads on its own collector:
+        // getPlayerStats runs concurrently with getLeaderboard, and a form failure can
+        // never delay or fail the leaderboard. A separate collector also keeps the
+        // session's initial null -> user emission from re-fetching the leaderboard.
+        viewModelScope.launch {
+            combine(currentUser, groupRepository.selectedGroup) { user, group -> user to group }
+                .distinctUntilChanged { old, new ->
+                    old.first?.id == new.first?.id && old.second?.id == new.second?.id
+                }
+                .collect { (user, group) -> loadForm(user, group, keepStale = false) }
+        }
         // A match recorded on the Add tab (or deleted) changes the leaderboard;
         // re-fetch silently when the shared data revision advances.
         viewModelScope.launch {
             groupRepository.dataRevision.drop(1).collect {
                 val group = groupRepository.selectedGroup.first() ?: return@collect
                 loadLeaderboard(group, showLoading = false)
+                loadForm(currentUser.first(), group, keepStale = true)
             }
         }
     }
@@ -62,6 +83,7 @@ class BoardViewModel @Inject constructor(
                 groupRepository.refreshGroups()
             } else {
                 loadLeaderboard(group, showLoading = true)
+                loadForm(currentUser.first(), group, keepStale = false)
             }
         }
     }
@@ -75,7 +97,10 @@ class BoardViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             groupRepository.refreshGroups(showLoading = false)
-            groupRepository.selectedGroup.first()?.let { loadLeaderboard(it, showLoading = false) }
+            groupRepository.selectedGroup.first()?.let { group ->
+                loadLeaderboard(group, showLoading = false)
+                loadForm(currentUser.first(), group, keepStale = true)
+            }
             _uiState.update { it.copy(isRefreshing = false) }
         }
     }
@@ -120,5 +145,26 @@ class BoardViewModel @Inject constructor(
                     it.copy(isLoading = false, selectedGroup = group, hasLoadFailed = it.rankings.isEmpty())
                 }
             }
+    }
+
+    /**
+     * Loads the signed-in user's last-5 results for the pinned form bar. Secondary to
+     * the leaderboard: a failure never sets [BoardUiState.hasLoadFailed] — the bar
+     * keeps stale pills on a silent refresh ([keepStale]), or just stays hidden.
+     */
+    private suspend fun loadForm(user: UserSession?, group: Group?, keepStale: Boolean) {
+        if (user == null || group == null) {
+            _uiState.update { it.copy(recentForm = emptyList()) }
+            return
+        }
+        // Drop the previous group's pills up front so a slow or failed fetch can't
+        // leave form from the group the user just left on screen.
+        if (!keepStale) _uiState.update { it.copy(recentForm = emptyList()) }
+        statsRepository.getPlayerStats(group.id, user.id).onSuccess { stats ->
+            // A fetch for a group the user has since left must not overwrite.
+            if (_uiState.value.selectedGroup?.id != group.id) return@onSuccess
+            _uiState.update { it.copy(recentForm = stats.recentMatches.mapNotNull { m -> m.isWinFor(user.id) }) }
+        }
+        // No onFailure branch — the form degrades silently (mirrors ProfileViewModel.load).
     }
 }

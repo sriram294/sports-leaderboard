@@ -23,9 +23,18 @@ data class BoardUiState(
     val selectedGroup: Group? = null,
     val rankings: List<PlayerRanking> = emptyList(),
     val sortColumn: RankingSortColumn = RankingSortColumn.WIN_RATE,
+    /** The signed-in user's most recent results in this group, newest first (≤5). `true` = win. */
+    val recentForm: List<Boolean> = emptyList(),
 ) {
     /** Top 3 by canonical ranking — always the first entries of the server-sorted list. */
     val podium: List<PlayerRanking> get() = rankings.take(3)
+
+    /**
+     * Whether the pinned "YOUR FORM" bar shows. It's hidden for a player with no
+     * matches in the group, and never floats over a spinner / empty / error state.
+     */
+    val showFormBar: Boolean get() =
+        recentForm.isNotEmpty() && !isLoading && !hasLoadFailed && rankings.isNotEmpty()
 
     /**
      * Rows in display order. `sortedByDescending` is stable, so players tied

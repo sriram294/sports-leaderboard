@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,12 +38,11 @@ import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.PlayerRanking
+import com.org.playboard.ui.components.FormPill
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.StatWinGreen
 import com.org.playboard.ui.theme.SurfaceDark
 import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.theme.TextPrimary
@@ -266,24 +263,6 @@ private fun RecentFormCard(form: List<PlayerForm>) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun FormPill(isWin: Boolean) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(22.dp)
-            .clip(CircleShape)
-            .background(if (isWin) StatWinGreen else StatLossRed),
-    ) {
-        Text(
-            text = if (isWin) "W" else "L",
-            color = OnBrandLime,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-        )
     }
 }
 
