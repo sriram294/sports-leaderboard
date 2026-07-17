@@ -2,10 +2,13 @@ package com.org.playboard.ui.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,9 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.R
 import com.org.playboard.ui.theme.BrandLime
+import com.org.playboard.ui.theme.PaytoneOne
 import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.theme.TextMuted
 
@@ -57,20 +62,27 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp)) {
             Spacer(modifier = Modifier.weight(1f))
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "PLAYBOARD",
-                    style = MaterialTheme.typography.displayLarge,
-                    color = BrandLime,
-                    textAlign = TextAlign.Center,
+            // Wordmark: the racket logo stands in for the "P", with "layboard" set in the
+            // bold, fun Paytone One display face. The racket sits a touch above the text
+            // baseline so its handle reads as the letter's stem.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.logo_playboard_racket),
+                    contentDescription = "Playboard",
+                    modifier = Modifier
+                        .height(60.dp)
+                        .aspectRatio(441f / 770f),
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Track every doubles match, climb the win-rate leaderboard, " +
-                        "across all your groups.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextMuted,
-                    textAlign = TextAlign.Center,
+                    text = "layboard",
+                    fontFamily = PaytoneOne,
+                    fontSize = 46.sp,
+                    color = BrandLime,
                 )
             }
 
