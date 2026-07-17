@@ -182,6 +182,13 @@ private fun SettingsScreenContent(
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.size(6.dp))
+            Text(
+                text = "Avatars: “3D Web3 Avatars” by Koncepted (Figma Community)",
+                color = PlayboardTheme.colors.textMuted.copy(alpha = 0.7f),
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
