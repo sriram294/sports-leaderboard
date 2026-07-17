@@ -87,12 +87,7 @@ private fun SettingsScreenContent(
                 .fillMaxWidth()
                 .padding(vertical = 12.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(TextPrimary),
-            ) {
-                Text("G", color = MaterialTheme.colorScheme.background, fontWeight = FontWeight.Bold)
-            }
+
             Spacer(Modifier.size(12.dp))
             Column {
                 Text(
