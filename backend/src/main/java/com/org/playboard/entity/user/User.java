@@ -29,6 +29,11 @@ public class User extends Auditable {
     @Column(name = "photo_url")
     private String photoUrl;
 
+    // Basename of a bundled default avatar (assets/avatars/<id>.svg). Mutually
+    // exclusive with photoUrl — setting one clears the other. Null for guests.
+    @Column(name = "avatar_id")
+    private String avatarId;
+
     @Column(name = "avatar_color", nullable = false)
     private String avatarColor;
 
@@ -66,6 +71,14 @@ public class User extends Auditable {
 
     public void setPhotoUrl(String photoUrl) {
         this.photoUrl = photoUrl;
+    }
+
+    public String getAvatarId() {
+        return avatarId;
+    }
+
+    public void setAvatarId(String avatarId) {
+        this.avatarId = avatarId;
     }
 
     public String getAvatarColor() {

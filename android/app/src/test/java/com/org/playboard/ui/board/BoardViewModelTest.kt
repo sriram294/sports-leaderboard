@@ -64,7 +64,7 @@ private class FakePlayboardApi(
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
-        TokenResponseDto("access", "refresh", 900, UserSummaryDto("u1", "Raj", "raj@example.com", null, "#9ADE28"))
+        TokenResponseDto("access", "refresh", 900, UserSummaryDto("u1", "Raj", "raj@example.com", null, null, "#9ADE28"))
 
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("not used in this test")
     override suspend fun getGroups(): GroupsResponseDto = groupsResult()
@@ -96,6 +96,7 @@ private class FakePlayboardApi(
         error("not used in this test")
     override suspend fun updateDisplayName(request: com.org.playboard.data.remote.dto.UpdateUserRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
+    override suspend fun updateAvatar(request: com.org.playboard.data.remote.dto.UpdateAvatarRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
 }
 

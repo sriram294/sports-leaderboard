@@ -9,5 +9,6 @@ data class UserSummaryDto(
     val displayName: String,
     val email: String,
     val photoUrl: String?,
+    val avatarId: String? = null,
     val avatarColor: String,
 )

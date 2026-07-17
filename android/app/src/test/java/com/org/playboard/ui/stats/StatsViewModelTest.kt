@@ -68,6 +68,7 @@ private class FakePlayboardApi(
     override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto = error("unused")
     override suspend fun updateDisplayName(request: com.org.playboard.data.remote.dto.UpdateUserRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("unused")
     override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("unused")
+    override suspend fun updateAvatar(request: com.org.playboard.data.remote.dto.UpdateAvatarRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("unused")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("unused")
 }
 
@@ -91,7 +92,7 @@ private fun entry(
     currentStreak: Int = 0,
     bestStreak: Int = 0,
     pa: Int = 0,
-) = LeaderboardEntryDto(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
+) = LeaderboardEntryDto(rank, id, id, null, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
 
 private fun playerDto(id: String) = MatchPlayerDto(id, id, "#FF3D8A", null)
 

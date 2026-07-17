@@ -42,6 +42,7 @@ class TokenStoreTest {
             displayName = "Raj",
             email = "raj@example.com",
             photoUrl = null,
+            avatarId = null,
             avatarColor = "#7ED321",
         )
 
@@ -56,7 +57,7 @@ class TokenStoreTest {
 
     @Test
     fun `updateTokens changes only the tokens, not the user`() = runTest {
-        val user = UserSession("user-1", "Raj", "raj@example.com", null, "#7ED321")
+        val user = UserSession("user-1", "Raj", "raj@example.com", null, null, "#7ED321")
         tokenStore.save("access-1", "refresh-1", user)
 
         tokenStore.updateTokens("access-2", "refresh-2")
@@ -69,7 +70,7 @@ class TokenStoreTest {
 
     @Test
     fun `clear signs out`() = runTest {
-        val user = UserSession("user-1", "Raj", "raj@example.com", null, "#7ED321")
+        val user = UserSession("user-1", "Raj", "raj@example.com", null, null, "#7ED321")
         tokenStore.save("access-1", "refresh-1", user)
 
         tokenStore.clear()

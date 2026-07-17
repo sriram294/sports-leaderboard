@@ -31,14 +31,24 @@ fun avatarColor(hex: String): Color =
     runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(DarkBrand)
 
 /**
+ * Coil model for a bundled default avatar. The 25 DiceBear SVGs ship under
+ * `assets/avatars/<id>.svg`; the backend only persists the id. Rendered via
+ * Coil's SVG decoder (registered on the app's singleton [coil3.ImageLoader]).
+ */
+fun avatarAssetUrl(avatarId: String): String = "file:///android_asset/avatars/$avatarId.svg"
+
+/**
  * Global avatar rule (docs/requirements/00-overview.md § Player / Avatar):
- * the uploaded photo if set, else a colored-initial circle. The ring always
- * uses the player's assigned color so a player is recognizable everywhere.
+ * the uploaded photo if set, else a bundled default avatar ([avatarId]), else a
+ * colored-initial circle. The ring always uses the player's assigned color so a
+ * player is recognizable everywhere.
  *
  * The colored initial is always drawn as the base layer, so it also serves as
- * the fallback while the photo loads or if it fails to load (e.g. the file is
+ * the fallback while the image loads or if it fails to load (e.g. the file is
  * gone) — the [AsyncImage] simply paints over it once it loads successfully,
  * and draws nothing on error, leaving the initial visible instead of a blank.
+ * `photoUrl` and `avatarId` are mutually exclusive server-side, but photo wins
+ * defensively if both are ever present.
  */
 @Composable
 fun PlayerAvatar(
@@ -46,9 +56,11 @@ fun PlayerAvatar(
     photoUrl: String?,
     avatarColorHex: String,
     modifier: Modifier = Modifier,
+    avatarId: String? = null,
     size: Dp = 40.dp,
 ) {
     val color = avatarColor(avatarColorHex)
+    val imageModel = photoUrl ?: avatarId?.let(::avatarAssetUrl)
     Box(
         modifier = modifier
             .size(size)
@@ -62,9 +74,9 @@ fun PlayerAvatar(
             color = color,
             style = TextStyle(fontWeight = FontWeight.Bold, fontSize = (size.value * 0.4).sp),
         )
-        if (photoUrl != null) {
+        if (imageModel != null) {
             AsyncImage(
-                model = photoUrl,
+                model = imageModel,
                 contentDescription = displayName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size).clip(CircleShape),

@@ -10,6 +10,7 @@ public record PlayerStatsDto(
         UUID userId,
         String displayName,
         String photoUrl,
+        String avatarId,
         String avatarColor,
         int matchesPlayed,
         int wins,

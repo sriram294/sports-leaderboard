@@ -2,6 +2,7 @@ package com.org.playboard.service.group;
 
 import com.org.playboard.common.ApiException;
 import com.org.playboard.common.AvatarColorPicker;
+import com.org.playboard.common.DefaultAvatars;
 import com.org.playboard.common.EmailNormalizer;
 import com.org.playboard.dto.group.AddMemberRequest;
 import com.org.playboard.dto.group.CreateGroupRequest;
@@ -207,6 +208,7 @@ public class GroupService {
             created.setEmail(email);
             created.setDisplayName(request.displayName().trim());
             created.setAvatarColor(AvatarColorPicker.pick(email));
+            created.setAvatarId(DefaultAvatars.pickRandom());
             // google_sub stays null — set when they first sign in with this email.
             return userRepository.save(created);
         });

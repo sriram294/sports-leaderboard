@@ -6,5 +6,6 @@ data class UserSession(
     val displayName: String,
     val email: String,
     val photoUrl: String?,
+    val avatarId: String?,
     val avatarColor: String,
 )

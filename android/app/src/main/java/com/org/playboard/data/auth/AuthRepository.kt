@@ -93,5 +93,6 @@ private fun UserSummaryDto.toUserSession() = UserSession(
     displayName = displayName,
     email = email,
     photoUrl = photoUrl,
+    avatarId = avatarId,
     avatarColor = avatarColor,
 )

@@ -55,6 +55,11 @@ public class AvatarStorageService {
         return publicBaseUrl + "/avatars/" + filename;
     }
 
+    /** Delete any stored photo for the user — called when they switch to a default avatar. */
+    public void remove(UUID userId) {
+        removeExisting(userId);
+    }
+
     // A prior upload may have used a different extension (e.g. jpg -> png) —
     // clear it so the new upload doesn't leave two files with only one referenced.
     private void removeExisting(UUID userId) {

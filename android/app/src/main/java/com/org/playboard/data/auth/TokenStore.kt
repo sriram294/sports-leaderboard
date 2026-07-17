@@ -28,6 +28,7 @@ class TokenStore @Inject constructor(private val dataStore: DataStore<Preference
         val USER_DISPLAY_NAME = stringPreferencesKey("user_display_name")
         val USER_EMAIL = stringPreferencesKey("user_email")
         val USER_PHOTO_URL = stringPreferencesKey("user_photo_url")
+        val USER_AVATAR_ID = stringPreferencesKey("user_avatar_id")
         val USER_AVATAR_COLOR = stringPreferencesKey("user_avatar_color")
     }
 
@@ -50,6 +51,11 @@ class TokenStore @Inject constructor(private val dataStore: DataStore<Preference
             } else {
                 prefs.remove(Keys.USER_PHOTO_URL)
             }
+            if (user.avatarId != null) {
+                prefs[Keys.USER_AVATAR_ID] = user.avatarId
+            } else {
+                prefs.remove(Keys.USER_AVATAR_ID)
+            }
             prefs[Keys.USER_AVATAR_COLOR] = user.avatarColor
         }
     }
@@ -68,6 +74,11 @@ class TokenStore @Inject constructor(private val dataStore: DataStore<Preference
                 prefs[Keys.USER_PHOTO_URL] = user.photoUrl
             } else {
                 prefs.remove(Keys.USER_PHOTO_URL)
+            }
+            if (user.avatarId != null) {
+                prefs[Keys.USER_AVATAR_ID] = user.avatarId
+            } else {
+                prefs.remove(Keys.USER_AVATAR_ID)
             }
             prefs[Keys.USER_AVATAR_COLOR] = user.avatarColor
         }
@@ -99,6 +110,7 @@ class TokenStore @Inject constructor(private val dataStore: DataStore<Preference
                     displayName = displayName,
                     email = email,
                     photoUrl = prefs[Keys.USER_PHOTO_URL],
+                    avatarId = prefs[Keys.USER_AVATAR_ID],
                     avatarColor = avatarColor,
                 )
             )

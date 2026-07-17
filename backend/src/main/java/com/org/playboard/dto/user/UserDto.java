@@ -5,7 +5,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record UserDto(
-        UUID id, String displayName, String email, String photoUrl, String avatarColor, Instant createdAt) {
+        UUID id,
+        String displayName,
+        String email,
+        String photoUrl,
+        String avatarId,
+        String avatarColor,
+        Instant createdAt) {
 
     public static UserDto from(User user) {
         return new UserDto(
@@ -13,6 +19,7 @@ public record UserDto(
                 user.getDisplayName(),
                 user.getEmail(),
                 user.getPhotoUrl(),
+                user.getAvatarId(),
                 user.getAvatarColor(),
                 user.getCreatedAt());
     }

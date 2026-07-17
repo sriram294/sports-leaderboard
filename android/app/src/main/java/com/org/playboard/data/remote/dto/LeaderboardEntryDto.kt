@@ -13,6 +13,7 @@ data class LeaderboardEntryDto(
     val userId: String,
     val displayName: String,
     val photoUrl: String?,
+    val avatarId: String? = null,
     val avatarColor: String,
     val gamesPlayed: Int,
     val wins: Int,

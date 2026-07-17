@@ -302,12 +302,12 @@ private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM 
 // deenesh and Mani are the tiebreak case: both 50%, and Mani has the higher PF but
 // the worse difference, so he ranks below.
 private val previewRankings = listOf(
-    PlayerRanking(1, "u1", "Sriram", null, "#F59E0B", 6, 5, 1, 122, 95, 0.83),
-    PlayerRanking(2, "u2", "deenesh", null, "#3DB4FF", 6, 3, 3, 107, 102, 0.50),
-    PlayerRanking(3, "u3", "Mani", null, "#9ADE28", 6, 3, 3, 108, 110, 0.50),
-    PlayerRanking(4, "u4", "Dinesh K", null, "#C026D3", 7, 3, 4, 135, 140, 0.42),
-    PlayerRanking(5, "u5", "Balaji", null, "#FB923C", 5, 2, 3, 93, 100, 0.40),
-    PlayerRanking(6, "u6", "Pari", null, "#8A6CFF", 6, 2, 4, 101, 112, 0.33),
+    PlayerRanking(1, "u1", "Sriram", null, null, "#F59E0B", 6, 5, 1, 122, 95, 0.83),
+    PlayerRanking(2, "u2", "deenesh", null, null, "#3DB4FF", 6, 3, 3, 107, 102, 0.50),
+    PlayerRanking(3, "u3", "Mani", null, null, "#9ADE28", 6, 3, 3, 108, 110, 0.50),
+    PlayerRanking(4, "u4", "Dinesh K", null, null, "#C026D3", 7, 3, 4, 135, 140, 0.42),
+    PlayerRanking(5, "u5", "Balaji", null, null, "#FB923C", 5, 2, 3, 93, 100, 0.40),
+    PlayerRanking(6, "u6", "Pari", null, null, "#8A6CFF", 6, 2, 4, 101, 112, 0.33),
 )
 
 @Preview(widthDp = 380, heightDp = 900, showBackground = true)

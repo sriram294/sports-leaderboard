@@ -12,6 +12,7 @@ class PlayerRankingTest {
             userId = "u1",
             displayName = "P1",
             photoUrl = null,
+            avatarId = null,
             avatarColor = "#9ADE28",
             gamesPlayed = 6,
             wins = 3,

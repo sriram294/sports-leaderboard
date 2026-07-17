@@ -21,6 +21,7 @@ import com.org.playboard.data.remote.dto.RegisterDeviceRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto
+import com.org.playboard.data.remote.dto.UpdateAvatarRequestDto
 import com.org.playboard.data.remote.dto.UpdateUserRequestDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import okhttp3.MultipartBody
@@ -65,6 +66,10 @@ interface PlayboardApi {
     @Multipart
     @POST("api/v1/users/me/photo")
     suspend fun uploadUserPhoto(@Part file: MultipartBody.Part): UserSummaryDto
+
+    /** Select one of the bundled default avatars; clears any uploaded photo server-side. */
+    @PATCH("api/v1/users/me/avatar")
+    suspend fun updateAvatar(@Body request: UpdateAvatarRequestDto): UserSummaryDto
 
     @GET("api/v1/groups")
     suspend fun getGroups(): GroupsResponseDto

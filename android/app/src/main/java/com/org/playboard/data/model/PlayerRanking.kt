@@ -10,6 +10,7 @@ data class PlayerRanking(
     val userId: String,
     val displayName: String,
     val photoUrl: String?,
+    val avatarId: String?,
     val avatarColor: String,
     val gamesPlayed: Int,
     val wins: Int,

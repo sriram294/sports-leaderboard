@@ -4,4 +4,10 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record BestPartnerDto(
-        UUID userId, String displayName, String avatarColor, int gamesTogether, int winsTogether, BigDecimal winRate) {}
+        UUID userId,
+        String displayName,
+        String avatarId,
+        String avatarColor,
+        int gamesTogether,
+        int winsTogether,
+        BigDecimal winRate) {}

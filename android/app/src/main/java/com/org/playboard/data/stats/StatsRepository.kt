@@ -35,6 +35,7 @@ private fun PlayerStatsDto.toStats() = PlayerStats(
     userId = userId,
     displayName = displayName,
     photoUrl = photoUrl,
+    avatarId = avatarId,
     avatarColor = avatarColor,
     matchesPlayed = matchesPlayed,
     wins = wins,
@@ -52,6 +53,7 @@ private fun BestPartnerDto.toBestPartner() = BestPartner(
     userId = userId,
     displayName = displayName,
     photoUrl = photoUrl,
+    avatarId = avatarId,
     avatarColor = avatarColor,
     gamesTogether = gamesTogether,
     winsTogether = winsTogether,
@@ -76,6 +78,7 @@ private fun MatchPlayerDto.toPlayer() = MatchPlayer(
     displayName = displayName,
     avatarColor = avatarColor,
     photoUrl = photoUrl,
+    avatarId = avatarId,
 )
 
 private fun MatchSetDto.toSet() = MatchSet(setNo = setNo, team1Score = team1Score, team2Score = team2Score)

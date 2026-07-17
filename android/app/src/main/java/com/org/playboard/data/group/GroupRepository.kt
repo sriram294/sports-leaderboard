@@ -220,6 +220,7 @@ private fun MemberDto.toMember() = Member(
     id = userId,
     displayName = displayName,
     photoUrl = photoUrl,
+    avatarId = avatarId,
     avatarColor = avatarColor,
     role = role,
 )

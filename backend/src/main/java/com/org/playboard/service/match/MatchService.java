@@ -349,7 +349,11 @@ public class MatchService {
                             .map(p -> {
                                 User user = p.getUser();
                                 return new PlayerRefDto(
-                                        user.getId(), user.getDisplayName(), user.getAvatarColor(), user.getPhotoUrl());
+                                        user.getId(),
+                                        user.getDisplayName(),
+                                        user.getAvatarColor(),
+                                        user.getPhotoUrl(),
+                                        user.getAvatarId());
                             })
                             .toList();
                     return new TeamDto(team.getTeamNo(), team.isWinner(), players);

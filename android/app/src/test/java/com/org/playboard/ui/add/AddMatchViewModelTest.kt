@@ -102,6 +102,7 @@ private class FakePlayboardApi(
     }
     override suspend fun updateDisplayName(request: com.org.playboard.data.remote.dto.UpdateUserRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
+    override suspend fun updateAvatar(request: com.org.playboard.data.remote.dto.UpdateAvatarRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
 }
 
@@ -250,10 +251,10 @@ class AddMatchViewModelTest {
     fun `guest fillers collapse to a single available entry`() {
         // A real member plus the group's 3 interchangeable guest fillers.
         val roster = listOf(
-            Member("u1", "Sriram", null, "#9ADE28", "owner"),
-            Member("g1", "Guest 1", null, "#9AA0A6", "guest"),
-            Member("g2", "Guest 2", null, "#9AA0A6", "guest"),
-            Member("g3", "Guest 3", null, "#9AA0A6", "guest"),
+            Member("u1", "Sriram", null, null, "#9ADE28", "owner"),
+            Member("g1", "Guest 1", null, null, "#9AA0A6", "guest"),
+            Member("g2", "Guest 2", null, null, "#9AA0A6", "guest"),
+            Member("g3", "Guest 3", null, null, "#9AA0A6", "guest"),
         )
         val fresh = AddMatchUiState(roster = roster)
 
@@ -277,8 +278,8 @@ class AddMatchViewModelTest {
 
     @Test
     fun `slotLabel hides guest numbering but keeps real names`() {
-        assertEquals("Guest", Member("g1", "Guest 1", null, "#9AA0A6", "guest").slotLabel())
-        assertEquals("Sriram", Member("u1", "Sriram", null, "#9ADE28", "owner").slotLabel())
+        assertEquals("Guest", Member("g1", "Guest 1", null, null, "#9AA0A6", "guest").slotLabel())
+        assertEquals("Sriram", Member("u1", "Sriram", null, null, "#9ADE28", "owner").slotLabel())
     }
 
     @Test

@@ -31,6 +31,7 @@ import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
+import com.org.playboard.data.remote.dto.UpdateAvatarRequestDto
 import com.org.playboard.data.remote.dto.UpdateUserRequestDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import com.org.playboard.data.stats.StatsRepository
@@ -64,9 +65,11 @@ private open class FakePlayboardApi(
     var statsCalls = 0
     var userName = "Raj"
     var userPhotoUrl: String? = null
+    var userAvatarId: String? = null
     var photoUploads = 0
+    var avatarUpdates = 0
 
-    private fun currentUser() = UserSummaryDto("u1", userName, "raj@example.com", userPhotoUrl, "#9ADE28")
+    private fun currentUser() = UserSummaryDto("u1", userName, "raj@example.com", userPhotoUrl, userAvatarId, "#9ADE28")
 
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, currentUser())
@@ -77,6 +80,13 @@ private open class FakePlayboardApi(
     override suspend fun uploadUserPhoto(file: MultipartBody.Part): UserSummaryDto {
         photoUploads++
         userPhotoUrl = "https://cdn.example/avatars/u1.png"
+        userAvatarId = null
+        return currentUser()
+    }
+    override suspend fun updateAvatar(request: UpdateAvatarRequestDto): UserSummaryDto {
+        avatarUpdates++
+        userAvatarId = request.avatarId
+        userPhotoUrl = null
         return currentUser()
     }
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")
@@ -126,7 +136,7 @@ private fun statsDto(userId: String = "u1", displayName: String = "Raj", withPar
     winRate = 0.5,
     currentStreak = 2,
     bestStreak = 3,
-    bestPartner = if (withPartner) BestPartnerDto("u2", "Dev", null, "#3DB4FF", 2, 2, 1.0) else null,
+    bestPartner = if (withPartner) BestPartnerDto("u2", "Dev", null, null, "#3DB4FF", 2, 2, 1.0) else null,
     recentMatches = listOf(
         MatchSummaryDto(
             id = "m1",
@@ -335,5 +345,24 @@ class ProfileViewModelTest {
         assertEquals(1, api.photoUploads)
         // Cache-busted URL so the image loader reloads the new bytes.
         assertTrue(state.identityPhotoUrl?.startsWith("https://cdn.example/avatars/u1.png?") == true)
+    }
+
+    @Test
+    fun `selecting a default avatar sets the identity avatar and clears any photo`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto()), stats = mapOf("u1" to statsDto()))
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+        // Start from an uploaded photo so we can prove picking an avatar clears it.
+        viewModel.onPhotoSelected(byteArrayOf(1, 2, 3), "image/png")
+        advanceUntilIdle()
+
+        viewModel.onAvatarSelected("12ac343930")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isUploadingPhoto)
+        assertEquals(1, api.avatarUpdates)
+        assertEquals("12ac343930", state.identityAvatarId)
+        assertNull(state.identityPhotoUrl) // photo replaced by the avatar (exclusive)
     }
 }

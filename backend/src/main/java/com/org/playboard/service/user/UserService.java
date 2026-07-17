@@ -1,6 +1,7 @@
 package com.org.playboard.service.user;
 
 import com.org.playboard.common.ApiException;
+import com.org.playboard.common.DefaultAvatars;
 import com.org.playboard.dto.user.UserDto;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.user.UserRepository;
@@ -37,6 +38,23 @@ public class UserService {
     public UserDto updatePhoto(UUID userId, MultipartFile file) {
         User user = findUser(userId);
         user.setPhotoUrl(avatarStorageService.store(userId, file));
+        // A photo and a default avatar are mutually exclusive — the photo wins.
+        user.setAvatarId(null);
+        return UserDto.from(user);
+    }
+
+    @Transactional
+    public UserDto updateAvatar(UUID userId, String avatarId) {
+        if (!DefaultAvatars.isValid(avatarId)) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "AVATAR_INVALID_ID", "Unknown avatar id");
+        }
+        User user = findUser(userId);
+        user.setAvatarId(avatarId);
+        // Picking a default avatar replaces any uploaded photo — drop the file too.
+        if (user.getPhotoUrl() != null) {
+            avatarStorageService.remove(userId);
+            user.setPhotoUrl(null);
+        }
         return UserDto.from(user);
     }
 

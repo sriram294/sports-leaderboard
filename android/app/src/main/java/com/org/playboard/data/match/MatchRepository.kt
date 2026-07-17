@@ -140,6 +140,7 @@ private fun MatchPlayerDto.toPlayer() = MatchPlayer(
     displayName = displayName,
     avatarColor = avatarColor,
     photoUrl = photoUrl,
+    avatarId = avatarId,
 )
 
 private fun MatchSetDto.toSet() = MatchSet(setNo = setNo, team1Score = team1Score, team2Score = team2Score)
