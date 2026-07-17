@@ -31,11 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.data.model.Member
 import com.org.playboard.ui.components.PlayerAvatar
-import com.org.playboard.ui.theme.BackgroundDark
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /**
  * "Select Player" bottom sheet shown when tapping an empty team slot. Lists the
@@ -51,7 +47,7 @@ fun PlayerPickerSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
+        containerColor = PlayboardTheme.colors.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
@@ -66,12 +62,12 @@ fun PlayerPickerSheet(
                     text = "Select Player",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = PlayboardTheme.colors.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
                     text = "×",
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     fontSize = 24.sp,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
@@ -85,7 +81,7 @@ fun PlayerPickerSheet(
                 Text(
                     text = "No more players. Invite players to the group to add them.",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     modifier = Modifier.padding(vertical = 20.dp),
                 )
             } else {
@@ -109,8 +105,8 @@ private fun PlayerRow(member: Member, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(BackgroundDark)
-            .border(1.dp, TextMuted.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
+            .background(PlayboardTheme.colors.background)
+            .border(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
@@ -126,7 +122,7 @@ private fun PlayerRow(member: Member, onClick: () -> Unit) {
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             modifier = Modifier.weight(1f),
         )
         if (member.isGuest) {
@@ -141,10 +137,10 @@ private fun GuestTag() {
     Text(
         text = "GUEST",
         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 1.sp),
-        color = TextMuted,
+        color = PlayboardTheme.colors.textMuted,
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .border(1.dp, TextMuted.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+            .border(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }

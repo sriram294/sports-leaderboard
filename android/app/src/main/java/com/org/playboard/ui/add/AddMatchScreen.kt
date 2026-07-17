@@ -44,14 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.data.model.Member
 import com.org.playboard.data.model.UserSession
 import com.org.playboard.ui.components.PlayerAvatar
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /** Add Match tab — record a doubles result (docs/requirements/04-add-match.md). */
 @Composable
@@ -105,15 +98,15 @@ private fun AddMatchContent(
     onRetry: () -> Unit,
 ) {
     when {
-        state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
+        state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
         state.noGroup -> CenteredMessage("Create or join a group before recording a match.")
         state.hasLoadFailed -> CenteredBox {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Couldn't load the roster.", color = TextMuted)
+                Text("Couldn't load the roster.", color = PlayboardTheme.colors.textMuted)
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandLime, contentColor = OnBrandLime),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlayboardTheme.colors.brand, contentColor = PlayboardTheme.colors.onBrand),
                 ) { Text("Retry") }
             }
         }
@@ -179,7 +172,7 @@ private fun AddMatchForm(
         }
         Text(
             text = "+ Add set",
-            color = BrandLime,
+            color = PlayboardTheme.colors.brand,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
@@ -211,7 +204,7 @@ private fun AddMatchForm(
             Spacer(Modifier.height(16.dp))
             Text(
                 text = errorMessage(state.submitError),
-                color = StatLossRed,
+                color = PlayboardTheme.colors.statLoss,
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
             )
         }
@@ -222,15 +215,15 @@ private fun AddMatchForm(
             enabled = state.canRecord,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = BrandLime,
-                contentColor = OnBrandLime,
-                disabledContainerColor = BrandLime.copy(alpha = 0.35f),
-                disabledContentColor = OnBrandLime.copy(alpha = 0.6f),
+                containerColor = PlayboardTheme.colors.brand,
+                contentColor = PlayboardTheme.colors.onBrand,
+                disabledContainerColor = PlayboardTheme.colors.brand.copy(alpha = 0.35f),
+                disabledContentColor = PlayboardTheme.colors.onBrand.copy(alpha = 0.6f),
             ),
             modifier = Modifier.fillMaxWidth().height(54.dp),
         ) {
             if (state.isSubmitting) {
-                CircularProgressIndicator(color = OnBrandLime, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.onBrand, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
             } else {
                 Text(
                     if (state.isEditing) "Save changes" else "Record Match",
@@ -248,7 +241,7 @@ private fun RecorderCaption(recorder: UserSession?) {
     Text(
         text = "Recording as ${recorder.displayName} · ${recorder.email}",
         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-        color = TextMuted,
+        color = PlayboardTheme.colors.textMuted,
         modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
     )
 }
@@ -258,7 +251,7 @@ private fun EditingCaption() {
     Text(
         text = "Editing match · saving replaces the original",
         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-        color = BrandLime,
+        color = PlayboardTheme.colors.brand,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
     )
@@ -269,7 +262,7 @@ private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = TextMuted,
+        color = PlayboardTheme.colors.textMuted,
         modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
     )
 }
@@ -305,7 +298,7 @@ private fun TeamBuilder(
                 text = "VS",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.width(vsWidth),
             )
@@ -326,7 +319,7 @@ private fun TeamHeader(text: String, modifier: Modifier = Modifier) {
         text = text,
         style = MaterialTheme.typography.bodyLarge,
         fontWeight = FontWeight.SemiBold,
-        color = TextPrimary,
+        color = PlayboardTheme.colors.textPrimary,
         textAlign = TextAlign.Center,
         modifier = modifier,
     )
@@ -372,18 +365,18 @@ private fun FilledSlot(member: Member, onRemove: () -> Unit) {
                 modifier = Modifier
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(SurfaceDark)
-                    .border(1.dp, TextMuted.copy(alpha = 0.5f), CircleShape)
+                    .background(PlayboardTheme.colors.surface)
+                    .border(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.5f), CircleShape)
                     .clickable(onClick = onRemove),
             ) {
-                Text("×", color = TextPrimary, fontSize = 13.sp)
+                Text("×", color = PlayboardTheme.colors.textPrimary, fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(4.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp),
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             maxLines = 1,
         )
     }
@@ -397,10 +390,10 @@ private fun EmptySlot(onClick: () -> Unit) {
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .border(1.dp, TextMuted.copy(alpha = 0.5f), CircleShape)
+                .border(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.5f), CircleShape)
                 .clickable(onClick = onClick),
         ) {
-            Text("+", color = TextMuted, fontSize = 22.sp)
+            Text("+", color = PlayboardTheme.colors.textMuted, fontSize = 22.sp)
         }
         Spacer(Modifier.height(4.dp))
         Text(text = " ", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp))
@@ -420,14 +413,14 @@ private fun SetRow(
         Text(
             text = "Set ${index + 1}",
             style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             modifier = Modifier.width(64.dp),
         )
         Spacer(Modifier.weight(1f))
         ScoreField(value = team1, onChange = { onScoreChanged(index, 1, it) })
         Text(
             text = "–",
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(horizontal = 12.dp),
         )
@@ -436,7 +429,7 @@ private fun SetRow(
         if (canRemove) {
             Text(
                 text = "×",
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 fontSize = 22.sp,
                 modifier = Modifier
                     .clip(CircleShape)
@@ -453,16 +446,16 @@ private fun ScoreField(value: String, onChange: (String) -> Unit) {
         value = value,
         onValueChange = onChange,
         singleLine = true,
-        placeholder = { Text("0", color = TextMuted.copy(alpha = 0.5f), textAlign = TextAlign.Center) },
+        placeholder = { Text("0", color = PlayboardTheme.colors.textMuted.copy(alpha = 0.5f), textAlign = TextAlign.Center) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = BrandLime,
-            unfocusedBorderColor = TextMuted.copy(alpha = 0.4f),
-            cursorColor = BrandLime,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            focusedContainerColor = BackgroundDark,
-            unfocusedContainerColor = BackgroundDark,
+            focusedBorderColor = PlayboardTheme.colors.brand,
+            unfocusedBorderColor = PlayboardTheme.colors.textMuted.copy(alpha = 0.4f),
+            cursorColor = PlayboardTheme.colors.brand,
+            focusedTextColor = PlayboardTheme.colors.textPrimary,
+            unfocusedTextColor = PlayboardTheme.colors.textPrimary,
+            focusedContainerColor = PlayboardTheme.colors.background,
+            unfocusedContainerColor = PlayboardTheme.colors.background,
         ),
         modifier = Modifier.width(72.dp),
     )
@@ -485,10 +478,10 @@ private fun WinnerCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) BrandLime.copy(alpha = 0.12f) else SurfaceDark)
+            .background(if (selected) PlayboardTheme.colors.brand.copy(alpha = 0.12f) else PlayboardTheme.colors.surface)
             .border(
                 1.dp,
-                if (selected) BrandLime else TextMuted.copy(alpha = 0.2f),
+                if (selected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textMuted.copy(alpha = 0.2f),
                 RoundedCornerShape(14.dp),
             )
             .clickable(onClick = onClick)
@@ -498,13 +491,13 @@ private fun WinnerCard(
             text = "Team $teamNo",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = if (selected) BrandLime else TextPrimary,
+            color = if (selected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = names,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
@@ -525,7 +518,7 @@ private fun CenteredMessage(text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(24.dp),
         )

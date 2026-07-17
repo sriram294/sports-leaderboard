@@ -10,18 +10,37 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import com.org.playboard.data.settings.ThemeStore
 import com.org.playboard.ui.navigation.PlayboardNavHost
 import com.org.playboard.ui.theme.PlayboardTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var themeStore: ThemeStore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PlayboardTheme {
+            val darkTheme by themeStore.isDarkTheme.collectAsState(initial = true)
+            val view = LocalView.current
+            // Keep the status/navigation bar icons legible against the app content:
+            // dark icons on the light theme, light icons on the dark theme.
+            LaunchedEffect(darkTheme) {
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = !darkTheme
+                controller.isAppearanceLightNavigationBars = !darkTheme
+            }
+            PlayboardTheme(darkTheme = darkTheme) {
                 RequestNotificationPermission()
                 PlayboardNavHost()
             }

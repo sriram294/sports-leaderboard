@@ -12,6 +12,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
+private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -21,4 +22,11 @@ object DataStoreModule {
     @Singleton
     fun provideSessionDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
         context.sessionDataStore
+
+    /** Long-lived settings store — survives sign-out (unlike the session store). */
+    @Provides
+    @Singleton
+    @SettingsPrefs
+    fun provideSettingsDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.settingsDataStore
 }

@@ -63,13 +63,7 @@ import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.PlayerStats
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -160,19 +154,19 @@ private fun ProfileContent(
                     Icon(
                         painter = painterResource(R.drawable.ic_settings),
                         contentDescription = "Settings",
-                        tint = TextPrimary,
+                        tint = PlayboardTheme.colors.textPrimary,
                     )
                 }
             }
         }
         when {
-            state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
+            state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
             state.noGroup -> CenteredMessage("Create or join a group to see your stats.")
             state.hasLoadFailed -> CenteredBox {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Couldn't load your stats.", color = TextMuted)
+                    Text("Couldn't load your stats.", color = PlayboardTheme.colors.textMuted)
                     Spacer(Modifier.height(16.dp))
-                    TextButton(onClick = onRetry) { Text("Retry", color = BrandLime) }
+                    TextButton(onClick = onRetry) { Text("Retry", color = PlayboardTheme.colors.brand) }
                 }
             }
             state.stats != null -> StatsList(
@@ -221,7 +215,7 @@ private fun StatsList(
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                    color = StatLossRed,
+                    color = PlayboardTheme.colors.statLoss,
                 )
             }
         }
@@ -249,8 +243,8 @@ private fun IdentityCard(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = SurfaceDark,
-        border = BorderStroke(1.5.dp, BrandLime),
+        color = PlayboardTheme.colors.surface,
+        border = BorderStroke(1.5.dp, PlayboardTheme.colors.brand),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -271,7 +265,7 @@ private fun IdentityCard(
                     Text(
                         text = displayName.uppercase(Locale.getDefault()),
                         style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
-                        color = BrandLime,
+                        color = PlayboardTheme.colors.brand,
                     )
                     if (editable) {
                         Spacer(Modifier.width(8.dp))
@@ -282,7 +276,7 @@ private fun IdentityCard(
                 Text(
                     text = "${stats.matchesPlayed} ${if (stats.matchesPlayed == 1) "match" else "matches"} played",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
@@ -290,13 +284,13 @@ private fun IdentityCard(
                         text = "${stats.winRatePercent}%",
                         style = MaterialTheme.typography.displayLarge.copy(fontSize = 28.sp, lineHeight = 28.sp),
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = PlayboardTheme.colors.textPrimary,
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "WIN RATE",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        color = PlayboardTheme.colors.textMuted,
                         modifier = Modifier.padding(bottom = 3.dp),
                     )
                 }
@@ -339,9 +333,9 @@ private fun EditableAvatar(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(SurfaceDark.copy(alpha = 0.6f)),
+                    .background(PlayboardTheme.colors.surface.copy(alpha = 0.6f)),
             ) {
-                CircularProgressIndicator(color = BrandLime, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
             }
         } else if (editable) {
             Box(
@@ -350,11 +344,11 @@ private fun EditableAvatar(
                     .align(Alignment.BottomEnd)
                     .size(26.dp)
                     .clip(CircleShape)
-                    .background(BrandLime)
-                    .border(2.dp, SurfaceDark, CircleShape)
+                    .background(PlayboardTheme.colors.brand)
+                    .border(2.dp, PlayboardTheme.colors.surface, CircleShape)
                     .clickable(onClick = onEdit),
             ) {
-    //          Text("✎", color = OnBrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    //          Text("✎", color = PlayboardTheme.colors.onBrand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
 
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
@@ -377,11 +371,11 @@ private fun EditBadge(onClick: () -> Unit) {
         modifier = Modifier
             .size(22.dp)
             .clip(CircleShape)
-            .background(SurfaceDark)
-            .border(1.dp, BrandLime.copy(alpha = 0.6f), CircleShape)
+            .background(PlayboardTheme.colors.surface)
+            .border(1.dp, PlayboardTheme.colors.brand.copy(alpha = 0.6f), CircleShape)
             .clickable(onClick = onClick),
     ) {
-//        Text("✎", color = BrandLime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+//        Text("✎", color = PlayboardTheme.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
 
         Icon(
             imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
@@ -389,7 +383,7 @@ private fun EditBadge(onClick: () -> Unit) {
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .padding(horizontal = 5.dp, vertical = 2.dp),
-            tint = BrandLime // Retains original asset colors
+            tint = PlayboardTheme.colors.brand // Retains original asset colors
         )
     }
 }
@@ -414,7 +408,7 @@ private fun StatTilesGrid(stats: PlayerStats) {
             StatTile(
                 "CURRENT STREAK",
                 stats.currentStreak.toString(),
-                valueColor = BrandLime,
+                valueColor = PlayboardTheme.colors.brand,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             StatTile("BEST STREAK", stats.bestStreak.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
@@ -428,10 +422,10 @@ private fun StatTile(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
-    valueColor: Color = TextPrimary,
+    valueColor: Color = PlayboardTheme.colors.textPrimary,
     subLabel: String? = null,
 ) {
-    Surface(shape = RoundedCornerShape(16.dp), color = SurfaceDark, modifier = modifier) {
+    Surface(shape = RoundedCornerShape(16.dp), color = PlayboardTheme.colors.surface, modifier = modifier) {
         Column(
             modifier = Modifier.padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -443,12 +437,12 @@ private fun StatTile(
                 color = valueColor,
             )
             Spacer(Modifier.height(6.dp))
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center)
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted, textAlign = TextAlign.Center)
             if (subLabel != null) {
                 Text(
                     text = subLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     modifier = Modifier.padding(top = 2.dp),
                     textAlign = TextAlign.Center
                 )
@@ -462,7 +456,7 @@ private fun BestPartnerCard(partner: BestPartner) {
     val accent = avatarColor(partner.avatarColor)
     Column {
         SectionLabel("BEST PARTNER")
-        Surface(shape = RoundedCornerShape(16.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = RoundedCornerShape(16.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(16.dp),
@@ -479,12 +473,12 @@ private fun BestPartnerCard(partner: BestPartner) {
                         text = partner.displayName,
                         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
+                        color = PlayboardTheme.colors.textPrimary,
                     )
                     Text(
                         text = "${partner.winsTogether}W / ${partner.gamesTogether} games together",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        color = PlayboardTheme.colors.textMuted,
                     )
                 }
                 Text(
@@ -500,8 +494,8 @@ private fun BestPartnerCard(partner: BestPartner) {
 
 @Composable
 private fun RecentMatchRowCard(row: RecentMatchRow) {
-    val accent = if (row.isWin) BrandLime else StatLossRed
-    Surface(shape = RoundedCornerShape(14.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
+    val accent = if (row.isWin) PlayboardTheme.colors.brand else PlayboardTheme.colors.statLoss
+    Surface(shape = RoundedCornerShape(14.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             Box(modifier = Modifier.width(4.dp).fillMaxHeight().background(accent))
             Column(modifier = Modifier.padding(14.dp)) {
@@ -511,7 +505,7 @@ private fun RecentMatchRowCard(row: RecentMatchRow) {
                     Text(
                         text = dateLabel(row.playedAt),
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        color = PlayboardTheme.colors.textMuted,
                     )
                 }
                 Spacer(Modifier.height(6.dp))
@@ -521,14 +515,14 @@ private fun RecentMatchRowCard(row: RecentMatchRow) {
                         append("vs ${row.opponentNames}")
                     },
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                    color = TextPrimary,
+                    color = PlayboardTheme.colors.textPrimary,
                 )
                 if (row.sets.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = row.sets.joinToString(", ") { "${it.team1Score}-${it.team2Score}" },
                         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                        color = BrandLime,
+                        color = PlayboardTheme.colors.brand,
                     )
                 }
             }
@@ -538,7 +532,7 @@ private fun RecentMatchRowCard(row: RecentMatchRow) {
 
 @Composable
 private fun ResultBadge(isWin: Boolean) {
-    val color = if (isWin) BrandLime else StatLossRed
+    val color = if (isWin) PlayboardTheme.colors.brand else PlayboardTheme.colors.statLoss
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
@@ -547,7 +541,7 @@ private fun ResultBadge(isWin: Boolean) {
     ) {
         Text(
             text = if (isWin) "WIN" else "LOSS",
-            color = if (isWin) OnBrandLime else TextPrimary,
+            color = if (isWin) PlayboardTheme.colors.onBrand else PlayboardTheme.colors.textPrimary,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
         )
@@ -564,11 +558,11 @@ private fun BackRow(onBack: () -> Unit) {
             .clickable(onClick = onBack)
             .padding(vertical = 10.dp, horizontal = 4.dp),
     ) {
-        Text(text = "←", color = BrandLime, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp))
+        Text(text = "←", color = PlayboardTheme.colors.brand, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp))
         Spacer(Modifier.width(8.dp))
         Text(
             text = "Leaderboard",
-            color = BrandLime,
+            color = PlayboardTheme.colors.brand,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
             fontWeight = FontWeight.SemiBold,
         )
@@ -580,7 +574,7 @@ private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = TextMuted,
+        color = PlayboardTheme.colors.textMuted,
         modifier = Modifier.padding(top = 2.dp, bottom = 4.dp),
     )
 }
@@ -596,7 +590,7 @@ private fun CenteredMessage(text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(24.dp),
         )

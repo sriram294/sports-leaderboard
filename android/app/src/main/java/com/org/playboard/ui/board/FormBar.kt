@@ -20,8 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.ui.components.FormPill
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
 
 /**
  * The pinned "YOUR FORM" bar (docs/requirements/02-board-leaderboard.md): the
@@ -32,10 +30,10 @@ import com.org.playboard.ui.theme.TextMuted
 internal fun FormBar(results: List<Boolean>, modifier: Modifier = Modifier) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
+        color = PlayboardTheme.colors.surface,
         // On the near-black background the shadow is barely visible, so the border
         // is what actually makes the bar read as floating over the content.
-        border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.16f)),
+        border = BorderStroke(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.16f)),
         shadowElevation = 8.dp,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -47,13 +45,13 @@ internal fun FormBar(results: List<Boolean>, modifier: Modifier = Modifier) {
                 Text(
                     text = "YOUR FORM",
                     style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "Last ${results.size} ${if (results.size == 1) "match" else "matches"}",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                 )
             }
             Spacer(Modifier.weight(1f))

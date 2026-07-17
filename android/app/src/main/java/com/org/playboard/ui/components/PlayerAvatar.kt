@@ -1,4 +1,7 @@
 package com.org.playboard.ui.components
+import com.org.playboard.ui.theme.DarkBrand
+import com.org.playboard.ui.theme.DarkOnBrand
+import com.org.playboard.ui.theme.PlayboardTheme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,16 +22,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
-import com.org.playboard.ui.theme.SurfaceDark
 
 /**
  * Parses a server-assigned `avatarColor` hex string (`#RRGGBB`), falling back
  * to the brand accent if malformed so a bad value can never crash a screen.
  */
 fun avatarColor(hex: String): Color =
-    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(BrandLime)
+    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(DarkBrand)
 
 /**
  * Global avatar rule (docs/requirements/00-overview.md § Player / Avatar):
@@ -53,7 +53,7 @@ fun PlayerAvatar(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(SurfaceDark)
+            .background(PlayboardTheme.colors.surface)
             .border(width = size / 18, color = color, shape = CircleShape),
         contentAlignment = Alignment.Center,
     ) {
@@ -90,7 +90,7 @@ fun GroupAvatar(
     ) {
         Text(
             text = name.take(1).uppercase(),
-            color = OnBrandLime,
+            color = DarkOnBrand,
             style = TextStyle(fontWeight = FontWeight.Bold, fontSize = (size.value * 0.45).sp),
         )
     }

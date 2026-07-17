@@ -46,14 +46,7 @@ import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.ui.components.PlayerAvatar
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -102,13 +95,13 @@ private fun MatchesContent(
             .padding(horizontal = 20.dp),
     ) {
         when {
-            state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
+            state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
             state.noGroup -> CenteredMessage("Create or join a group to see its matches.")
             state.hasLoadFailed -> CenteredBox {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Couldn't load matches.", color = TextMuted)
+                    Text("Couldn't load matches.", color = PlayboardTheme.colors.textMuted)
                     Spacer(Modifier.height(16.dp))
-                    TextButton(onClick = onRetry) { Text("Retry", color = BrandLime) }
+                    TextButton(onClick = onRetry) { Text("Retry", color = PlayboardTheme.colors.brand) }
                 }
             }
             state.matches.isEmpty() -> CenteredMessage("No matches recorded yet.\nRecord one from the + tab.")
@@ -143,7 +136,7 @@ private fun MatchList(
             Text(
                 text = "${state.matchCount} doubles ${if (state.matchCount == 1) "match" else "matches"} · tap to expand",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
             )
         }
@@ -152,7 +145,7 @@ private fun MatchList(
                 Text(
                     text = "${dateLabel(section.date)} · ${section.matches.size} ${if (section.matches.size == 1) "match" else "matches"}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
                 )
             }
@@ -188,7 +181,7 @@ private fun MatchCard(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
+        color = PlayboardTheme.colors.surface,
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
     ) {
@@ -204,20 +197,20 @@ private fun MatchCard(
                 )
                 Text(
                     text = if (isExpanded) "▴" else "▾",
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     modifier = Modifier.padding(start = 6.dp),
                 )
             }
 
             if (isExpanded) {
                 Spacer(Modifier.height(12.dp))
-                HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
+                HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.15f))
                 Spacer(Modifier.height(12.dp))
                 when {
                     isDetailLoading -> Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = BrandLime, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
+                        CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
                     }
-                    detailFailed -> Text("Couldn't load match details.", color = TextMuted)
+                    detailFailed -> Text("Couldn't load match details.", color = PlayboardTheme.colors.textMuted)
                     detail != null -> ExpandedDetail(detail = detail, canModify = canModify, onEdit = onEdit, onDelete = onDelete)
                 }
             }
@@ -244,7 +237,7 @@ private fun TeamBlock(team: MatchTeam?, isWinner: Boolean, alignEnd: Boolean = f
             text = players.joinToString(" & ") { it.displayName },
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
             fontWeight = FontWeight.SemiBold,
-            color = if (isWinner) BrandLime else TextPrimary,
+            color = if (isWinner) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary,
             textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
             maxLines = 2,
         )
@@ -255,9 +248,9 @@ private fun TeamBlock(team: MatchTeam?, isWinner: Boolean, alignEnd: Boolean = f
 private fun WinnerBadge() {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(20.dp).clip(CircleShape).background(BrandLime),
+        modifier = Modifier.size(20.dp).clip(CircleShape).background(PlayboardTheme.colors.brand),
     ) {
-        Text("W", color = OnBrandLime, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("W", color = PlayboardTheme.colors.onBrand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -269,7 +262,7 @@ private fun ScoreColumn(sets: List<MatchSet>) {
                 text = "${set.team1Score} – ${set.team2Score}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                color = PlayboardTheme.colors.textPrimary,
             )
         }
     }
@@ -283,7 +276,7 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -
             Text(
                 text = "Set ${set.setNo}:  ${set.team1Score} – ${set.team2Score}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                color = TextPrimary,
+                color = PlayboardTheme.colors.textPrimary,
             )
         }
         val winner = detail.winningTeamNo?.let { detail.team(it) }?.players?.joinToString(" & ") { it.displayName }
@@ -293,7 +286,7 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -
                 text = "Winner: $winner",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
                 fontWeight = FontWeight.SemiBold,
-                color = BrandLime,
+                color = PlayboardTheme.colors.brand,
             )
         }
 
@@ -303,7 +296,7 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -
             Text(
                 text = "${event.displayName} · ${actionLabel(event.action)} · ${timeLabel(event.createdAt)}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 modifier = Modifier.padding(vertical = 2.dp),
             )
         }
@@ -311,8 +304,8 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -
         if (canModify) {
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlineActionButton(label = "Edit match", color = BrandLime, onClick = onEdit)
-                OutlineActionButton(label = "Delete match", color = StatLossRed, onClick = onDelete)
+                OutlineActionButton(label = "Edit match", color = PlayboardTheme.colors.brand, onClick = onEdit)
+                OutlineActionButton(label = "Delete match", color = PlayboardTheme.colors.statLoss, onClick = onDelete)
             }
         }
     }
@@ -337,21 +330,21 @@ private fun OutlineActionButton(label: String, color: androidx.compose.ui.graphi
 private fun DeleteConfirmDialog(isDeleting: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text("Delete match?", color = TextPrimary) },
+        containerColor = PlayboardTheme.colors.surface,
+        title = { Text("Delete match?", color = PlayboardTheme.colors.textPrimary) },
         text = {
             Text(
                 "This permanently removes the match and updates the leaderboard.",
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = !isDeleting) {
-                Text(if (isDeleting) "Deleting…" else "Delete", color = StatLossRed, fontWeight = FontWeight.SemiBold)
+                Text(if (isDeleting) "Deleting…" else "Delete", color = PlayboardTheme.colors.statLoss, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Cancel", color = TextMuted) }
+            TextButton(onClick = onDismiss, enabled = !isDeleting) { Text("Cancel", color = PlayboardTheme.colors.textMuted) }
         },
     )
 }
@@ -361,7 +354,7 @@ private fun SubLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = TextMuted,
+        color = PlayboardTheme.colors.textMuted,
         modifier = Modifier.padding(bottom = 6.dp),
     )
 }
@@ -377,7 +370,7 @@ private fun CenteredMessage(text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(24.dp),
         )

@@ -1,5 +1,6 @@
 package com.org.playboard.ui.login
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -36,10 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.R
-import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.PaytoneOne
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.TextMuted
 
 /** Entry point / auth gate — see docs/requirements/01-login.md, docs/prototype/login.pdf. */
 @Composable
@@ -82,7 +81,7 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
                     text = "layboard",
                     fontFamily = PaytoneOne,
                     fontSize = 46.sp,
-                    color = BrandLime,
+                    color = PlayboardTheme.colors.brand,
                 )
             }
 
@@ -107,7 +106,7 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
                         SelectionContainer {
                             Text(
                                 text = "Error code: $detail",
-                                color = TextMuted,
+                                color = PlayboardTheme.colors.textMuted,
                                 style = MaterialTheme.typography.labelSmall,
                                 textAlign = TextAlign.Center,
                             )
@@ -121,6 +120,8 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
                 enabled = !uiState.isLoading,
                 shape = RoundedCornerShape(percent = 50),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+                // Subtle outline so the white button stays visible on the light theme's near-white background.
+                border = BorderStroke(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.3f)),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
                 if (uiState.isLoading) {
@@ -141,7 +142,7 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
             Text(
                 text = "BY CONTINUING YOU AGREE TO THE TERMS",
                 style = MaterialTheme.typography.labelSmall,
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )

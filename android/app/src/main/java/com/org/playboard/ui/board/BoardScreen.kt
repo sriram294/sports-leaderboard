@@ -64,16 +64,9 @@ import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.share.renderAndShareLeaderboard
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
+import com.org.playboard.ui.theme.DarkPlayboardColors
+import com.org.playboard.ui.theme.LocalPlayboardColors
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.StatWinGreen
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
-import com.org.playboard.ui.theme.WinRateLowBlue
-import com.org.playboard.ui.theme.WinRateMidAmber
 import kotlinx.coroutines.launch
 
 /** Board (home) tab — see docs/requirements/02-board-leaderboard.md, docs/prototype/leaderboard.pdf. */
@@ -85,6 +78,8 @@ fun BoardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Render the shared image in whatever theme the app is currently showing.
+    val darkTheme = LocalPlayboardColors.current == DarkPlayboardColors
     BoardContent(
         uiState = uiState,
         onSortColumnSelected = viewModel::onSortColumnSelected,
@@ -94,7 +89,7 @@ fun BoardScreen(
         onPlayerClick = onPlayerClick,
         onShare = {
             val group = uiState.selectedGroup ?: return@BoardContent
-            scope.launch { renderAndShareLeaderboard(context, group, uiState.rankings) }
+            scope.launch { renderAndShareLeaderboard(context, group, uiState.rankings, darkTheme) }
         },
     )
 }
@@ -125,7 +120,7 @@ private fun BoardContent(
             .padding(horizontal = 10.dp),
     ) {
         when {
-            uiState.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
+            uiState.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
             uiState.hasLoadFailed -> LoadFailedState(onRetry = onRetry)
             uiState.selectedGroup == null -> NoGroupsState()
             else -> PullToRefreshBox(
@@ -200,7 +195,7 @@ private fun TopPlayersHeader(
             .fillMaxWidth()
             .padding(top = 16.dp),
     ) {
-        Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
         Spacer(modifier = Modifier.width(6.dp))
         TimeRangeSelector(selected = selectedRange, onSelected = onTimeRangeSelected)
         Spacer(modifier = Modifier.weight(1f))
@@ -208,7 +203,7 @@ private fun TopPlayersHeader(
             Icon(
                 painter = painterResource(id = R.drawable.ic_share),
                 contentDescription = "Share leaderboard",
-                tint = TextMuted,
+                tint = PlayboardTheme.colors.textMuted,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -234,13 +229,13 @@ private fun TimeRangeSelector(
                 .clickable { expanded = true }
                 .padding(horizontal = 4.dp, vertical = 2.dp),
         ) {
-            Text(text = selected.label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-            Text(text = " ▾", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(text = selected.label, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
+            Text(text = " ▾", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
         }
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(SurfaceDark),
+            modifier = Modifier.background(PlayboardTheme.colors.surface),
         ) {
             // Default (This Month) listed first; All Time last.
             listOf(LeaderboardTimeRange.MONTH, LeaderboardTimeRange.WEEK, LeaderboardTimeRange.ALL_TIME).forEach { range ->
@@ -249,7 +244,7 @@ private fun TimeRangeSelector(
                         Text(
                             text = range.label,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (range == selected) BrandLime else TextPrimary,
+                            color = if (range == selected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary,
                         )
                     },
                     onClick = {
@@ -348,7 +343,7 @@ private fun PodiumSlot(
                 ) {
                     Text(
                         text = entry.rank.toString(),
-                        color = OnBrandLime,
+                        color = PlayboardTheme.colors.onBrand,
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
                         fontWeight = FontWeight.Bold,
                     )
@@ -360,13 +355,13 @@ private fun PodiumSlot(
             text = entry.displayName,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             maxLines = 1,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = if (isChampion) color.copy(alpha = 0.08f) else SurfaceDark,
+            color = if (isChampion) color.copy(alpha = 0.08f) else PlayboardTheme.colors.surface,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp)
@@ -388,15 +383,15 @@ private fun PodiumSlot(
                         fontSize = if (isChampion) 34.sp else 24.sp,
                         lineHeight = if (isChampion) 36.sp else 26.sp,
                     ),
-                    color = if (isChampion) color else TextPrimary,
+                    color = if (isChampion) color else PlayboardTheme.colors.textPrimary,
                 )
 
-                Text(text = "WIN RATE", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Text(text = "WIN RATE", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${entry.wins}W · ${entry.losses}L",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                 )
             }
         }
@@ -418,13 +413,13 @@ private fun RankingsCard(
     onSortColumnSelected: (RankingSortColumn) -> Unit,
     onPlayerClick: (String) -> Unit,
 ) {
-    Surface(shape = RoundedCornerShape(20.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = RoundedCornerShape(20.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
             RankingsHeaderRow(sortColumn = sortColumn, onSortColumnSelected = onSortColumnSelected)
             rows.forEach { row ->
-                HorizontalDivider(color = TextMuted.copy(alpha = 0.12f))
+                HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.12f))
                 RankingRow(entry = row, onPlayerClick = onPlayerClick)
             }
         }
@@ -448,7 +443,7 @@ private fun RankingsHeaderRow(
 }
 
 @Composable
-private fun HeaderLabel(text: String, modifier: Modifier = Modifier, color: Color = TextMuted) {
+private fun HeaderLabel(text: String, modifier: Modifier = Modifier, color: Color = PlayboardTheme.colors.textMuted) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
@@ -475,7 +470,7 @@ private fun SortableHeaderLabel(
     ) {
         HeaderLabel(
             text = if (isActive) "$text ▾" else text,
-            color = if (isActive) TextPrimary else TextMuted,
+            color = if (isActive) PlayboardTheme.colors.textPrimary else PlayboardTheme.colors.textMuted,
         )
     }
 }
@@ -507,14 +502,14 @@ private fun RankingRow(entry: PlayerRanking, onPlayerClick: (String) -> Unit) {
                 text = entry.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                color = PlayboardTheme.colors.textPrimary,
                 maxLines = 1,
                 modifier = Modifier.padding(start = 10.dp),
             )
         }
-        StatCell(text = entry.gamesPlayed.toString(), color = TextPrimary, width = GpColumnWidth)
-        StatCell(text = entry.wins.toString(), color = StatWinGreen, width = WinsColumnWidth)
-        StatCell(text = entry.losses.toString(), color = StatLossRed, width = LossesColumnWidth)
+        StatCell(text = entry.gamesPlayed.toString(), color = PlayboardTheme.colors.textPrimary, width = GpColumnWidth)
+        StatCell(text = entry.wins.toString(), color = PlayboardTheme.colors.statWin, width = WinsColumnWidth)
+        StatCell(text = entry.losses.toString(), color = PlayboardTheme.colors.statLoss, width = LossesColumnWidth)
         StatCell(text = entry.pointsDiffLabel, color = pointsDiffColor(entry.pointsDiff), width = PointsDiffColumnWidth)
         StatCell(
             text = "${entry.winRatePercent}%",
@@ -537,24 +532,27 @@ private fun StatCell(text: String, color: Color, width: Dp, fontWeight: FontWeig
     )
 }
 
+@Composable
 private fun rankColor(rank: Int): Color = when (rank) {
-    1 -> BrandLime
-    2 -> TextPrimary
-    3 -> WinRateMidAmber
-    else -> TextMuted
+    1 -> PlayboardTheme.colors.brand
+    2 -> PlayboardTheme.colors.textPrimary
+    3 -> PlayboardTheme.colors.winRateMid
+    else -> PlayboardTheme.colors.textMuted
 }
 
+@Composable
 private fun winRateColor(percent: Int): Color = when {
-    percent >= 50 -> BrandLime
-    percent >= 25 -> WinRateMidAmber
-    else -> WinRateLowBlue
+    percent >= 50 -> PlayboardTheme.colors.brand
+    percent >= 25 -> PlayboardTheme.colors.winRateMid
+    else -> PlayboardTheme.colors.winRateLow
 }
 
 // Matches the W/L columns: outscoring opponents reads green, being outscored red.
+@Composable
 private fun pointsDiffColor(diff: Int): Color = when {
-    diff > 0 -> StatWinGreen
-    diff < 0 -> StatLossRed
-    else -> TextMuted
+    diff > 0 -> PlayboardTheme.colors.statWin
+    diff < 0 -> PlayboardTheme.colors.statLoss
+    else -> PlayboardTheme.colors.textMuted
 }
 
 @Composable
@@ -569,7 +567,7 @@ private fun LoadFailedState(onRetry: () -> Unit) {
             Text(
                 text = "Couldn't load the leaderboard.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -584,7 +582,7 @@ private fun NoGroupsState() {
         Text(
             text = "You're not in a group yet.\nUse the group switcher above to create or join one.",
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(24.dp),
         )
@@ -612,7 +610,7 @@ private fun NoMatchesBlock(range: LeaderboardTimeRange) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
         )
     }

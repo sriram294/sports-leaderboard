@@ -1,4 +1,5 @@
 package com.org.playboard.ui.main
+import com.org.playboard.ui.theme.PlayboardTheme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,10 +44,6 @@ import com.org.playboard.ui.profile.ProfileScreen
 import com.org.playboard.ui.profile.SettingsScreen
 import com.org.playboard.ui.stats.StatsScreen
 import com.org.playboard.ui.switcher.GroupSwitcher
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
 import com.org.playboard.ui.update.AppUpdateViewModel
 
 /**
@@ -152,7 +149,7 @@ private fun MainBottomBar(selectedTab: MainTab, onTabSelected: (MainTab) -> Unit
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfaceDark)
+            .background(PlayboardTheme.colors.surface)
             .navigationBarsPadding()
             .height(76.dp),
     ) {
@@ -173,7 +170,7 @@ private fun MainBottomBar(selectedTab: MainTab, onTabSelected: (MainTab) -> Unit
 
 @Composable
 private fun TabItem(tab: MainTab, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val tint = if (isSelected) BrandLime else TextMuted
+    val tint = if (isSelected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textMuted
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -198,7 +195,7 @@ private fun TabItem(tab: MainTab, isSelected: Boolean, onClick: () -> Unit, modi
         )
         if (isSelected) {
             Spacer(modifier = Modifier.height(3.dp))
-            Box(modifier = Modifier.width(28.dp).height(2.dp).background(BrandLime))
+            Box(modifier = Modifier.width(28.dp).height(2.dp).background(PlayboardTheme.colors.brand))
         }
     }
 }
@@ -222,18 +219,18 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 .offset(y = (-10).dp)
                 .size(58.dp)
                 .clip(CircleShape)
-                .background(BrandLime),
+                .background(PlayboardTheme.colors.brand),
         ) {
             Text(
                 text = "+",
-                color = OnBrandLime,
+                color = PlayboardTheme.colors.onBrand,
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 32.sp, lineHeight = 32.sp),
             )
         }
         Text(
             text = MainTab.Add.label,
             style = MaterialTheme.typography.labelSmall,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             modifier = Modifier.offset(y = (-6).dp),
         )
     }

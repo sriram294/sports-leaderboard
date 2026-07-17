@@ -37,13 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /**
  * Bottom sheet for the "Invite players" action. Generates a shareable invite
@@ -61,7 +55,7 @@ fun InviteSheet(
     val clipboard = LocalClipboardManager.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
+        containerColor = PlayboardTheme.colors.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         InviteSheetContent(
@@ -103,12 +97,12 @@ private fun InviteSheetContent(
             text = "Invite players",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
         )
         Text(
             text = "to ${state.groupName}",
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
         )
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -124,12 +118,12 @@ private fun InviteSheetContent(
 private fun InviteLoading() {
     Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = BrandLime, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
+            CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Generating an invite code…",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
             )
         }
     }
@@ -141,14 +135,14 @@ private fun InviteFailed(onRetry: () -> Unit) {
         Text(
             text = "Couldn't create an invite. Please try again.",
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onRetry,
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandLime, contentColor = OnBrandLime),
+            colors = ButtonDefaults.buttonColors(containerColor = PlayboardTheme.colors.brand, contentColor = PlayboardTheme.colors.onBrand),
         ) {
             Text("Retry", fontWeight = FontWeight.SemiBold)
         }
@@ -163,29 +157,29 @@ private fun InviteReady(code: String, onCopy: (String) -> Unit, onShare: (String
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(BackgroundDark)
-                .border(1.dp, BrandLime.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                .background(PlayboardTheme.colors.background)
+                .border(1.dp, PlayboardTheme.colors.brand.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                 .padding(vertical = 20.dp),
         ) {
             Text(
                 text = code,
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 32.sp, letterSpacing = 4.sp),
-                color = TextPrimary,
+                color = PlayboardTheme.colors.textPrimary,
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "Anyone with this code can join the group from the Join tab.",
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
         )
         Spacer(modifier = Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(
                 onClick = { onCopy(code) },
                 shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                border = BorderStroke(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayboardTheme.colors.textPrimary),
                 modifier = Modifier.weight(1f).height(52.dp),
             ) {
                 Text("Copy", fontWeight = FontWeight.SemiBold)
@@ -193,7 +187,7 @@ private fun InviteReady(code: String, onCopy: (String) -> Unit, onShare: (String
             Button(
                 onClick = { onShare(code) },
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandLime, contentColor = OnBrandLime),
+                colors = ButtonDefaults.buttonColors(containerColor = PlayboardTheme.colors.brand, contentColor = PlayboardTheme.colors.onBrand),
                 modifier = Modifier.weight(1f).height(52.dp),
             ) {
                 Text("Share", fontWeight = FontWeight.SemiBold)
