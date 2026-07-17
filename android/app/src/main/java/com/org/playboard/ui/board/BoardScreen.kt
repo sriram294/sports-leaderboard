@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -184,63 +187,88 @@ private fun BoardContent(
     }
 }
 
-/** "TOP PLAYERS" label, the calendar-window toggle, and the share action. */
+/** "TOP PLAYERS" label with the subtle calendar-window dropdown, and the share action. */
 @Composable
 private fun TopPlayersHeader(
     selectedRange: LeaderboardTimeRange,
     onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
     onShare: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_share),
-                    contentDescription = "Share leaderboard",
-                    tint = TextMuted,
-                    modifier = Modifier.size(18.dp),
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+    ) {
+        Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Spacer(modifier = Modifier.width(6.dp))
+        TimeRangeSelector(selected = selectedRange, onSelected = onTimeRangeSelected)
+        Spacer(modifier = Modifier.weight(1f))
+        IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_share),
+                contentDescription = "Share leaderboard",
+                tint = TextMuted,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Subtle calendar-window selector: a muted label + caret that opens a small dropdown of
+ * the three ranges. Deliberately low-key (no filled pills) so it reads as a refinement of
+ * the "TOP PLAYERS" heading rather than a primary control.
+ */
+@Composable
+private fun TimeRangeSelector(
+    selected: LeaderboardTimeRange,
+    onSelected: (LeaderboardTimeRange) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+        ) {
+            Text(text = selected.label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(text = " ▾", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(SurfaceDark),
+        ) {
+            // Default (This Month) listed first; All Time last.
+            listOf(LeaderboardTimeRange.MONTH, LeaderboardTimeRange.WEEK, LeaderboardTimeRange.ALL_TIME).forEach { range ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = range.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (range == selected) BrandLime else TextPrimary,
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelected(range)
+                    },
                 )
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        TimeRangeToggle(selected = selectedRange, onSelected = onTimeRangeSelected)
     }
 }
 
-/** Three-way calendar-window selector. Hand-rolled pills (no Material SegmentedButton in this app). */
-@Composable
-private fun TimeRangeToggle(
-    selected: LeaderboardTimeRange,
-    onSelected: (LeaderboardTimeRange) -> Unit,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        TimeRangeChip("This Month", LeaderboardTimeRange.MONTH, selected, onSelected)
-        TimeRangeChip("This Week", LeaderboardTimeRange.WEEK, selected, onSelected)
-        TimeRangeChip("All Time", LeaderboardTimeRange.ALL_TIME, selected, onSelected)
+/** Menu / label wording for each calendar window. */
+private val LeaderboardTimeRange.label: String
+    get() = when (this) {
+        LeaderboardTimeRange.MONTH -> "This Month"
+        LeaderboardTimeRange.WEEK -> "This Week"
+        LeaderboardTimeRange.ALL_TIME -> "All Time"
     }
-}
-
-@Composable
-private fun TimeRangeChip(
-    label: String,
-    range: LeaderboardTimeRange,
-    selected: LeaderboardTimeRange,
-    onSelected: (LeaderboardTimeRange) -> Unit,
-) {
-    val isActive = range == selected
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
-        color = if (isActive) OnBrandLime else TextMuted,
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (isActive) BrandLime else SurfaceDark)
-            .clickable { onSelected(range) }
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-    )
-}
 
 /** The top-3 podium row. */
 @Composable
