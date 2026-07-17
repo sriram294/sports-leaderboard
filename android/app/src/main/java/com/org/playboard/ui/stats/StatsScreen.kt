@@ -40,12 +40,7 @@ import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.FormPill
 import com.org.playboard.ui.components.PlayerAvatar
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /** Stats/Insights tab — group analytics dashboard (docs/requirements/06-stats.md). */
 @Composable
@@ -68,12 +63,12 @@ private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh
             .padding(horizontal = 20.dp),
     ) {
         when {
-            state.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
+            state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
             state.hasLoadFailed -> CenteredBox {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Couldn't load insights.", color = TextMuted)
+                    Text("Couldn't load insights.", color = PlayboardTheme.colors.textMuted)
                     Spacer(Modifier.height(16.dp))
-                    TextButton(onClick = onRetry) { Text("Retry", color = BrandLime) }
+                    TextButton(onClick = onRetry) { Text("Retry", color = PlayboardTheme.colors.brand) }
                 }
             }
             state.noGroup -> CenteredMessage("Create or join a group to see insights.")
@@ -113,13 +108,13 @@ private fun RecordsCard(records: Records) {
                 text = records.totalMatches.toString(),
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 34.sp, lineHeight = 34.sp),
                 fontWeight = FontWeight.Bold,
-                color = BrandLime,
+                color = PlayboardTheme.colors.brand,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = if (records.totalMatches == 1) "match played" else "matches played",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
@@ -152,7 +147,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             modifier = Modifier.width(96.dp),
         )
         PlayerAvatar(
@@ -165,7 +160,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
             text = player.displayName,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             maxLines = 1,
             modifier = Modifier
                 .weight(1f)
@@ -175,7 +170,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
             fontWeight = FontWeight.Bold,
-            color = BrandLime,
+            color = PlayboardTheme.colors.brand,
         )
     }
 }
@@ -209,20 +204,20 @@ private fun BestPartnershipCard(partnership: BestPartnership) {
                     text = "${partnership.player1.displayName} & ${partnership.player2.displayName}",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = PlayboardTheme.colors.textPrimary,
                     maxLines = 1,
                 )
                 Text(
                     text = "${partnership.winsTogether}W / ${partnership.gamesTogether} games together",
                     style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                 )
             }
             Text(
                 text = "${partnership.winRatePercent}%",
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 24.sp),
                 fontWeight = FontWeight.Bold,
-                color = BrandLime,
+                color = PlayboardTheme.colors.brand,
             )
         }
     }
@@ -252,7 +247,7 @@ private fun RecentFormCard(form: List<PlayerForm>) {
                     text = row.player.displayName,
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = PlayboardTheme.colors.textPrimary,
                     maxLines = 1,
                     modifier = Modifier
                         .weight(1f)
@@ -278,12 +273,12 @@ private fun BiggestWinCard(biggestWin: BiggestWin) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(BrandLime)
+                    .background(PlayboardTheme.colors.brand)
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
                 Text(
                     text = "+${biggestWin.margin} pts",
-                    color = OnBrandLime,
+                    color = PlayboardTheme.colors.onBrand,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                 )
@@ -298,7 +293,7 @@ private fun BiggestWinCard(biggestWin: BiggestWin) {
             Text(
                 text = match.sets.joinToString(", ") { "${it.team1Score}-${it.team2Score}" },
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = BrandLime,
+                color = PlayboardTheme.colors.brand,
             )
         }
     }
@@ -312,14 +307,14 @@ private fun TeamLine(team: MatchTeam?, isWinner: Boolean) {
             text = if (isWinner) "W" else " ",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = BrandLime,
+            color = PlayboardTheme.colors.brand,
             modifier = Modifier.width(16.dp),
         )
         Text(
             text = team.players.joinToString(" & ") { it.displayName },
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
             fontWeight = if (isWinner) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isWinner) TextPrimary else TextMuted,
+            color = if (isWinner) PlayboardTheme.colors.textPrimary else PlayboardTheme.colors.textMuted,
             maxLines = 1,
         )
     }
@@ -329,14 +324,14 @@ private fun TeamLine(team: MatchTeam?, isWinner: Boolean) {
 
 @Composable
 private fun InsightCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = RoundedCornerShape(20.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
 }
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text = text, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    Text(text = text, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
 }
 
 @Composable
@@ -350,7 +345,7 @@ private fun CenteredMessage(text: String) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(24.dp),
         )

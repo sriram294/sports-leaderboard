@@ -36,16 +36,7 @@ import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.StatWinGreen
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
-import com.org.playboard.ui.theme.WinRateLowBlue
-import com.org.playboard.ui.theme.WinRateMidAmber
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -69,21 +60,21 @@ fun LeaderboardShareCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(BackgroundDark)
+            .background(PlayboardTheme.colors.background)
             .padding(15.dp),
     ) {
         // Header — wordmark, group name, date.
         Text(
             text = "PLAYBOARD",
             style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
-            color = BrandLime,
+            color = PlayboardTheme.colors.brand,
             fontWeight = FontWeight.Bold,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = group.name,
             style = MaterialTheme.typography.headlineSmall,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
@@ -91,7 +82,7 @@ fun LeaderboardShareCard(
         Text(
             text = "Leaderboard · ${date.format(DATE_FORMAT)}",
             style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -104,7 +95,7 @@ fun LeaderboardShareCard(
 
 @Composable
 private fun SharePodium(podium: List<PlayerRanking>) {
-    Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
     Spacer(modifier = Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
         SharePodiumSlot(entry = podium.getOrNull(1), isChampion = false, modifier = Modifier.weight(1f))
@@ -151,13 +142,13 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
             text = entry.displayName,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             maxLines = 1,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = if (isChampion) color.copy(alpha = 0.08f) else SurfaceDark,
+            color = if (isChampion) color.copy(alpha = 0.08f) else PlayboardTheme.colors.surface,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp)
@@ -176,14 +167,14 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
                         fontSize = if (isChampion) 34.sp else 24.sp,
                         lineHeight = if (isChampion) 36.sp else 26.sp,
                     ),
-                    color = if (isChampion) color else TextPrimary,
+                    color = if (isChampion) color else PlayboardTheme.colors.textPrimary,
                 )
-                Text(text = "WIN RATE", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Text(text = "WIN RATE", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${entry.wins}W · ${entry.losses}L",
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                 )
             }
         }
@@ -201,9 +192,9 @@ private val WinRateColumnWidth = 52.dp
 
 @Composable
 private fun ShareRankingsCard(rows: List<PlayerRanking>) {
-    Surface(shape = RoundedCornerShape(20.dp), color = SurfaceDark, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = RoundedCornerShape(20.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                 ShareHeaderLabel("#", Modifier.width(28.dp))
@@ -215,7 +206,7 @@ private fun ShareRankingsCard(rows: List<PlayerRanking>) {
                 ShareHeaderLabel("WIN%", Modifier.width(WinRateColumnWidth), TextAlign.End)
             }
             rows.forEach { row ->
-                HorizontalDivider(color = TextMuted.copy(alpha = 0.12f))
+                HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.12f))
                 ShareRankingRow(entry = row)
             }
         }
@@ -227,7 +218,7 @@ private fun ShareHeaderLabel(text: String, modifier: Modifier = Modifier, textAl
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-        color = TextMuted,
+        color = PlayboardTheme.colors.textMuted,
         textAlign = textAlign,
         modifier = modifier,
     )
@@ -257,15 +248,15 @@ private fun ShareRankingRow(entry: PlayerRanking) {
                 text = entry.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                color = PlayboardTheme.colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 10.dp),
             )
         }
-        ShareStatCell(entry.gamesPlayed.toString(), TextPrimary, GpColumnWidth)
-        ShareStatCell(entry.wins.toString(), StatWinGreen, WinsColumnWidth)
-        ShareStatCell(entry.losses.toString(), StatLossRed, LossesColumnWidth)
+        ShareStatCell(entry.gamesPlayed.toString(), PlayboardTheme.colors.textPrimary, GpColumnWidth)
+        ShareStatCell(entry.wins.toString(), PlayboardTheme.colors.statWin, WinsColumnWidth)
+        ShareStatCell(entry.losses.toString(), PlayboardTheme.colors.statLoss, LossesColumnWidth)
         ShareStatCell(entry.pointsDiffLabel, pointsDiffColor(entry.pointsDiff), PointsDiffColumnWidth)
         ShareStatCell("${entry.winRatePercent}%", winRateColor(entry.winRatePercent), WinRateColumnWidth, FontWeight.Bold)
     }
@@ -283,24 +274,27 @@ private fun ShareStatCell(text: String, color: Color, width: Dp, fontWeight: Fon
     )
 }
 
+@Composable
 private fun rankColor(rank: Int): Color = when (rank) {
-    1 -> BrandLime
-    2 -> TextPrimary
-    3 -> WinRateMidAmber
-    else -> TextMuted
+    1 -> PlayboardTheme.colors.brand
+    2 -> PlayboardTheme.colors.textPrimary
+    3 -> PlayboardTheme.colors.winRateMid
+    else -> PlayboardTheme.colors.textMuted
 }
 
+@Composable
 private fun winRateColor(percent: Int): Color = when {
-    percent >= 50 -> BrandLime
-    percent >= 25 -> WinRateMidAmber
-    else -> WinRateLowBlue
+    percent >= 50 -> PlayboardTheme.colors.brand
+    percent >= 25 -> PlayboardTheme.colors.winRateMid
+    else -> PlayboardTheme.colors.winRateLow
 }
 
 // Matches the W/L columns: outscoring opponents reads green, being outscored red.
+@Composable
 private fun pointsDiffColor(diff: Int): Color = when {
-    diff > 0 -> StatWinGreen
-    diff < 0 -> StatLossRed
-    else -> TextMuted
+    diff > 0 -> PlayboardTheme.colors.statWin
+    diff < 0 -> PlayboardTheme.colors.statLoss
+    else -> PlayboardTheme.colors.textMuted
 }
 
 private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")

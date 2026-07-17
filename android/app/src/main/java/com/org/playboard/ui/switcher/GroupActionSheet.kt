@@ -37,14 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
-import com.org.playboard.ui.theme.StatLossRed
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /**
  * Bottom sheet for the group switcher's "+ Create or join a group" action.
@@ -63,7 +56,7 @@ fun GroupActionSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
+        containerColor = PlayboardTheme.colors.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         GroupActionSheetContent(
@@ -108,18 +101,18 @@ private fun GroupActionSheetContent(
             ),
             keyboardActions = KeyboardActions(onDone = { if (state.canSubmit) onSubmit() }),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrandLime,
-                unfocusedBorderColor = TextMuted.copy(alpha = 0.4f),
-                errorBorderColor = StatLossRed,
-                focusedLabelColor = BrandLime,
-                unfocusedLabelColor = TextMuted,
-                errorLabelColor = StatLossRed,
-                cursorColor = BrandLime,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                focusedContainerColor = BackgroundDark,
-                unfocusedContainerColor = BackgroundDark,
-                errorContainerColor = BackgroundDark,
+                focusedBorderColor = PlayboardTheme.colors.brand,
+                unfocusedBorderColor = PlayboardTheme.colors.textMuted.copy(alpha = 0.4f),
+                errorBorderColor = PlayboardTheme.colors.statLoss,
+                focusedLabelColor = PlayboardTheme.colors.brand,
+                unfocusedLabelColor = PlayboardTheme.colors.textMuted,
+                errorLabelColor = PlayboardTheme.colors.statLoss,
+                cursorColor = PlayboardTheme.colors.brand,
+                focusedTextColor = PlayboardTheme.colors.textPrimary,
+                unfocusedTextColor = PlayboardTheme.colors.textPrimary,
+                focusedContainerColor = PlayboardTheme.colors.background,
+                unfocusedContainerColor = PlayboardTheme.colors.background,
+                errorContainerColor = PlayboardTheme.colors.background,
             ),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -129,7 +122,7 @@ private fun GroupActionSheetContent(
             Text(
                 text = errorMessage(state.error),
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = StatLossRed,
+                color = PlayboardTheme.colors.statLoss,
             )
         }
 
@@ -139,17 +132,17 @@ private fun GroupActionSheetContent(
             enabled = state.canSubmit,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = BrandLime,
-                contentColor = OnBrandLime,
-                disabledContainerColor = BrandLime.copy(alpha = 0.35f),
-                disabledContentColor = OnBrandLime.copy(alpha = 0.6f),
+                containerColor = PlayboardTheme.colors.brand,
+                contentColor = PlayboardTheme.colors.onBrand,
+                disabledContainerColor = PlayboardTheme.colors.brand.copy(alpha = 0.35f),
+                disabledContentColor = PlayboardTheme.colors.onBrand.copy(alpha = 0.6f),
             ),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
         ) {
             if (state.isSubmitting) {
-                CircularProgressIndicator(color = OnBrandLime, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.onBrand, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
             } else {
                 Text(
                     text = if (isJoin) "Join group" else "Create group",
@@ -167,7 +160,7 @@ private fun ModeToggle(mode: GroupActionMode, onModeChanged: (GroupActionMode) -
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(BackgroundDark)
+            .background(PlayboardTheme.colors.background)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -189,7 +182,7 @@ private fun ModeToggleTab(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .clip(RoundedCornerShape(9.dp))
-            .background(if (isSelected) BrandLime else androidx.compose.ui.graphics.Color.Transparent)
+            .background(if (isSelected) PlayboardTheme.colors.brand else androidx.compose.ui.graphics.Color.Transparent)
             .clickable { onModeChanged(tab) }
             .padding(vertical = 10.dp),
     ) {
@@ -197,7 +190,7 @@ private fun ModeToggleTab(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) OnBrandLime else TextMuted,
+            color = if (isSelected) PlayboardTheme.colors.onBrand else PlayboardTheme.colors.textMuted,
             textAlign = TextAlign.Center,
         )
     }

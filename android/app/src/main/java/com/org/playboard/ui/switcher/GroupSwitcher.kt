@@ -36,11 +36,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.model.Group
 import com.org.playboard.ui.components.GroupAvatar
-import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 import com.org.playboard.R
 
 /**
@@ -168,7 +164,7 @@ private fun GroupSwitcherCard(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
+        color = PlayboardTheme.colors.surface,
         modifier = Modifier.fillMaxWidth(),
         onClick = onToggle,
     ) {
@@ -178,19 +174,19 @@ private fun GroupSwitcherCard(
         ) {
             GroupAvatar(name = group.name, avatarColorHex = group.avatarColor, size = 40.dp)
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(text = "GROUP", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Text(text = "GROUP", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
                 Text(
                     text = group.name,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = PlayboardTheme.colors.textPrimary,
                 )
             }
 
             Text(
                 text = "${group.memberCount} players ${if (isExpanded) "▴" else "▾"}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
             )
         }
     }
@@ -206,7 +202,7 @@ private fun StatusCard(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
+        color = PlayboardTheme.colors.surface,
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick ?: {},
         enabled = onClick != null,
@@ -216,11 +212,11 @@ private fun StatusCard(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
         ) {
             if (showSpinner) {
-                CircularProgressIndicator(color = BrandLime, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     modifier = Modifier.padding(start = 12.dp),
                 )
             } else {
@@ -228,7 +224,7 @@ private fun StatusCard(
                     text = text,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (accent) BrandLime else TextMuted,
+                    color = if (accent) PlayboardTheme.colors.brand else PlayboardTheme.colors.textMuted,
                 )
             }
         }
@@ -249,7 +245,7 @@ private fun YourGroupsPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = SurfaceDark,
+        color = PlayboardTheme.colors.surface,
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp),
@@ -258,7 +254,7 @@ private fun YourGroupsPanel(
             Text(
                 text = "YOUR GROUPS",
                 style = MaterialTheme.typography.labelSmall,
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
             groups.forEach { group ->
@@ -268,7 +264,7 @@ private fun YourGroupsPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onGroupSelected(group.id) }
-                        .background(if (isSelected) BrandLime.copy(alpha = 0.08f) else Color.Transparent)
+                        .background(if (isSelected) PlayboardTheme.colors.brand.copy(alpha = 0.08f) else Color.Transparent)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                 ) {
                     GroupAvatar(name = group.name, avatarColorHex = group.avatarColor, size = 36.dp)
@@ -277,12 +273,12 @@ private fun YourGroupsPanel(
                             text = group.name,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isSelected) BrandLime else TextPrimary,
+                            color = if (isSelected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary,
                         )
                         Text(
                             text = "${group.memberCount} players · ${group.matchCount} matches",
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                            color = TextMuted,
+                            color = PlayboardTheme.colors.textMuted,
                         )
                     }
                     // Owner/admin only — a pencil to rename the group. Its own clickable so
@@ -291,7 +287,7 @@ private fun YourGroupsPanel(
 //                        Text(
 //                            text = "rename",
 //                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-//                            color = TextMuted,
+//                            color = PlayboardTheme.colors.textMuted,
 //                            modifier = Modifier
 //                                .clip(RoundedCornerShape(8.dp))
 //                                .clickable { onEditGroup(group.id, group.name) }
@@ -306,13 +302,13 @@ private fun YourGroupsPanel(
                                 .clickable { onEditGroup(group.id, group.name) }
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                                 .size(15.dp),
-                            tint = BrandLime // Retains original asset colors
+                            tint = PlayboardTheme.colors.brand // Retains original asset colors
                         )
                     }
                 }
             }
             HorizontalDivider(
-                color = TextMuted.copy(alpha = 0.15f),
+                color = PlayboardTheme.colors.textMuted.copy(alpha = 0.15f),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             if (canInviteSelected) {
@@ -336,11 +332,11 @@ private fun PanelActionRow(icon: String, label: String, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        Text(text = icon, color = BrandLime, style = MaterialTheme.typography.bodyLarge)
+        Text(text = icon, color = PlayboardTheme.colors.brand, style = MaterialTheme.typography.bodyLarge)
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             modifier = Modifier.padding(start = 12.dp),
         )
     }

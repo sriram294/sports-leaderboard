@@ -1,4 +1,5 @@
 package com.org.playboard.ui.update
+import com.org.playboard.ui.theme.PlayboardTheme
 
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -15,7 +16,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.org.playboard.ui.theme.BrandLime
 
 @Composable
 fun AppUpdatePrompt(viewModel: AppUpdateViewModel = hiltViewModel()) {
@@ -41,13 +41,13 @@ fun AppUpdatePrompt(viewModel: AppUpdateViewModel = hiltViewModel()) {
             onDismissRequest = {},
             title = { Text("Downloading update") },
             text = { Text("${current.progress}%") },
-            confirmButton = { CircularProgressIndicator(color = BrandLime) },
+            confirmButton = { CircularProgressIndicator(color = PlayboardTheme.colors.brand) },
         )
         is AppUpdateState.Checking -> if (current.showProgress) AlertDialog(
             onDismissRequest = {},
             title = { Text("Checking for updates") },
             text = { Text("Please wait…") },
-            confirmButton = { CircularProgressIndicator(color = BrandLime) },
+            confirmButton = { CircularProgressIndicator(color = PlayboardTheme.colors.brand) },
         )
         is AppUpdateState.UpToDate -> if (current.showConfirmation) AlertDialog(
             onDismissRequest = viewModel::dismiss,

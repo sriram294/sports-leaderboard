@@ -40,7 +40,12 @@ private const val TAG = "LeaderboardShare"
  * Kept out of the ViewModel deliberately: it touches Android `View`/`Context`,
  * which the ViewModels must stay free of (see PROJECT_RULES).
  */
-suspend fun renderAndShareLeaderboard(context: Context, group: Group, rankings: List<PlayerRanking>) {
+suspend fun renderAndShareLeaderboard(
+    context: Context,
+    group: Group,
+    rankings: List<PlayerRanking>,
+    darkTheme: Boolean,
+) {
     val activity = ActivityProvider.currentActivity
     if (activity == null) {
         Log.w(TAG, "No foreground Activity; cannot render the leaderboard image.")
@@ -48,7 +53,7 @@ suspend fun renderAndShareLeaderboard(context: Context, group: Group, rankings: 
         return
     }
     try {
-        val bitmap = withContext(Dispatchers.Main) { captureCard(activity, group, rankings) }
+        val bitmap = withContext(Dispatchers.Main) { captureCard(activity, group, rankings, darkTheme) }
         val uri = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "shared").apply { mkdirs() }
             val file = File(dir, shareImageFileName(group.id))
@@ -73,14 +78,19 @@ suspend fun renderAndShareLeaderboard(context: Context, group: Group, rankings: 
 private const val CARD_WIDTH_DP = 460f
 
 /** Composes the card in an attached [ComposeView], waits for its first draw, and snapshots it. */
-private suspend fun captureCard(activity: Activity, group: Group, rankings: List<PlayerRanking>): Bitmap {
+private suspend fun captureCard(
+    activity: Activity,
+    group: Group,
+    rankings: List<PlayerRanking>,
+    darkTheme: Boolean,
+): Bitmap {
     val root = activity.findViewById<ViewGroup>(android.R.id.content)
     val widthPx = (CARD_WIDTH_DP * activity.resources.displayMetrics.density).toInt()
     val composeView = ComposeView(activity).apply {
         alpha = 0f // laid out and drawn, but never visible on screen
         layoutParams = FrameLayout.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
-            PlayboardTheme {
+            PlayboardTheme(darkTheme = darkTheme) {
                 LeaderboardShareCard(group = group, rankings = rankings)
             }
         }

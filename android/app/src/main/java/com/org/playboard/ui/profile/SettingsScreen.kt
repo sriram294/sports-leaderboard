@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,10 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.BuildConfig
-import com.org.playboard.ui.theme.BrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 import com.org.playboard.ui.update.AppUpdateViewModel
 
 /** Account and application settings opened from the signed-in user's profile. */
@@ -40,15 +39,19 @@ fun SettingsScreen(
     onSignOut: (() -> Unit)? = null,
     updateViewModel: AppUpdateViewModel? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val isDarkTheme by settingsViewModel.isDarkTheme.collectAsState()
 
     SettingsScreenContent(
         email = state.email.orEmpty(),
         versionName = BuildConfig.VERSION_NAME,
+        isDarkTheme = isDarkTheme,
         onBack = onBack,
         onSignOut = { (onSignOut ?: viewModel::onSignOutClicked)() },
         onCheckForUpdates = { updateViewModel?.checkForUpdate(showResult = true) },
+        onDarkThemeChange = settingsViewModel::setDarkTheme,
     )
 }
 
@@ -56,9 +59,11 @@ fun SettingsScreen(
 private fun SettingsScreenContent(
     email: String,
     versionName: String,
+    isDarkTheme: Boolean,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
     onCheckForUpdates: () -> Unit,
+    onDarkThemeChange: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -69,14 +74,14 @@ private fun SettingsScreenContent(
         BackRowForSettings(onBack = onBack)
         Text(
             text = "Settings",
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
         )
         Text(
             text = "ACCOUNT",
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 24.dp, bottom = 12.dp),
@@ -92,14 +97,14 @@ private fun SettingsScreenContent(
             Column {
                 Text(
                     "Signed in with Google",
-                    color = TextPrimary,
+                    color = PlayboardTheme.colors.textPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                 )
-                Text(email, color = TextMuted, fontSize = 12.sp)
+                Text(email, color = PlayboardTheme.colors.textMuted, fontSize = 12.sp)
             }
         }
-        HorizontalDivider(color = TextMuted.copy(alpha = 0.25f))
+        HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.25f))
         TextButton(
             onClick = onCheckForUpdates,
             modifier = Modifier.fillMaxWidth(),
@@ -107,13 +112,13 @@ private fun SettingsScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Check for updates",
-                    color = BrandLime,
+                    color = PlayboardTheme.colors.brand,
                     modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
                 )
-                Text("›", color = TextMuted, fontSize = 28.sp)
+                Text("›", color = PlayboardTheme.colors.textMuted, fontSize = 28.sp)
             }
         }
-        HorizontalDivider(color = TextMuted.copy(alpha = 0.25f))
+        HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.25f))
         TextButton(
             onClick = onSignOut,
             modifier = Modifier.fillMaxWidth(),
@@ -121,11 +126,40 @@ private fun SettingsScreenContent(
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Sign out",
-                    color = TextMuted,
+                    color = PlayboardTheme.colors.textMuted,
                     modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
                 )
-                Text("›", color = TextMuted, fontSize = 28.sp)
+                Text("›", color = PlayboardTheme.colors.textMuted, fontSize = 28.sp)
             }
+        }
+        Text(
+            text = "APPEARANCE",
+            color = PlayboardTheme.colors.textMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 24.dp, bottom = 12.dp),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+        ) {
+            Text(
+                "Dark theme",
+                color = PlayboardTheme.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = isDarkTheme,
+                onCheckedChange = onDarkThemeChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = PlayboardTheme.colors.onBrand,
+                    checkedTrackColor = PlayboardTheme.colors.brand,
+                ),
+            )
         }
         Spacer(Modifier.weight(1f))
         Column(
@@ -136,7 +170,7 @@ private fun SettingsScreenContent(
         ) {
             Text(
                 text = "Playboard v$versionName",
-                color = TextMuted,
+                color = PlayboardTheme.colors.textMuted,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -144,7 +178,7 @@ private fun SettingsScreenContent(
             Spacer(Modifier.size(4.dp))
             Text(
                 text = "Made by Sriram Elangovan",
-                color = TextMuted.copy(alpha = 0.7f),
+                color = PlayboardTheme.colors.textMuted.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
             )
@@ -161,7 +195,7 @@ private fun BackRowForSettings(onBack: () -> Unit) {
             .padding(vertical = 10.dp),
     ) {
         TextButton(onClick = onBack) {
-            Text("←  Profile", color = BrandLime)
+            Text("←  Profile", color = PlayboardTheme.colors.brand)
         }
     }
 }
@@ -169,13 +203,31 @@ private fun BackRowForSettings(onBack: () -> Unit) {
 @Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
 @Composable
 private fun SettingsScreenPreview() {
-    PlayboardTheme {
+    PlayboardTheme(darkTheme = true) {
         SettingsScreenContent(
             email = "raj@gmail.com",
             versionName = "1.8",
+            isDarkTheme = true,
             onBack = {},
             onSignOut = {},
             onCheckForUpdates = {},
+            onDarkThemeChange = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFAFAFA)
+@Composable
+private fun SettingsScreenLightPreview() {
+    PlayboardTheme(darkTheme = false) {
+        SettingsScreenContent(
+            email = "raj@gmail.com",
+            versionName = "1.8",
+            isDarkTheme = false,
+            onBack = {},
+            onSignOut = {},
+            onCheckForUpdates = {},
+            onDarkThemeChange = {},
         )
     }
 }

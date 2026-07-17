@@ -30,14 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /**
  * Bottom sheet for adding a group member by email + name (owner/admin only).
@@ -56,7 +49,7 @@ fun AddMemberSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
+        containerColor = PlayboardTheme.colors.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         AddMemberSheetContent(state = state, onEmailChanged = onEmailChanged, onNameChanged = onNameChanged, onSubmit = onSubmit)
@@ -83,29 +76,29 @@ private fun AddMemberSheetContent(
             text = "Add member by email",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "They'll show in the roster and can be picked for matches. When they sign in with this email, the account becomes theirs.",
             style = MaterialTheme.typography.labelSmall,
-            color = TextMuted,
+            color = PlayboardTheme.colors.textMuted,
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         val fieldColors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = BrandLime,
-            unfocusedBorderColor = TextMuted.copy(alpha = 0.4f),
-            errorBorderColor = StatLossRed,
-            focusedLabelColor = BrandLime,
-            unfocusedLabelColor = TextMuted,
-            errorLabelColor = StatLossRed,
-            cursorColor = BrandLime,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            focusedContainerColor = BackgroundDark,
-            unfocusedContainerColor = BackgroundDark,
-            errorContainerColor = BackgroundDark,
+            focusedBorderColor = PlayboardTheme.colors.brand,
+            unfocusedBorderColor = PlayboardTheme.colors.textMuted.copy(alpha = 0.4f),
+            errorBorderColor = PlayboardTheme.colors.statLoss,
+            focusedLabelColor = PlayboardTheme.colors.brand,
+            unfocusedLabelColor = PlayboardTheme.colors.textMuted,
+            errorLabelColor = PlayboardTheme.colors.statLoss,
+            cursorColor = PlayboardTheme.colors.brand,
+            focusedTextColor = PlayboardTheme.colors.textPrimary,
+            unfocusedTextColor = PlayboardTheme.colors.textPrimary,
+            focusedContainerColor = PlayboardTheme.colors.background,
+            unfocusedContainerColor = PlayboardTheme.colors.background,
+            errorContainerColor = PlayboardTheme.colors.background,
         )
 
         OutlinedTextField(
@@ -144,7 +137,7 @@ private fun AddMemberSheetContent(
             Text(
                 text = errorText,
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = StatLossRed,
+                color = PlayboardTheme.colors.statLoss,
             )
         }
 
@@ -154,17 +147,17 @@ private fun AddMemberSheetContent(
             enabled = state.canSubmit,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = BrandLime,
-                contentColor = OnBrandLime,
-                disabledContainerColor = BrandLime.copy(alpha = 0.35f),
-                disabledContentColor = OnBrandLime.copy(alpha = 0.6f),
+                containerColor = PlayboardTheme.colors.brand,
+                contentColor = PlayboardTheme.colors.onBrand,
+                disabledContainerColor = PlayboardTheme.colors.brand.copy(alpha = 0.35f),
+                disabledContentColor = PlayboardTheme.colors.onBrand.copy(alpha = 0.6f),
             ),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
         ) {
             if (state.isSubmitting) {
-                CircularProgressIndicator(color = OnBrandLime, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.onBrand, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
             } else {
                 Text(text = "Add member", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             }

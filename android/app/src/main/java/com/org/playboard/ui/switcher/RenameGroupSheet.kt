@@ -29,14 +29,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.org.playboard.ui.theme.BackgroundDark
-import com.org.playboard.ui.theme.BrandLime
-import com.org.playboard.ui.theme.OnBrandLime
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.theme.StatLossRed
-import com.org.playboard.ui.theme.SurfaceDark
-import com.org.playboard.ui.theme.TextMuted
-import com.org.playboard.ui.theme.TextPrimary
 
 /**
  * Bottom sheet for renaming the active group, reached via the edit icon next to
@@ -53,7 +46,7 @@ fun RenameGroupSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
+        containerColor = PlayboardTheme.colors.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         RenameGroupSheetContent(state = state, onInputChanged = onInputChanged, onSubmit = onSubmit)
@@ -79,7 +72,7 @@ private fun RenameGroupSheetContent(
             text = "Rename group",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = PlayboardTheme.colors.textPrimary,
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -95,18 +88,18 @@ private fun RenameGroupSheetContent(
             ),
             keyboardActions = KeyboardActions(onDone = { if (state.canSubmit) onSubmit() }),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrandLime,
-                unfocusedBorderColor = TextMuted.copy(alpha = 0.4f),
-                errorBorderColor = StatLossRed,
-                focusedLabelColor = BrandLime,
-                unfocusedLabelColor = TextMuted,
-                errorLabelColor = StatLossRed,
-                cursorColor = BrandLime,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                focusedContainerColor = BackgroundDark,
-                unfocusedContainerColor = BackgroundDark,
-                errorContainerColor = BackgroundDark,
+                focusedBorderColor = PlayboardTheme.colors.brand,
+                unfocusedBorderColor = PlayboardTheme.colors.textMuted.copy(alpha = 0.4f),
+                errorBorderColor = PlayboardTheme.colors.statLoss,
+                focusedLabelColor = PlayboardTheme.colors.brand,
+                unfocusedLabelColor = PlayboardTheme.colors.textMuted,
+                errorLabelColor = PlayboardTheme.colors.statLoss,
+                cursorColor = PlayboardTheme.colors.brand,
+                focusedTextColor = PlayboardTheme.colors.textPrimary,
+                unfocusedTextColor = PlayboardTheme.colors.textPrimary,
+                focusedContainerColor = PlayboardTheme.colors.background,
+                unfocusedContainerColor = PlayboardTheme.colors.background,
+                errorContainerColor = PlayboardTheme.colors.background,
             ),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -116,7 +109,7 @@ private fun RenameGroupSheetContent(
             Text(
                 text = "Couldn't rename the group. Please try again.",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = StatLossRed,
+                color = PlayboardTheme.colors.statLoss,
             )
         }
 
@@ -126,17 +119,17 @@ private fun RenameGroupSheetContent(
             enabled = state.canSubmit,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = BrandLime,
-                contentColor = OnBrandLime,
-                disabledContainerColor = BrandLime.copy(alpha = 0.35f),
-                disabledContentColor = OnBrandLime.copy(alpha = 0.6f),
+                containerColor = PlayboardTheme.colors.brand,
+                contentColor = PlayboardTheme.colors.onBrand,
+                disabledContainerColor = PlayboardTheme.colors.brand.copy(alpha = 0.35f),
+                disabledContentColor = PlayboardTheme.colors.onBrand.copy(alpha = 0.6f),
             ),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
         ) {
             if (state.isSubmitting) {
-                CircularProgressIndicator(color = OnBrandLime, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.onBrand, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
             } else {
                 Text(text = "Save", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             }
