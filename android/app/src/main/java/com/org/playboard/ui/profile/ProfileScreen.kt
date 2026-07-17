@@ -143,8 +143,8 @@ private fun ProfileContent(
     // list never drifts from the shipped files. Sorted for a stable order.
     val avatarIds = remember {
         runCatching { context.assets.list("avatars") }.getOrNull()
-            ?.map { it.removeSuffix(".svg") }
-            ?.sorted()
+            ?.map { it.removeSuffix(".png") }
+            ?.sortedBy { it.removePrefix("avatar").toIntOrNull() ?: 0 }
             .orEmpty()
     }
     var showAvatarSheet by remember { mutableStateOf(false) }

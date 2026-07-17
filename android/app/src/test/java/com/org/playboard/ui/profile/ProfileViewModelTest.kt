@@ -356,13 +356,13 @@ class ProfileViewModelTest {
         viewModel.onPhotoSelected(byteArrayOf(1, 2, 3), "image/png")
         advanceUntilIdle()
 
-        viewModel.onAvatarSelected("12ac343930")
+        viewModel.onAvatarSelected("avatar0")
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertFalse(state.isUploadingPhoto)
         assertEquals(1, api.avatarUpdates)
-        assertEquals("12ac343930", state.identityAvatarId)
+        assertEquals("avatar0", state.identityAvatarId)
         assertNull(state.identityPhotoUrl) // photo replaced by the avatar (exclusive)
     }
 }

@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 class DefaultAvatarsTest {
 
     @Test
-    void catalogHasTwentyFiveDistinctIds() {
-        assertThat(DefaultAvatars.IDS).hasSize(25).doesNotHaveDuplicates();
+    void catalogHasSixteenDistinctIds() {
+        assertThat(DefaultAvatars.IDS).hasSize(16).doesNotHaveDuplicates();
     }
 
     @Test
