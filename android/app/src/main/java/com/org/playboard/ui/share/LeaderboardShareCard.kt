@@ -1,6 +1,5 @@
 package com.org.playboard.ui.share
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -22,8 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,7 +31,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.org.playboard.R
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
@@ -104,7 +103,14 @@ private fun SharePodium(podium: List<PlayerRanking>) {
     }
 }
 
-/** One podium column; `entry == null` (fewer than 3 ranked players) leaves the slot empty. */
+/**
+ * One podium column; `entry == null` (fewer than 3 ranked players) leaves the slot empty.
+ *
+ * Mirrors the Board tab's [com.org.playboard.ui.board.PodiumSlot]: the champion (#1) sits
+ * center, larger and crowned; runners-up flank it a step lower. Each avatar wears a soft
+ * glow + color ring with the rank number in a small badge at the bottom edge, and below it
+ * only the name and win rate.
+ */
 @Composable
 private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier: Modifier = Modifier) {
     if (entry == null) {
@@ -112,72 +118,82 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
         return
     }
     val color = avatarColor(entry.avatarColor)
-    val avatarSize: Dp = if (isChampion) 84.dp else 60.dp
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
-        Box(contentAlignment = Alignment.TopCenter) {
-            Box(modifier = Modifier.padding(top = 11.dp)) {
+    val avatarSize: Dp = if (isChampion) 94.dp else 64.dp
+    val badgeSize: Dp = if (isChampion) 28.dp else 22.dp
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.padding(horizontal = 2.dp),
+    ) {
+        // Crown floats above the champion; runners-up reserve the same height so all three
+        // avatars still bottom-align into a clean podium tier.
+        if (isChampion) {
+            Text(text = "👑", fontSize = 22.sp)
+        } else {
+            Spacer(modifier = Modifier.height(26.dp))
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(contentAlignment = Alignment.BottomCenter) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .padding(bottom = badgeSize / 2)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(color.copy(alpha = if (isChampion) 0.35f else 0.18f), Color.Transparent),
+                        ),
+                    )
+                    .padding(6.dp),
+            ) {
                 PlayerAvatar(
                     displayName = entry.displayName,
                     photoUrl = null,
                     avatarColorHex = entry.avatarColor,
+                    modifier = Modifier.border(
+                        width = if (isChampion) 3.dp else 2.dp,
+                        color = color,
+                        shape = CircleShape,
+                    ),
                     size = avatarSize,
                 )
             }
-            val medalRes = when (entry.rank) {
-                1 -> R.drawable.ic_podium_gold
-                2 -> R.drawable.ic_podium_silver
-                3 -> R.drawable.ic_podium_bronze
-                else -> null
-            }
-            if (medalRes != null) {
-                Image(
-                    painter = painterResource(id = medalRes),
-                    contentDescription = null,
-                    modifier = Modifier.size(if (isChampion) 34.dp else 28.dp),
+            // Numbered rank badge, tucked at the bottom-center of the avatar. The background-
+            // colored outer ring separates it from the avatar's color ring behind it.
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(badgeSize)
+                    .clip(CircleShape)
+                    .background(PlayboardTheme.colors.background)
+                    .padding(2.dp)
+                    .clip(CircleShape)
+                    .background(color),
+            ) {
+                Text(
+                    text = entry.rank.toString(),
+                    color = PlayboardTheme.colors.onBrand,
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = entry.displayName,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
             color = PlayboardTheme.colors.textPrimary,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = if (isChampion) color.copy(alpha = 0.08f) else PlayboardTheme.colors.surface,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp)
-                .then(
-                    if (isChampion) Modifier.border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
-                    else Modifier,
-                ),
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
-            ) {
-                Text(
-                    text = "${entry.winRatePercent}%",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = if (isChampion) 34.sp else 24.sp,
-                        lineHeight = if (isChampion) 36.sp else 26.sp,
-                    ),
-                    color = if (isChampion) color else PlayboardTheme.colors.textPrimary,
-                )
-                Text(text = "WIN RATE", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${entry.wins}W · ${entry.losses}L",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                    color = PlayboardTheme.colors.textMuted,
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "${entry.winRatePercent}% win rate",
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+            color = if (isChampion) color else PlayboardTheme.colors.textMuted,
+            fontWeight = if (isChampion) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
+        )
     }
 }
 
