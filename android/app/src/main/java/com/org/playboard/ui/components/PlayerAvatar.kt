@@ -31,11 +31,10 @@ fun avatarColor(hex: String): Color =
     runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(DarkBrand)
 
 /**
- * Coil model for a bundled default avatar. The 25 DiceBear SVGs ship under
- * `assets/avatars/<id>.svg`; the backend only persists the id. Rendered via
- * Coil's SVG decoder (registered on the app's singleton [coil3.ImageLoader]).
+ * Coil model for a bundled default avatar. The PNGs ship under
+ * `assets/avatars/<id>.png`; the backend only persists the id.
  */
-fun avatarAssetUrl(avatarId: String): String = "file:///android_asset/avatars/$avatarId.svg"
+fun avatarAssetUrl(avatarId: String): String = "file:///android_asset/avatars/$avatarId.png"
 
 /**
  * Global avatar rule (docs/requirements/00-overview.md § Player / Avatar):

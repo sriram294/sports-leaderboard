@@ -64,9 +64,9 @@ class UserServiceIntegrationTest {
         userService.updatePhoto(user.getId(), png);
         assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png"))).isTrue();
 
-        UserDto updated = userService.updateAvatar(user.getId(), "12ac343930");
+        UserDto updated = userService.updateAvatar(user.getId(), "avatar0");
 
-        assertThat(updated.avatarId()).isEqualTo("12ac343930");
+        assertThat(updated.avatarId()).isEqualTo("avatar0");
         assertThat(updated.photoUrl()).isNull();
         assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png")))
                 .as("uploaded photo file should be removed when switching to a default avatar")
@@ -76,7 +76,7 @@ class UserServiceIntegrationTest {
     @Test
     void uploadingPhotoClearsSelectedAvatar() {
         User user = userRepository.save(newUser());
-        userService.updateAvatar(user.getId(), "12ac343930");
+        userService.updateAvatar(user.getId(), "avatar0");
 
         MockMultipartFile png = new MockMultipartFile("file", "photo.png", "image/png", new byte[] {1, 2, 3});
         UserDto updated = userService.updatePhoto(user.getId(), png);
