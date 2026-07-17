@@ -5,6 +5,7 @@ data class Member(
     val id: String,
     val displayName: String,
     val photoUrl: String?,
+    val avatarId: String?,
     val avatarColor: String,
     val role: String,
 ) {

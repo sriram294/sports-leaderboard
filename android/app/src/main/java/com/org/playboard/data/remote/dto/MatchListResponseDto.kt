@@ -30,6 +30,7 @@ data class MatchPlayerDto(
     val displayName: String,
     val avatarColor: String,
     val photoUrl: String? = null,
+    val avatarId: String? = null,
 )
 
 @Serializable

@@ -22,7 +22,7 @@ val keystoreProperties = Properties().apply {
 
 // Single source of truth for the app version — reused by both defaultConfig
 // (below) and the artifact name, so the two never drift.
-val appVersionName = "2.3"
+val appVersionName = "2.4"
 
 // Name the built artifacts "Playboard-<version>" instead of the module name
 // "app", so the APK is e.g. Playboard-1.5-debug.apk / Playboard-1.5-release.apk.
@@ -45,7 +45,7 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 14
+        versionCode = 15
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -137,6 +137,7 @@ dependencies {
     // Images (avatar photo loading, with URL fallback support)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.coil.svg)
 
     // DI
     implementation(libs.hilt.android)

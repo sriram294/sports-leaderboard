@@ -313,6 +313,7 @@ private fun PodiumSlot(
                     PlayerAvatar(
                         displayName = entry.displayName,
                         photoUrl = entry.photoUrl,
+                        avatarId = entry.avatarId,
                         avatarColorHex = entry.avatarColor,
                         size = avatarSize,
                     )
@@ -495,6 +496,7 @@ private fun RankingRow(entry: PlayerRanking, onPlayerClick: (String) -> Unit) {
             PlayerAvatar(
                 displayName = entry.displayName,
                 photoUrl = entry.photoUrl,
+                avatarId = entry.avatarId,
                 avatarColorHex = entry.avatarColor,
                 size = 32.dp,
             )
@@ -621,12 +623,12 @@ private val previewGroups = listOf(
 )
 
 private val previewRankings = listOf(
-    PlayerRanking(1, "u1", "Priya", null, "#FF3D8A", 6, 6, 0, 252, 180, 1.0),
-    PlayerRanking(2, "u2", "Dev", null, "#3DB4FF", 6, 5, 1, 245, 205, 0.83),
-    PlayerRanking(3, "u3", "Raj", null, "#9ADE28", 8, 4, 4, 315, 310, 0.5),
-    PlayerRanking(4, "u4", "Marcus", null, "#FF8A3D", 7, 2, 5, 265, 290, 0.29),
-    PlayerRanking(5, "u5", "Kiran", null, "#EAC72B", 7, 2, 5, 263, 295, 0.29),
-    PlayerRanking(6, "u6", "Sam", null, "#8A6CFF", 6, 1, 5, 226, 270, 0.17),
+    PlayerRanking(1, "u1", "Priya", null, null, "#FF3D8A", 6, 6, 0, 252, 180, 1.0),
+    PlayerRanking(2, "u2", "Dev", null, null, "#3DB4FF", 6, 5, 1, 245, 205, 0.83),
+    PlayerRanking(3, "u3", "Raj", null, null, "#9ADE28", 8, 4, 4, 315, 310, 0.5),
+    PlayerRanking(4, "u4", "Marcus", null, null, "#FF8A3D", 7, 2, 5, 265, 290, 0.29),
+    PlayerRanking(5, "u5", "Kiran", null, null, "#EAC72B", 7, 2, 5, 263, 295, 0.29),
+    PlayerRanking(6, "u6", "Sam", null, null, "#8A6CFF", 6, 1, 5, 226, 270, 0.17),
 )
 
 private val previewState = BoardUiState(

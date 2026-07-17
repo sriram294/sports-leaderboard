@@ -114,6 +114,7 @@ private fun PlayerRow(member: Member, onClick: () -> Unit) {
         PlayerAvatar(
             displayName = label,
             photoUrl = member.photoUrl,
+            avatarId = member.avatarId,
             avatarColorHex = member.avatarColor,
             size = 40.dp,
         )
@@ -153,9 +154,9 @@ private fun PlayerRowsPreview() {
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(20.dp),
         ) {
-            PlayerRow(Member("u1", "Sriram", null, "#9ADE28", "owner"), onClick = {})
+            PlayerRow(Member("u1", "Sriram", null, null, "#9ADE28", "owner"), onClick = {})
             // The 3 guest fillers collapse to one generic "Guest" row.
-            PlayerRow(Member("g1", "Guest 1", null, "#9AA0A6", "guest"), onClick = {})
+            PlayerRow(Member("g1", "Guest 1", null, null, "#9AA0A6", "guest"), onClick = {})
         }
     }
 }

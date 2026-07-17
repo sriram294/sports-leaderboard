@@ -88,7 +88,7 @@ internal fun computeRecentForm(matches: List<Match>, rankings: List<PlayerRankin
             null
         } else {
             PlayerForm(
-                player = MatchPlayer(rank.userId, rank.displayName, rank.avatarColor, rank.photoUrl),
+                player = MatchPlayer(rank.userId, rank.displayName, rank.avatarColor, rank.photoUrl, rank.avatarId),
                 results = results,
             )
         }

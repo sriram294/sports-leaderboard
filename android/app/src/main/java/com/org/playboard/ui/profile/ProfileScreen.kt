@@ -36,7 +36,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +94,7 @@ fun ProfileScreen(
         onBack = onBack,
         onEditName = viewModel::onEditNameClicked,
         onPhotoSelected = viewModel::onPhotoSelected,
+        onAvatarSelected = viewModel::onAvatarSelected,
         onRenameInputChanged = viewModel::onRenameInputChanged,
         onRenameSubmit = viewModel::onRenameSubmitted,
         onRenameDismiss = viewModel::onRenameDismissed,
@@ -106,6 +110,7 @@ private fun ProfileContent(
     onBack: (() -> Unit)? = null,
     onEditName: () -> Unit = {},
     onPhotoSelected: (ByteArray, String) -> Unit = { _, _ -> },
+    onAvatarSelected: (String) -> Unit = {},
     onRenameInputChanged: (String) -> Unit = {},
     onRenameSubmit: () -> Unit = {},
     onRenameDismiss: () -> Unit = {},
@@ -134,6 +139,15 @@ private fun ProfileContent(
     val pickPhoto = {
         photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
+    // The 25 bundled default avatars, discovered from assets/avatars so the id
+    // list never drifts from the shipped files. Sorted for a stable order.
+    val avatarIds = remember {
+        runCatching { context.assets.list("avatars") }.getOrNull()
+            ?.map { it.removeSuffix(".svg") }
+            ?.sorted()
+            .orEmpty()
+    }
+    var showAvatarSheet by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -173,9 +187,24 @@ private fun ProfileContent(
                 state = state,
                 stats = state.stats,
                 onEditName = onEditName,
-                onEditPhoto = pickPhoto,
+                onEditAvatar = { showAvatarSheet = true },
             )
         }
+    }
+
+    if (showAvatarSheet) {
+        AvatarPickerSheet(
+            avatarIds = avatarIds,
+            onPickAvatar = { id ->
+                showAvatarSheet = false
+                onAvatarSelected(id)
+            },
+            onUploadPhoto = {
+                showAvatarSheet = false
+                pickPhoto()
+            },
+            onDismiss = { showAvatarSheet = false },
+        )
     }
 
     state.renameSheet?.let { sheet ->
@@ -193,7 +222,7 @@ private fun StatsList(
     state: ProfileUiState,
     stats: PlayerStats,
     onEditName: () -> Unit,
-    onEditPhoto: () -> Unit,
+    onEditAvatar: () -> Unit,
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -204,10 +233,11 @@ private fun StatsList(
                 stats = stats,
                 displayName = state.displayName ?: stats.displayName,
                 photoUrl = state.identityPhotoUrl,
+                avatarId = state.identityAvatarId,
                 editable = state.isOwnProfile,
                 isUploadingPhoto = state.isUploadingPhoto,
                 onEditName = onEditName,
-                onEditPhoto = onEditPhoto,
+                onEditAvatar = onEditAvatar,
             )
         }
         state.updateError?.let { message ->
@@ -236,10 +266,11 @@ private fun IdentityCard(
     stats: PlayerStats,
     displayName: String,
     photoUrl: String?,
+    avatarId: String?,
     editable: Boolean,
     isUploadingPhoto: Boolean,
     onEditName: () -> Unit,
-    onEditPhoto: () -> Unit,
+    onEditAvatar: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -254,10 +285,11 @@ private fun IdentityCard(
             EditableAvatar(
                 displayName = displayName,
                 photoUrl = photoUrl,
+                avatarId = avatarId,
                 avatarColorHex = stats.avatarColor,
                 editable = editable,
                 isUploading = isUploadingPhoto,
-                onEdit = onEditPhoto,
+                onEdit = onEditAvatar,
             )
             Spacer(Modifier.width(18.dp))
             Column {
@@ -309,6 +341,7 @@ private fun IdentityCard(
 private fun EditableAvatar(
     displayName: String,
     photoUrl: String?,
+    avatarId: String?,
     avatarColorHex: String,
     editable: Boolean,
     isUploading: Boolean,
@@ -319,6 +352,7 @@ private fun EditableAvatar(
         PlayerAvatar(
             displayName = displayName,
             photoUrl = photoUrl,
+            avatarId = avatarId,
             avatarColorHex = avatarColorHex,
             size = size,
             modifier = if (editable && !isUploading) {
@@ -464,6 +498,7 @@ private fun BestPartnerCard(partner: BestPartner) {
                 PlayerAvatar(
                     displayName = partner.displayName,
                     photoUrl = partner.photoUrl,
+                    avatarId = partner.avatarId,
                     avatarColorHex = partner.avatarColor,
                     size = 44.dp,
                 )
@@ -606,6 +641,7 @@ private val previewStats = PlayerStats(
     userId = "u1",
     displayName = "Raj",
     photoUrl = null,
+    avatarId = null,
     avatarColor = "#9ADE28",
     matchesPlayed = 8,
     wins = 4,
@@ -615,14 +651,14 @@ private val previewStats = PlayerStats(
     winRate = 0.5,
     currentStreak = 2,
     bestStreak = 2,
-    bestPartner = BestPartner("u2", "Dev", null, "#3DB4FF", gamesTogether = 2, winsTogether = 2, winRate = 1.0),
+    bestPartner = BestPartner("u2", "Dev", null, null, "#3DB4FF", gamesTogether = 2, winsTogether = 2, winRate = 1.0),
     recentMatches = listOf(
         Match(
             id = "m1",
             playedAt = Instant.parse("2026-07-09T06:58:00Z"),
             teams = listOf(
-                MatchTeam(1, true, listOf(MatchPlayer("u1", "Raj", "#9ADE28", null), MatchPlayer("u2", "Dev", "#3DB4FF", null))),
-                MatchTeam(2, false, listOf(MatchPlayer("u3", "Marcus", "#FF8A3D", null), MatchPlayer("u4", "Kiran", "#EAC72B", null))),
+                MatchTeam(1, true, listOf(MatchPlayer("u1", "Raj", "#9ADE28", null, null), MatchPlayer("u2", "Dev", "#3DB4FF", null, null))),
+                MatchTeam(2, false, listOf(MatchPlayer("u3", "Marcus", "#FF8A3D", null, null), MatchPlayer("u4", "Kiran", "#EAC72B", null, null))),
             ),
             sets = listOf(MatchSet(1, 21, 12), MatchSet(2, 21, 17)),
         ),

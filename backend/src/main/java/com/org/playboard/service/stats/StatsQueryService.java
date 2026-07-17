@@ -91,6 +91,7 @@ public class StatsQueryService {
                     user.getId(),
                     user.getDisplayName(),
                     user.getPhotoUrl(),
+                    user.getAvatarId(),
                     user.getAvatarColor(),
                     stats.getMatchesPlayed(),
                     stats.getWins(),
@@ -131,6 +132,7 @@ public class StatsQueryService {
                     user.getId(),
                     user.getDisplayName(),
                     user.getPhotoUrl(),
+                    user.getAvatarId(),
                     user.getAvatarColor(),
                     gamesPlayed,
                     wins,
@@ -161,7 +163,7 @@ public class StatsQueryService {
 
     private static LeaderboardEntryDto withRank(LeaderboardEntryDto e, int rank) {
         return new LeaderboardEntryDto(
-                rank, e.userId(), e.displayName(), e.photoUrl(), e.avatarColor(),
+                rank, e.userId(), e.displayName(), e.photoUrl(), e.avatarId(), e.avatarColor(),
                 e.gamesPlayed(), e.wins(), e.losses(), e.pointsFor(), e.pointsAgainst(),
                 e.winRate(), e.currentStreak(), e.bestStreak());
     }
@@ -187,6 +189,7 @@ public class StatsQueryService {
                 user.getId(),
                 user.getDisplayName(),
                 user.getPhotoUrl(),
+                user.getAvatarId(),
                 user.getAvatarColor(),
                 stats.getMatchesPlayed(),
                 stats.getWins(),
@@ -249,7 +252,13 @@ public class StatsQueryService {
         BigDecimal winRate = BigDecimal.valueOf(bestCounts[1])
                 .divide(BigDecimal.valueOf(bestCounts[0]), 4, RoundingMode.HALF_UP);
         return new BestPartnerDto(
-                partner.getId(), partner.getDisplayName(), partner.getAvatarColor(), bestCounts[0], bestCounts[1], winRate);
+                partner.getId(),
+                partner.getDisplayName(),
+                partner.getAvatarId(),
+                partner.getAvatarColor(),
+                bestCounts[0],
+                bestCounts[1],
+                winRate);
     }
 
     private boolean isBetterPartner(int[] candidate, int[] current) {

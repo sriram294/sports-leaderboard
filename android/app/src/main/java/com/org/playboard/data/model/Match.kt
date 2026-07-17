@@ -28,6 +28,7 @@ data class MatchPlayer(
     val displayName: String,
     val avatarColor: String,
     val photoUrl: String?,
+    val avatarId: String?,
 )
 
 data class MatchSet(

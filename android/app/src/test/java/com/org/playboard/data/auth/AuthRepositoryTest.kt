@@ -57,6 +57,7 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
         error("not used in this test")
     override suspend fun updateDisplayName(request: com.org.playboard.data.remote.dto.UpdateUserRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun uploadUserPhoto(file: okhttp3.MultipartBody.Part): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
+    override suspend fun updateAvatar(request: com.org.playboard.data.remote.dto.UpdateAvatarRequestDto): com.org.playboard.data.remote.dto.UserSummaryDto = error("not used in this test")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("not used in this test")
     override suspend fun getLeaderboard(groupId: String, from: String?, to: String?): LeaderboardResponseDto = error("not used in this test")
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("not used in this test")
@@ -84,7 +85,7 @@ class AuthRepositoryTest {
                 accessToken = "access-1",
                 refreshToken = "refresh-1",
                 expiresIn = 900,
-                user = UserSummaryDto("user-1", "Raj", "raj@example.com", null, "#7ED321"),
+                user = UserSummaryDto("user-1", "Raj", "raj@example.com", null, null, "#7ED321"),
             )
         }
         val repository = AuthRepository(api, tokenStore, com.org.playboard.data.device.DeviceRegistrar(api))
@@ -115,7 +116,7 @@ class AuthRepositoryTest {
                 "access-1",
                 "refresh-1",
                 900,
-                UserSummaryDto("user-1", "Raj", "raj@example.com", null, "#7ED321"),
+                UserSummaryDto("user-1", "Raj", "raj@example.com", null, null, "#7ED321"),
             )
         }
         val repository = AuthRepository(api, tokenStore, com.org.playboard.data.device.DeviceRegistrar(api))

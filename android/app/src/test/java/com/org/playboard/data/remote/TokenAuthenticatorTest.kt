@@ -58,7 +58,7 @@ class TokenAuthenticatorTest {
         tokenStore.save(
             accessToken = "stale-token",
             refreshToken = "refresh-token",
-            user = UserSession("user-1", "Raj", "raj@example.com", null, "#7ED321"),
+            user = UserSession("user-1", "Raj", "raj@example.com", null, null, "#7ED321"),
         )
 
         server.enqueue(MockResponse().setResponseCode(401))
@@ -97,7 +97,7 @@ class TokenAuthenticatorTest {
         tokenStore.save(
             accessToken = "stale-token",
             refreshToken = "refresh-token",
-            user = UserSession("user-1", "Raj", "raj@example.com", null, "#7ED321"),
+            user = UserSession("user-1", "Raj", "raj@example.com", null, null, "#7ED321"),
         )
 
         server.enqueue(MockResponse().setResponseCode(401)) // original request

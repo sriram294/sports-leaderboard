@@ -65,6 +65,7 @@ class ProfileViewModel @Inject constructor(
                         email = user?.email,
                         ownDisplayName = user?.displayName,
                         ownPhotoUrl = user?.photoUrl,
+                        ownAvatarId = user?.avatarId,
                     )
                 }
             }
@@ -157,6 +158,27 @@ class ProfileViewModel @Inject constructor(
                 .onFailure {
                     _uiState.update {
                         it.copy(isUploadingPhoto = false, updateError = "Couldn't upload photo. Please try again.")
+                    }
+                }
+        }
+    }
+
+    /**
+     * Selects one of the bundled default avatars (own profile only). Reuses the
+     * photo-upload spinner/error state; the server clears any uploaded photo, and
+     * the new session flows into [ProfileUiState.ownAvatarId] / clears the photo.
+     */
+    fun onAvatarSelected(avatarId: String) {
+        _uiState.update { it.copy(isUploadingPhoto = true, updateError = null) }
+        viewModelScope.launch {
+            userRepository.updateAvatar(avatarId)
+                .onSuccess {
+                    _uiState.update { it.copy(isUploadingPhoto = false) }
+                    launch { runCatching { groupRepository.refresh() } }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(isUploadingPhoto = false, updateError = "Couldn't update your avatar. Please try again.")
                     }
                 }
         }

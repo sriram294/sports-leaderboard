@@ -32,6 +32,7 @@ private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
     userId = userId,
     displayName = displayName,
     photoUrl = photoUrl,
+    avatarId = avatarId,
     avatarColor = avatarColor,
     gamesPlayed = gamesPlayed,
     wins = wins,

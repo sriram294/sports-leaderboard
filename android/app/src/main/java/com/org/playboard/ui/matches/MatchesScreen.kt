@@ -228,7 +228,13 @@ private fun TeamBlock(team: MatchTeam?, isWinner: Boolean, alignEnd: Boolean = f
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (alignEnd && isWinner) WinnerBadge()
             players.forEach { p ->
-                PlayerAvatar(displayName = p.displayName, photoUrl = p.photoUrl, avatarColorHex = p.avatarColor, size = 30.dp)
+                PlayerAvatar(
+                    displayName = p.displayName,
+                    photoUrl = p.photoUrl,
+                    avatarId = p.avatarId,
+                    avatarColorHex = p.avatarColor,
+                    size = 30.dp,
+                )
             }
             if (!alignEnd && isWinner) WinnerBadge()
         }
@@ -395,8 +401,8 @@ private val previewMatch = Match(
     id = "m1",
     playedAt = Instant.parse("2026-07-09T06:58:00Z"),
     teams = listOf(
-        MatchTeam(1, true, listOf(MatchPlayer("u1", "Raj", "#9ADE28", null), MatchPlayer("u2", "Dev", "#3DB4FF", null))),
-        MatchTeam(2, false, listOf(MatchPlayer("u3", "Marcus", "#FF8A3D", null), MatchPlayer("u4", "Kiran", "#EAC72B", null))),
+        MatchTeam(1, true, listOf(MatchPlayer("u1", "Raj", "#9ADE28", null, null), MatchPlayer("u2", "Dev", "#3DB4FF", null, null))),
+        MatchTeam(2, false, listOf(MatchPlayer("u3", "Marcus", "#FF8A3D", null, null), MatchPlayer("u4", "Kiran", "#EAC72B", null, null))),
     ),
     sets = listOf(MatchSet(1, 21, 12), MatchSet(2, 21, 17)),
 )

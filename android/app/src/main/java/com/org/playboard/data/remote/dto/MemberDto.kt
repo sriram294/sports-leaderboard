@@ -8,6 +8,7 @@ data class MemberDto(
     val userId: String,
     val displayName: String,
     val photoUrl: String? = null,
+    val avatarId: String? = null,
     val avatarColor: String,
     val role: String,
 )

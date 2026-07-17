@@ -8,6 +8,7 @@ public record LeaderboardEntryDto(
         UUID userId,
         String displayName,
         String photoUrl,
+        String avatarId,
         String avatarColor,
         int gamesPlayed,
         int wins,

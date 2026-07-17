@@ -356,6 +356,7 @@ private fun FilledSlot(member: Member, onRemove: () -> Unit) {
             PlayerAvatar(
                 displayName = label,
                 photoUrl = member.photoUrl,
+                avatarId = member.avatarId,
                 avatarColorHex = member.avatarColor,
                 size = 52.dp,
             )
@@ -532,10 +533,10 @@ private fun errorMessage(error: RecordMatchError): String = when (error) {
 }
 
 private val previewRoster = listOf(
-    Member("u1", "Raj", null, "#9ADE28", "owner"),
-    Member("u2", "Dev", null, "#3DB4FF", "member"),
-    Member("u3", "Marcus", null, "#FF8A3D", "member"),
-    Member("u4", "Kiran", null, "#EAC72B", "member"),
+    Member("u1", "Raj", null, null, "#9ADE28", "owner"),
+    Member("u2", "Dev", null, null, "#3DB4FF", "member"),
+    Member("u3", "Marcus", null, null, "#FF8A3D", "member"),
+    Member("u4", "Kiran", null, null, "#EAC72B", "member"),
 )
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1200)
@@ -547,7 +548,7 @@ private fun AddMatchFormPreview() {
                 isLoading = false,
                 groupId = "g1",
                 groupName = "Saturday Smashers",
-                recorder = UserSession("u1", "Raj", "raj@example.com", null, "#9ADE28"),
+                recorder = UserSession("u1", "Raj", "raj@example.com", null, null, "#9ADE28"),
                 roster = previewRoster,
                 team1 = listOf("u1", "u2"),
                 team2 = listOf("u3"),

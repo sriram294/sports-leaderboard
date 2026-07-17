@@ -3,6 +3,7 @@ package com.org.playboard.data.user
 import com.org.playboard.data.auth.TokenStore
 import com.org.playboard.data.model.UserSession
 import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.remote.dto.UpdateAvatarRequestDto
 import com.org.playboard.data.remote.dto.UpdateUserRequestDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import com.org.playboard.di.AuthenticatedApi
@@ -49,6 +50,15 @@ class UserRepository @Inject constructor(
             updated.copy(photoUrl = updated.photoUrl?.let(::cacheBust))
         }.onSuccess { tokenStore.updateUser(it) }
 
+    /**
+     * Selects one of the bundled default avatars. Mutually exclusive with an
+     * uploaded photo — the server clears the photo, so the returned session has
+     * [UserSession.avatarId] set and [UserSession.photoUrl] null.
+     */
+    suspend fun updateAvatar(avatarId: String): Result<UserSession> =
+        runCatching { api.updateAvatar(UpdateAvatarRequestDto(avatarId)).toUserSession() }
+            .onSuccess { tokenStore.updateUser(it) }
+
     private fun cacheBust(url: String): String {
         val separator = if (url.contains('?')) '&' else '?'
         return "$url${separator}v=${System.currentTimeMillis()}"
@@ -60,5 +70,6 @@ private fun UserSummaryDto.toUserSession() = UserSession(
     displayName = displayName,
     email = email,
     photoUrl = photoUrl,
+    avatarId = avatarId,
     avatarColor = avatarColor,
 )

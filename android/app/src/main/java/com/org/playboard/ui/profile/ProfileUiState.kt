@@ -21,6 +21,7 @@ data class ProfileUiState(
      */
     val ownDisplayName: String? = null,
     val ownPhotoUrl: String? = null,
+    val ownAvatarId: String? = null,
     /**
      * Whether this is the signed-in user's own profile. Own profile shows the
      * account section (email + Sign out) and the edit affordances; a viewed
@@ -46,6 +47,14 @@ data class ProfileUiState(
     /** Avatar photo shown on the identity card — the live session photo for own profile. */
     val identityPhotoUrl: String?
         get() = if (isOwnProfile) ownPhotoUrl ?: stats?.photoUrl else stats?.photoUrl
+
+    /**
+     * Default-avatar id shown on the identity card. For own profile it comes from
+     * the live session so a just-picked avatar shows immediately; a viewed player's
+     * comes from [stats]. Only rendered when there's no photo (photo takes priority).
+     */
+    val identityAvatarId: String?
+        get() = if (isOwnProfile) ownAvatarId ?: stats?.avatarId else stats?.avatarId
 }
 
 /**

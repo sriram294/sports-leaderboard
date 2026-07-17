@@ -1,5 +1,6 @@
 package com.org.playboard.controller.user;
 
+import com.org.playboard.dto.user.UpdateAvatarRequest;
 import com.org.playboard.dto.user.UpdateUserRequest;
 import com.org.playboard.dto.user.UserDto;
 import com.org.playboard.service.user.UserService;
@@ -39,5 +40,10 @@ public class UserController {
     @PostMapping(value = "/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public UserDto uploadPhoto(@AuthenticationPrincipal UUID userId, @RequestParam("file") MultipartFile file) {
         return userService.updatePhoto(userId, file);
+    }
+
+    @PatchMapping("/me/avatar")
+    public UserDto updateAvatar(@AuthenticationPrincipal UUID userId, @Valid @RequestBody UpdateAvatarRequest request) {
+        return userService.updateAvatar(userId, request.avatarId());
     }
 }

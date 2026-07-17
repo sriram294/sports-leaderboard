@@ -4,7 +4,8 @@ import com.org.playboard.entity.group.GroupMember;
 import java.util.Locale;
 import java.util.UUID;
 
-public record MemberDto(UUID userId, String displayName, String photoUrl, String avatarColor, String role) {
+public record MemberDto(
+        UUID userId, String displayName, String photoUrl, String avatarId, String avatarColor, String role) {
 
     public static MemberDto from(GroupMember member) {
         var user = member.getUser();
@@ -12,6 +13,7 @@ public record MemberDto(UUID userId, String displayName, String photoUrl, String
                 user.getId(),
                 user.getDisplayName(),
                 user.getPhotoUrl(),
+                user.getAvatarId(),
                 user.getAvatarColor(),
                 member.getRole().name().toLowerCase(Locale.ROOT));
     }

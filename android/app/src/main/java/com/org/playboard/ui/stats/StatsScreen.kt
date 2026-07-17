@@ -153,6 +153,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
         PlayerAvatar(
             displayName = player.displayName,
             photoUrl = player.photoUrl,
+            avatarId = player.avatarId,
             avatarColorHex = player.avatarColor,
             size = 30.dp,
         )
@@ -187,6 +188,7 @@ private fun BestPartnershipCard(partnership: BestPartnership) {
                 PlayerAvatar(
                     displayName = partnership.player1.displayName,
                     photoUrl = partnership.player1.photoUrl,
+                    avatarId = partnership.player1.avatarId,
                     avatarColorHex = partnership.player1.avatarColor,
                     size = 44.dp,
                 )
@@ -194,6 +196,7 @@ private fun BestPartnershipCard(partnership: BestPartnership) {
                 PlayerAvatar(
                     displayName = partnership.player2.displayName,
                     photoUrl = partnership.player2.photoUrl,
+                    avatarId = partnership.player2.avatarId,
                     avatarColorHex = partnership.player2.avatarColor,
                     size = 44.dp,
                 )
@@ -240,6 +243,7 @@ private fun RecentFormCard(form: List<PlayerForm>) {
                 PlayerAvatar(
                     displayName = row.player.displayName,
                     photoUrl = row.player.photoUrl,
+                    avatarId = row.player.avatarId,
                     avatarColorHex = row.player.avatarColor,
                     size = 30.dp,
                 )
@@ -365,7 +369,7 @@ private fun previewRanking(
     currentStreak: Int = 0,
     bestStreak: Int = 0,
     pa: Int = 0,
-) = PlayerRanking(rank, id, name, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
+) = PlayerRanking(rank, id, name, null, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
 
 private val previewState = StatsUiState(
     isLoading = false,
@@ -380,23 +384,23 @@ private val previewState = StatsUiState(
         currentStreak = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
     ),
     bestPartnership = BestPartnership(
-        player1 = MatchPlayer("u1", "Priya", "#FF3D8A", null),
-        player2 = MatchPlayer("u2", "Dev", "#3DB4FF", null),
+        player1 = MatchPlayer("u1", "Priya", "#FF3D8A", null, null),
+        player2 = MatchPlayer("u2", "Dev", "#3DB4FF", null, null),
         gamesTogether = 4,
         winsTogether = 4,
         winRate = 1.0,
     ),
     recentForm = listOf(
-        PlayerForm(MatchPlayer("u1", "Priya", "#FF3D8A", null), listOf(true, true, false, true, true)),
-        PlayerForm(MatchPlayer("u3", "Raj", "#9ADE28", null), listOf(false, true, false)),
+        PlayerForm(MatchPlayer("u1", "Priya", "#FF3D8A", null, null), listOf(true, true, false, true, true)),
+        PlayerForm(MatchPlayer("u3", "Raj", "#9ADE28", null, null), listOf(false, true, false)),
     ),
     biggestWin = BiggestWin(
         match = Match(
             id = "m1",
             playedAt = java.time.Instant.parse("2026-07-09T06:58:00Z"),
             teams = listOf(
-                MatchTeam(1, true, listOf(MatchPlayer("u1", "Priya", "#FF3D8A", null), MatchPlayer("u2", "Dev", "#3DB4FF", null))),
-                MatchTeam(2, false, listOf(MatchPlayer("u3", "Raj", "#9ADE28", null), MatchPlayer("u4", "Kiran", "#EAC72B", null))),
+                MatchTeam(1, true, listOf(MatchPlayer("u1", "Priya", "#FF3D8A", null, null), MatchPlayer("u2", "Dev", "#3DB4FF", null, null))),
+                MatchTeam(2, false, listOf(MatchPlayer("u3", "Raj", "#9ADE28", null, null), MatchPlayer("u4", "Kiran", "#EAC72B", null, null))),
             ),
             sets = listOf(MatchSet(1, 21, 4), MatchSet(2, 21, 9)),
         ),

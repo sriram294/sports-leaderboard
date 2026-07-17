@@ -58,6 +58,43 @@ class UserServiceIntegrationTest {
     }
 
     @Test
+    void selectingAvatarSetsIdAndClearsPhoto() throws Exception {
+        User user = userRepository.save(newUser());
+        MockMultipartFile png = new MockMultipartFile("file", "photo.png", "image/png", new byte[] {1, 2, 3});
+        userService.updatePhoto(user.getId(), png);
+        assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png"))).isTrue();
+
+        UserDto updated = userService.updateAvatar(user.getId(), "12ac343930");
+
+        assertThat(updated.avatarId()).isEqualTo("12ac343930");
+        assertThat(updated.photoUrl()).isNull();
+        assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png")))
+                .as("uploaded photo file should be removed when switching to a default avatar")
+                .isFalse();
+    }
+
+    @Test
+    void uploadingPhotoClearsSelectedAvatar() {
+        User user = userRepository.save(newUser());
+        userService.updateAvatar(user.getId(), "12ac343930");
+
+        MockMultipartFile png = new MockMultipartFile("file", "photo.png", "image/png", new byte[] {1, 2, 3});
+        UserDto updated = userService.updatePhoto(user.getId(), png);
+
+        assertThat(updated.avatarId()).isNull();
+        assertThat(updated.photoUrl()).isNotNull();
+    }
+
+    @Test
+    void rejectsUnknownAvatarId() {
+        User user = userRepository.save(newUser());
+
+        assertThatThrownBy(() -> userService.updateAvatar(user.getId(), "not-a-real-avatar"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("AVATAR_INVALID_ID"));
+    }
+
+    @Test
     void rejectsNonImageUpload() {
         User user = userRepository.save(newUser());
         MockMultipartFile file = new MockMultipartFile("file", "notes.txt", "text/plain", new byte[] {1});

@@ -182,6 +182,13 @@ private fun SettingsScreenContent(
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.size(6.dp))
+            Text(
+                text = "Avatars: “ToonHead” by Johan Melin, CC BY 4.0",
+                color = PlayboardTheme.colors.textMuted.copy(alpha = 0.7f),
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

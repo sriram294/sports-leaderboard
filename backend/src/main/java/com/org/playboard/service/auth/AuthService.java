@@ -3,6 +3,7 @@ package com.org.playboard.service.auth;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.org.playboard.common.ApiException;
 import com.org.playboard.common.AvatarColorPicker;
+import com.org.playboard.common.DefaultAvatars;
 import com.org.playboard.common.EmailNormalizer;
 import com.org.playboard.dto.auth.TokenResponse;
 import com.org.playboard.dto.user.UserSummaryDto;
@@ -107,6 +108,7 @@ public class AuthService {
         user.setEmail(email);
         user.setDisplayName(displayName != null ? displayName : email);
         user.setAvatarColor(AvatarColorPicker.pick(email));
+        user.setAvatarId(DefaultAvatars.pickRandom());
         return userRepository.save(user);
     }
 

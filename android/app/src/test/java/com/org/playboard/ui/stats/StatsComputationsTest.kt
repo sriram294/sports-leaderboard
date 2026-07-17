@@ -11,7 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private fun p(id: String, name: String = id) = MatchPlayer(id, name, "#FF3D8A", null)
+private fun p(id: String, name: String = id) = MatchPlayer(id, name, "#FF3D8A", null, null)
 
 private fun match(
     id: String,
@@ -37,7 +37,7 @@ private fun ranking(
     currentStreak: Int = 0,
     bestStreak: Int = 0,
     pa: Int = 0,
-) = PlayerRanking(rank, id, id, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
+) = PlayerRanking(rank, id, id, null, null, "#9ADE28", gp, wins, gp - wins, pf, pa, wr, currentStreak, bestStreak)
 
 class StatsComputationsTest {
 
