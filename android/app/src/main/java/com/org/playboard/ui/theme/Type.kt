@@ -2,9 +2,17 @@ package com.org.playboard.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.org.playboard.R
+
+/**
+ * Bundled Paytone One (SIL Open Font License — see docs/licenses/PaytoneOne-OFL.txt).
+ * The bold, fun display face used for the "layboard" login wordmark.
+ */
+val PaytoneOne = FontFamily(Font(R.font.paytone_one))
 
 // Set of Material typography styles to start with
 val Typography = Typography(
