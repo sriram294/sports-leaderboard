@@ -88,7 +88,11 @@ interface PlayboardApi {
     ): InviteResponseDto
 
     @GET("api/v1/groups/{groupId}/leaderboard")
-    suspend fun getLeaderboard(@Path("groupId") groupId: String): LeaderboardResponseDto
+    suspend fun getLeaderboard(
+        @Path("groupId") groupId: String,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+    ): LeaderboardResponseDto
 
     @GET("api/v1/groups/{groupId}/members")
     suspend fun getMembers(@Path("groupId") groupId: String): MembersResponseDto

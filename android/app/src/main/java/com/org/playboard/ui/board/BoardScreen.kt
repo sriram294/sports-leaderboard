@@ -85,6 +85,7 @@ fun BoardScreen(
     BoardContent(
         uiState = uiState,
         onSortColumnSelected = viewModel::onSortColumnSelected,
+        onTimeRangeSelected = viewModel::onTimeRangeSelected,
         onRetry = viewModel::refresh,
         onPullRefresh = viewModel::onPullRefresh,
         onPlayerClick = onPlayerClick,
@@ -100,6 +101,7 @@ fun BoardScreen(
 private fun BoardContent(
     uiState: BoardUiState,
     onSortColumnSelected: (RankingSortColumn) -> Unit,
+    onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
     onRetry: () -> Unit,
     onPullRefresh: () -> Unit,
     onPlayerClick: (String) -> Unit,
@@ -123,7 +125,6 @@ private fun BoardContent(
             uiState.isLoading -> CenteredBox { CircularProgressIndicator(color = BrandLime) }
             uiState.hasLoadFailed -> LoadFailedState(onRetry = onRetry)
             uiState.selectedGroup == null -> NoGroupsState()
-            uiState.rankings.isEmpty() -> NoMatchesState()
             else -> PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onPullRefresh,
@@ -136,14 +137,28 @@ private fun BoardContent(
                     contentPadding = PaddingValues(bottom = formBarHeight + 24.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item { TopPlayersPodium(podium = uiState.podium, onPlayerClick = onPlayerClick, onShare = onShare) }
+                    // The header (and its time-range toggle) always shows, even for an
+                    // empty window, so the user can switch ranges when e.g. "This Week"
+                    // has no matches yet but "All Time" does.
                     item {
-                        RankingsCard(
-                            rows = uiState.tableRows,
-                            sortColumn = uiState.sortColumn,
-                            onSortColumnSelected = onSortColumnSelected,
-                            onPlayerClick = onPlayerClick,
+                        TopPlayersHeader(
+                            selectedRange = uiState.selectedTimeRange,
+                            onTimeRangeSelected = onTimeRangeSelected,
+                            onShare = onShare,
                         )
+                    }
+                    if (uiState.rankings.isEmpty()) {
+                        item { NoMatchesBlock(range = uiState.selectedTimeRange) }
+                    } else {
+                        item { PodiumRow(podium = uiState.podium, onPlayerClick = onPlayerClick) }
+                        item {
+                            RankingsCard(
+                                rows = uiState.tableRows,
+                                sortColumn = uiState.sortColumn,
+                                onSortColumnSelected = onSortColumnSelected,
+                                onPlayerClick = onPlayerClick,
+                            )
+                        }
                     }
                 }
             }
@@ -169,10 +184,11 @@ private fun BoardContent(
     }
 }
 
+/** "TOP PLAYERS" label, the calendar-window toggle, and the share action. */
 @Composable
-private fun TopPlayersPodium(
-    podium: List<PlayerRanking>,
-    onPlayerClick: (String) -> Unit,
+private fun TopPlayersHeader(
+    selectedRange: LeaderboardTimeRange,
+    onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
     onShare: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
@@ -188,11 +204,54 @@ private fun TopPlayersPodium(
                 )
             }
         }
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-            PodiumSlot(entry = podium.getOrNull(1), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
-            PodiumSlot(entry = podium.getOrNull(0), isChampion = true, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1.2f))
-            PodiumSlot(entry = podium.getOrNull(2), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
-        }
+        Spacer(modifier = Modifier.height(8.dp))
+        TimeRangeToggle(selected = selectedRange, onSelected = onTimeRangeSelected)
+    }
+}
+
+/** Three-way calendar-window selector. Hand-rolled pills (no Material SegmentedButton in this app). */
+@Composable
+private fun TimeRangeToggle(
+    selected: LeaderboardTimeRange,
+    onSelected: (LeaderboardTimeRange) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        TimeRangeChip("This Month", LeaderboardTimeRange.MONTH, selected, onSelected)
+        TimeRangeChip("This Week", LeaderboardTimeRange.WEEK, selected, onSelected)
+        TimeRangeChip("All Time", LeaderboardTimeRange.ALL_TIME, selected, onSelected)
+    }
+}
+
+@Composable
+private fun TimeRangeChip(
+    label: String,
+    range: LeaderboardTimeRange,
+    selected: LeaderboardTimeRange,
+    onSelected: (LeaderboardTimeRange) -> Unit,
+) {
+    val isActive = range == selected
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
+        color = if (isActive) OnBrandLime else TextMuted,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (isActive) BrandLime else SurfaceDark)
+            .clickable { onSelected(range) }
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+    )
+}
+
+/** The top-3 podium row. */
+@Composable
+private fun PodiumRow(
+    podium: List<PlayerRanking>,
+    onPlayerClick: (String) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
+        PodiumSlot(entry = podium.getOrNull(1), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
+        PodiumSlot(entry = podium.getOrNull(0), isChampion = true, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1.2f))
+        PodiumSlot(entry = podium.getOrNull(2), isChampion = false, onPlayerClick = onPlayerClick, modifier = Modifier.weight(1f))
     }
 }
 
@@ -504,11 +563,26 @@ private fun NoGroupsState() {
     }
 }
 
+/**
+ * Empty-state block shown under the header when the selected window has no matches.
+ * The copy is range-aware so "This Week" with no play reads differently from a group
+ * that has never recorded a match (All Time).
+ */
 @Composable
-private fun NoMatchesState() {
-    CenteredBox {
+private fun NoMatchesBlock(range: LeaderboardTimeRange) {
+    val message = when (range) {
+        LeaderboardTimeRange.WEEK -> "No matches this week yet.\nRecord one to rank this week."
+        LeaderboardTimeRange.MONTH -> "No matches this month yet.\nRecord one to rank this month."
+        LeaderboardTimeRange.ALL_TIME -> "No matches recorded yet.\nRankings appear after the first match."
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 48.dp, start = 24.dp, end = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
         Text(
-            text = "No matches recorded yet.\nRankings appear after the first match.",
+            text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = TextMuted,
             textAlign = TextAlign.Center,
@@ -543,6 +617,7 @@ private fun BoardContentPreview() {
         BoardContent(
             uiState = previewState,
             onSortColumnSelected = {},
+            onTimeRangeSelected = {},
             onRetry = {},
             onPullRefresh = {},
             onPlayerClick = {},

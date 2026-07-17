@@ -70,7 +70,7 @@ private class FakePlayboardApi(
     override suspend fun joinGroup(request: JoinGroupRequestDto): GroupDto = error("unused")
     override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto = error("unused")
-    override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = error("unused")
+    override suspend fun getLeaderboard(groupId: String, from: String?, to: String?): LeaderboardResponseDto = error("unused")
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("unused")
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")

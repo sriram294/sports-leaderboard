@@ -19,7 +19,10 @@ import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.user.UserRepository;
 import com.org.playboard.service.match.MatchService;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -175,12 +178,76 @@ class StatsQueryServiceIntegrationTest {
         assertThat(second).containsExactlyElementsOf(first);
     }
 
+    /**
+     * The windowed leaderboard aggregates only matches whose {@code playedAt} falls in
+     * {@code [from, to)}; matches outside the window (and all-time streaks) don't count.
+     */
+    @Test
+    void windowedLeaderboardCountsOnlyMatchesInTheCalendarWindow() {
+        Fixture f = newFixture();
+        ZoneId zone = ZoneId.of("UTC");
+        LocalDate firstOfMonth = LocalDate.now(zone).withDayOfMonth(1);
+        Instant from = firstOfMonth.atStartOfDay(zone).toInstant();
+        Instant to = firstOfMonth.plusMonths(1).atStartOfDay(zone).toInstant();
+        Instant inWindow = from.plus(Duration.ofHours(1));
+        Instant lastMonth = firstOfMonth.minusDays(5).atStartOfDay(zone).toInstant();
+
+        // This month: (raj, dev) beat (marcus, kiran) 21-12.
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 12, 1, inWindow);
+        // Last month: (marcus, kiran) beat (raj, dev) 21-15 — must not count this month.
+        recordMatch(f.group, f.raj, List.of(f.marcus, f.kiran), List.of(f.raj, f.dev), 21, 15, 1, lastMonth);
+
+        LeaderboardResponse windowed = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId(), from, to);
+
+        // Only the in-window match is aggregated: every player has exactly one game.
+        assertThat(windowed.rankings()).extracting(LeaderboardEntryDto::userId)
+                .containsExactlyInAnyOrder(f.raj.getId(), f.dev.getId(), f.marcus.getId(), f.kiran.getId());
+        assertThat(windowed.rankings()).allSatisfy(e -> assertThat(e.gamesPlayed()).isEqualTo(1));
+        assertThat(windowed.rankings()).extracting(LeaderboardEntryDto::rank).containsExactly(1, 2, 3, 4);
+
+        LeaderboardEntryDto raj = entryFor(windowed, f.raj.getId());
+        assertThat(raj.wins()).isEqualTo(1);
+        assertThat(raj.losses()).isZero();
+        assertThat(raj.winRate()).isEqualByComparingTo("1.0000");
+        assertThat(raj.pointsFor()).isEqualTo(21);
+        assertThat(raj.pointsAgainst()).isEqualTo(12);
+        // Streaks are all-time only, so windowed entries report zero.
+        assertThat(raj.currentStreak()).isZero();
+        assertThat(raj.bestStreak()).isZero();
+
+        LeaderboardEntryDto marcus = entryFor(windowed, f.marcus.getId());
+        assertThat(marcus.wins()).isZero();
+        assertThat(marcus.losses()).isEqualTo(1);
+        assertThat(marcus.pointsFor()).isEqualTo(12);
+
+        // Winners (win rate 1.0) rank above losers; pairs share the stable id key.
+        List<UUID> order = windowed.rankings().stream().map(LeaderboardEntryDto::userId).toList();
+        assertThat(order.subList(0, 2)).containsExactlyInAnyOrder(f.raj.getId(), f.dev.getId());
+        assertThat(order.subList(2, 4)).containsExactlyInAnyOrder(f.marcus.getId(), f.kiran.getId());
+
+        // Sanity: all-time (no window) sees both matches — dev has played twice.
+        LeaderboardResponse allTime = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId());
+        assertThat(entryFor(allTime, f.dev.getId()).gamesPlayed()).isEqualTo(2);
+    }
+
+    private static LeaderboardEntryDto entryFor(LeaderboardResponse leaderboard, UUID userId) {
+        return leaderboard.rankings().stream()
+                .filter(e -> e.userId().equals(userId))
+                .findFirst()
+                .orElseThrow();
+    }
+
     private void recordMatch(Group group, User recorder, List<User> team1, List<User> team2, int t1, int t2, int winner) {
+        recordMatch(group, recorder, team1, team2, t1, t2, winner, Instant.now());
+    }
+
+    private void recordMatch(
+            Group group, User recorder, List<User> team1, List<User> team2, int t1, int t2, int winner, Instant playedAt) {
         matchService.createMatch(
                 group.getId(),
                 recorder.getId(),
                 new RecordMatchRequest(
-                        Instant.now(),
+                        playedAt,
                         List.of(
                                 new TeamInput((short) 1, team1.stream().map(User::getId).toList()),
                                 new TeamInput((short) 2, team2.stream().map(User::getId).toList())),

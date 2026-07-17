@@ -46,6 +46,7 @@ import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -72,7 +73,14 @@ private class FakePlayboardApi(
     override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         error("not used in this test")
-    override suspend fun getLeaderboard(groupId: String): LeaderboardResponseDto = leaderboardResult(groupId)
+    /** The window params of the most recent leaderboard fetch, for range-scoping assertions. */
+    var lastFrom: String? = null
+    var lastTo: String? = null
+    override suspend fun getLeaderboard(groupId: String, from: String?, to: String?): LeaderboardResponseDto {
+        lastFrom = from
+        lastTo = to
+        return leaderboardResult(groupId)
+    }
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("not used in this test")
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("not used in this test")
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
@@ -300,6 +308,86 @@ class BoardViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(listOf("Dev", "Priya", "Raj"), state.tableRows.map { it.displayName })
         assertEquals(listOf("Priya", "Dev", "Raj"), state.podium.map { it.displayName })
+    }
+
+    @Test
+    fun `default range is this month and scopes the initial fetch to the month window`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        advanceUntilIdle()
+
+        assertEquals(LeaderboardTimeRange.MONTH, viewModel.uiState.value.selectedTimeRange)
+        val (from, to) = LeaderboardTimeRange.MONTH.window()!!
+        assertEquals(from, api.lastFrom)
+        assertEquals(to, api.lastTo)
+    }
+
+    @Test
+    fun `selecting All Time fetches without a window`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        advanceUntilIdle()
+
+        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
+        advanceUntilIdle()
+
+        assertEquals(LeaderboardTimeRange.ALL_TIME, viewModel.uiState.value.selectedTimeRange)
+        assertNull(api.lastFrom)
+        assertNull(api.lastTo)
+    }
+
+    @Test
+    fun `selecting This Week scopes the fetch to the week window`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        advanceUntilIdle()
+
+        viewModel.onTimeRangeSelected(LeaderboardTimeRange.WEEK)
+        advanceUntilIdle()
+
+        val (from, to) = LeaderboardTimeRange.WEEK.window()!!
+        assertNotNull(from)
+        assertEquals(from, api.lastFrom)
+        assertEquals(to, api.lastTo)
+    }
+
+    @Test
+    fun `the selected range persists across a group switch`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"), groupDto("g2", "Office League"))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        advanceUntilIdle()
+
+        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
+        advanceUntilIdle()
+
+        // Switching groups keeps the range: g2's reload is also all-time (no window).
+        repo.selectGroup("g2")
+        advanceUntilIdle()
+
+        assertEquals(LeaderboardTimeRange.ALL_TIME, viewModel.uiState.value.selectedTimeRange)
+        assertEquals("g2", viewModel.uiState.value.selectedGroup?.id)
+        assertNull(api.lastFrom)
+        assertNull(api.lastTo)
     }
 
     @Test

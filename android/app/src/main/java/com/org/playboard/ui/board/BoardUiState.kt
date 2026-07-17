@@ -23,6 +23,8 @@ data class BoardUiState(
     val selectedGroup: Group? = null,
     val rankings: List<PlayerRanking> = emptyList(),
     val sortColumn: RankingSortColumn = RankingSortColumn.WIN_RATE,
+    /** Calendar window the leaderboard is scoped to; drives the "TOP PLAYERS" toggle. */
+    val selectedTimeRange: LeaderboardTimeRange = LeaderboardTimeRange.MONTH,
     /** The signed-in user's most recent results in this group, newest first (≤5). `true` = win. */
     val recentForm: List<Boolean> = emptyList(),
 ) {

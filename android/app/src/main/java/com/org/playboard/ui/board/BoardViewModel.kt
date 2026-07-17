@@ -112,6 +112,22 @@ class BoardViewModel @Inject constructor(
         _uiState.update { it.copy(sortColumn = column) }
     }
 
+    /**
+     * Switch the leaderboard's calendar window. Records the choice, then re-fetches
+     * the active group's ranking for the new window (a different window is different
+     * data, so it's a server round-trip, not a client re-sort). The selection is held
+     * in [BoardUiState] and reused by every later reload (group switch, pull-refresh,
+     * a recorded match), so it persists until the user changes it again.
+     */
+    fun onTimeRangeSelected(range: LeaderboardTimeRange) {
+        if (_uiState.value.selectedTimeRange == range) return
+        _uiState.update { it.copy(selectedTimeRange = range) }
+        viewModelScope.launch {
+            val group = groupRepository.selectedGroup.first() ?: return@launch
+            loadLeaderboard(group, showLoading = true)
+        }
+    }
+
     private suspend fun applySelection(group: Group?, loadState: GroupsLoadState) {
         if (group != null) {
             loadLeaderboard(group, showLoading = true)
@@ -130,7 +146,9 @@ class BoardViewModel @Inject constructor(
 
     private suspend fun loadLeaderboard(group: Group, showLoading: Boolean) {
         _uiState.update { it.copy(isLoading = showLoading, hasLoadFailed = false, selectedGroup = group) }
-        leaderboardRepository.getLeaderboard(group.id)
+        // Scope the fetch to the selected calendar window (null,null => all-time).
+        val (from, to) = _uiState.value.selectedTimeRange.window() ?: (null to null)
+        leaderboardRepository.getLeaderboard(group.id, from, to)
             .onSuccess { rankings ->
                 _uiState.update {
                     it.copy(

@@ -15,8 +15,16 @@ import javax.inject.Singleton
 class LeaderboardRepository @Inject constructor(
     @AuthenticatedApi private val api: PlayboardApi,
 ) {
-    suspend fun getLeaderboard(groupId: String): Result<List<PlayerRanking>> =
-        runCatching { api.getLeaderboard(groupId).rankings.map(LeaderboardEntryDto::toPlayerRanking) }
+    /**
+     * @param from,to ISO-8601 instants bounding a calendar window (This Week / This Month);
+     *   omit both (null) for the all-time ranking.
+     */
+    suspend fun getLeaderboard(
+        groupId: String,
+        from: String? = null,
+        to: String? = null,
+    ): Result<List<PlayerRanking>> =
+        runCatching { api.getLeaderboard(groupId, from, to).rankings.map(LeaderboardEntryDto::toPlayerRanking) }
 }
 
 private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
