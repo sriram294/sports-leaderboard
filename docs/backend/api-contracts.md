@@ -192,6 +192,19 @@ only, so the difference key is sorted in memory — negligible at group sizes.
 retained (rather than replaced by a computed difference) so clients built
 against the earlier shape keep deserializing.
 
+**Optional time window (`?from=…&to=…`).** Supply both `from` and `to` as
+ISO-8601 instants to scope the ranking to the half-open interval `[from, to)`
+by `match.playedAt` — this backs the Board's "This Week" / "This Month" toggle.
+The client computes the calendar boundaries in device-local time (month =
+current calendar month; week = current calendar week starting Monday) and sends
+the resulting UTC instants, so members in different zones split boundaries by
+their own midnight. Omit both params for the all-time ranking (the default and
+the original behavior). Windowed responses use the identical shape, ordering,
+guest-exclusion, and zero-matches-omitted rules as all-time; the only difference
+is `currentStreak`/`bestStreak` are `0` (streaks are all-time-only and the board
+doesn't render them). All-time reads the materialized `member_stats` snapshot;
+windowed aggregates raw matches on demand.
+
 ### `GET /groups/{groupId}/members/{userId}/stats`
 Backs both the Profile tab (own stats) and tapping a player from the
 leaderboard ([02-board-leaderboard.md](../requirements/02-board-leaderboard.md)

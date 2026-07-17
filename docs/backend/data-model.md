@@ -48,6 +48,14 @@ normalized; `member_stats` is rebuilt from `matches`/`match_teams`/
 `match_participants`/`match_sets` whenever those change (see
 [Recompute strategy](#recompute-strategy)).
 
+`member_stats` is an **all-time** snapshot (keyed only by `(group_id, user_id)`,
+no time dimension), so it backs only the all-time leaderboard. The **windowed**
+leaderboard ("This Week" / "This Month") can't read it — it aggregates the raw
+`matches`/`match_teams`/`match_participants`/`match_sets` on demand, filtered by
+`matches.played_at ∈ [from, to)` (single set-based query, keyed off the existing
+`idx_matches_group_played` index). Same PF/PA-by-team and win logic as the
+per-player recompute, but for the whole group at once and bounded by the window.
+
 ## Schema (DDL)
 
 ```sql

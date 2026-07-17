@@ -14,12 +14,15 @@ import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository.PartnerRow;
+import com.org.playboard.repository.match.MatchParticipantRepository.WindowedStatRow;
 import com.org.playboard.repository.stats.MemberStatsRepository;
 import com.org.playboard.service.group.GroupMembershipGuard;
 import com.org.playboard.service.match.MatchService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +59,26 @@ public class StatsQueryService {
 
     @Transactional(readOnly = true)
     public LeaderboardResponse getLeaderboard(UUID groupId, UUID callerId) {
-        membershipGuard.requireActiveMember(groupId, callerId);
+        return getLeaderboard(groupId, callerId, null, null);
+    }
 
+    /**
+     * Leaderboard for a group. When {@code from} and {@code to} are both supplied the
+     * ranking is computed for that {@code [from, to)} window by aggregating raw matches
+     * (This Week / This Month); otherwise it reads the all-time {@code member_stats}
+     * snapshot. Both paths share the same ordering, guest-exclusion, and
+     * zero-matches-omitted rules.
+     */
+    @Transactional(readOnly = true)
+    public LeaderboardResponse getLeaderboard(UUID groupId, UUID callerId, Instant from, Instant to) {
+        membershipGuard.requireActiveMember(groupId, callerId);
+        if (from == null || to == null) {
+            return allTimeLeaderboard(groupId);
+        }
+        return windowedLeaderboard(groupId, from, to);
+    }
+
+    private LeaderboardResponse allTimeLeaderboard(UUID groupId) {
         List<LeaderboardEntryDto> rankings = new ArrayList<>();
         int rank = 1;
         for (MemberStats stats : memberStatsRepository.findLeaderboard(groupId)) {
@@ -81,6 +102,68 @@ public class StatsQueryService {
                     stats.getBestStreak()));
         }
         return new LeaderboardResponse(rankings);
+    }
+
+    private LeaderboardResponse windowedLeaderboard(UUID groupId, Instant from, Instant to) {
+        // Only active, non-guest members can rank (guests are excluded from the
+        // leaderboard, matching the all-time member_stats path).
+        Map<UUID, User> eligible = new HashMap<>();
+        for (GroupMember member : groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)) {
+            if (member.getRole() != GroupRole.GUEST) {
+                eligible.put(member.getUser().getId(), member.getUser());
+            }
+        }
+
+        List<LeaderboardEntryDto> entries = new ArrayList<>();
+        for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
+            User user = eligible.get(row.getUserId());
+            int gamesPlayed = (int) row.getGamesPlayed();
+            if (user == null || gamesPlayed == 0) {
+                continue;
+            }
+            int wins = (int) row.getWins();
+            int pointsFor = (int) row.getPointsFor();
+            int pointsAgainst = (int) row.getPointsAgainst();
+            BigDecimal winRate = BigDecimal.valueOf(wins)
+                    .divide(BigDecimal.valueOf(gamesPlayed), 4, RoundingMode.HALF_UP);
+            entries.add(new LeaderboardEntryDto(
+                    0, // rank assigned after sorting
+                    user.getId(),
+                    user.getDisplayName(),
+                    user.getPhotoUrl(),
+                    user.getAvatarColor(),
+                    gamesPlayed,
+                    wins,
+                    gamesPlayed - wins,
+                    pointsFor,
+                    pointsAgainst,
+                    winRate,
+                    0, // streaks are all-time only and not shown on the board
+                    0));
+        }
+
+        // Same canonical order as MemberStatsRepository.findLeaderboard:
+        // win rate desc, then point differential desc, then wins desc, then userId asc.
+        entries.sort(Comparator
+                .comparing(LeaderboardEntryDto::winRate).reversed()
+                .thenComparing(Comparator.comparingInt(
+                        (LeaderboardEntryDto e) -> e.pointsFor() - e.pointsAgainst()).reversed())
+                .thenComparing(Comparator.comparingInt(LeaderboardEntryDto::wins).reversed())
+                .thenComparing(LeaderboardEntryDto::userId));
+
+        List<LeaderboardEntryDto> ranked = new ArrayList<>(entries.size());
+        int rank = 1;
+        for (LeaderboardEntryDto e : entries) {
+            ranked.add(withRank(e, rank++));
+        }
+        return new LeaderboardResponse(ranked);
+    }
+
+    private static LeaderboardEntryDto withRank(LeaderboardEntryDto e, int rank) {
+        return new LeaderboardEntryDto(
+                rank, e.userId(), e.displayName(), e.photoUrl(), e.avatarColor(),
+                e.gamesPlayed(), e.wins(), e.losses(), e.pointsFor(), e.pointsAgainst(),
+                e.winRate(), e.currentStreak(), e.bestStreak());
     }
 
     @Transactional(readOnly = true)

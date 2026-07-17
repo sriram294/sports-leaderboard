@@ -69,4 +69,38 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
         boolean isWinner();
     }
+
+    // Backs the windowed leaderboard (This Week / This Month) — aggregates raw
+    // matches by played_at for a whole group in one set-based query, mirroring the
+    // per-team PF/PA and win logic that StatsRecalculationService.recomputeForPlayer
+    // applies per player. count(distinct m.id) keeps GP correct despite the
+    // match_sets fan-out. Guests are filtered out by the caller. Window is [from, to).
+    @Query(value = """
+        select mp.user_id as userId,
+               count(distinct m.id) as gamesPlayed,
+               count(distinct case when mt.is_winner then m.id end) as wins,
+               coalesce(sum(case when mt.team_no = 1 then s.team1_score else s.team2_score end), 0) as pointsFor,
+               coalesce(sum(case when mt.team_no = 1 then s.team2_score else s.team1_score end), 0) as pointsAgainst
+        from match_participants mp
+          join matches m on m.id = mp.match_id
+            and m.group_id = :groupId and m.is_deleted = false
+            and m.played_at >= :from and m.played_at < :to
+          join match_teams mt on mt.id = mp.match_team_id
+          left join match_sets s on s.match_id = m.id
+        group by mp.user_id
+        """, nativeQuery = true)
+    List<WindowedStatRow> aggregateWindowedStats(
+            @Param("groupId") UUID groupId, @Param("from") Instant from, @Param("to") Instant to);
+
+    interface WindowedStatRow {
+        UUID getUserId();
+
+        long getGamesPlayed();
+
+        long getWins();
+
+        long getPointsFor();
+
+        long getPointsAgainst();
+    }
 }
