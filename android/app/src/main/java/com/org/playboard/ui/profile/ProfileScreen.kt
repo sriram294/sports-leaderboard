@@ -3,7 +3,6 @@ package com.org.playboard.ui.profile
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,8 +47,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -162,7 +164,7 @@ private fun ProfileContent(
         }
         if (state.isOwnProfile && onBack == null && onOpenSettings != null) {
             Row(
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.Start,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 IconButton(onClick = onOpenSettings) {
@@ -230,7 +232,7 @@ private fun StatsList(
         modifier = Modifier.fillMaxSize(),
     ) {
         item {
-            IdentityCard(
+            ProfileHero(
                 stats = stats,
                 displayName = state.displayName ?: stats.displayName,
                 photoUrl = state.identityPhotoUrl,
@@ -265,8 +267,12 @@ private fun StatsList(
     }
 }
 
+/**
+ * Centered profile hero: a ringed avatar (with a "+" edit badge on own profile), the name
+ * below it with a rename pencil, and a meta row of group · win rate · matches.
+ */
 @Composable
-private fun IdentityCard(
+private fun ProfileHero(
     stats: PlayerStats,
     displayName: String,
     photoUrl: String?,
@@ -276,73 +282,55 @@ private fun IdentityCard(
     onEditName: () -> Unit,
     onEditAvatar: () -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = PlayboardTheme.colors.surface,
-        border = BorderStroke(1.5.dp, PlayboardTheme.colors.brand),
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth(),
     ) {
+        HeroAvatar(
+            displayName = displayName,
+            photoUrl = photoUrl,
+            avatarId = avatarId,
+            avatarColorHex = stats.avatarColor,
+            editable = editable,
+            isUploading = isUploadingPhoto,
+            onEdit = onEditAvatar,
+        )
+        Spacer(Modifier.height(14.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(20.dp),
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            EditableAvatar(
-                displayName = displayName,
-                photoUrl = photoUrl,
-                avatarId = avatarId,
-                avatarColorHex = stats.avatarColor,
-                editable = editable,
-                isUploading = isUploadingPhoto,
-                onEdit = onEditAvatar,
+            // Phantom spacer mirrors the pencil cluster (gap + badge) so the NAME itself
+            // stays optically centered, with the pencil hanging off to its right.
+            if (editable) Spacer(Modifier.width(32.dp))
+            Text(
+                text = displayName,
+                style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 30.sp),
+                fontWeight = FontWeight.Bold,
+                color = PlayboardTheme.colors.textPrimary,
+                maxLines = 1,
             )
-            Spacer(Modifier.width(18.dp))
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = displayName.uppercase(Locale.getDefault()),
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
-                        color = PlayboardTheme.colors.brand,
-                    )
-                    if (editable) {
-                        Spacer(Modifier.width(8.dp))
-                        EditBadge(onClick = onEditName)
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "${stats.matchesPlayed} ${if (stats.matchesPlayed == 1) "match" else "matches"} played",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                    color = PlayboardTheme.colors.textMuted,
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = "${stats.winRatePercent}%",
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 28.sp, lineHeight = 28.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = PlayboardTheme.colors.textPrimary,
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "WIN RATE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = PlayboardTheme.colors.textMuted,
-                        modifier = Modifier.padding(bottom = 3.dp),
-                    )
-                }
+            if (editable) {
+                Spacer(Modifier.width(4.dp))
+                EditBadge(onClick = onEditName)
             }
         }
+        Spacer(Modifier.height(12.dp))
+        HeroMetaRow(
+            winRatePercent = stats.winRatePercent,
+            matchesPlayed = stats.matchesPlayed,
+        )
     }
 }
 
 /**
- * The identity avatar with an edit affordance for own profile (req #3): a lime
- * pencil badge over the corner, tappable to pick a new photo; a spinner overlay
- * while the upload is in flight. Non-editable (a viewed player) renders a plain
- * [PlayerAvatar].
+ * The hero avatar: a large [PlayerAvatar] inside a thin light ring, with a "+" edit badge
+ * on the bottom-right for own profile (a spinner overlay while an upload is in flight).
+ * A viewed player renders the ringed avatar only.
  */
 @Composable
-private fun EditableAvatar(
+private fun HeroAvatar(
     displayName: String,
     photoUrl: String?,
     avatarId: String?,
@@ -351,20 +339,29 @@ private fun EditableAvatar(
     isUploading: Boolean,
     onEdit: () -> Unit,
 ) {
-    val size = 76.dp
+    val size = 96.dp
     Box(contentAlignment = Alignment.Center) {
-        PlayerAvatar(
-            displayName = displayName,
-            photoUrl = photoUrl,
-            avatarId = avatarId,
-            avatarColorHex = avatarColorHex,
-            size = size,
-            modifier = if (editable && !isUploading) {
-                Modifier.clip(CircleShape).clickable(onClick = onEdit)
-            } else {
-                Modifier
-            },
-        )
+        Box(
+            modifier = Modifier
+                .size(size + 10.dp)
+                .clip(CircleShape)
+                .border(2.dp, PlayboardTheme.colors.textPrimary.copy(alpha = 0.85f), CircleShape)
+                .padding(4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            PlayerAvatar(
+                displayName = displayName,
+                photoUrl = photoUrl,
+                avatarId = avatarId,
+                avatarColorHex = avatarColorHex,
+                size = size,
+                modifier = if (editable && !isUploading) {
+                    Modifier.clip(CircleShape).clickable(onClick = onEdit)
+                } else {
+                    Modifier
+                },
+            )
+        }
         if (isUploading) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -373,66 +370,110 @@ private fun EditableAvatar(
                     .clip(CircleShape)
                     .background(PlayboardTheme.colors.surface.copy(alpha = 0.6f)),
             ) {
-                CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(26.dp))
             }
         } else if (editable) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .size(26.dp)
+                    .size(30.dp)
                     .clip(CircleShape)
                     .background(PlayboardTheme.colors.brand)
-                    .border(2.dp, PlayboardTheme.colors.surface, CircleShape)
+                    .border(2.dp, PlayboardTheme.colors.background, CircleShape)
                     .clickable(onClick = onEdit),
             ) {
-    //          Text("✎", color = PlayboardTheme.colors.onBrand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
-                    contentDescription = "Edit",
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 7.dp, vertical = 2.dp),
-                    tint = Color.Black // Retains original asset colors
+                Text(
+                    text = "+",
+                    color = PlayboardTheme.colors.onBrand,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
                 )
             }
         }
     }
 }
 
-/** Small tappable pencil chip next to the editable display name. */
+/** Centered meta row: win rate · matches (group name already shows in the top switcher). */
+@Composable
+private fun HeroMetaRow(
+    winRatePercent: Int,
+    matchesPlayed: Int,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+    ) {
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = PlayboardTheme.colors.brand, fontWeight = FontWeight.SemiBold)) {
+                    append("$winRatePercent%")
+                }
+                append(" win rate")
+            },
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+            color = PlayboardTheme.colors.textMuted,
+            maxLines = 1,
+        )
+        MetaDot()
+        Icon(
+            imageVector = ImageVector.vectorResource(id = R.drawable.matches),
+            contentDescription = null,
+            tint = PlayboardTheme.colors.textMuted,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(5.dp))
+        MetaText("$matchesPlayed ${if (matchesPlayed == 1) "match" else "matches"}")
+    }
+}
+
+@Composable
+private fun MetaText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+        color = PlayboardTheme.colors.textMuted,
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun MetaDot() {
+    Text(
+        text = "·",
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+        color = PlayboardTheme.colors.textMuted,
+        modifier = Modifier.padding(horizontal = 8.dp),
+    )
+}
+
+/** Subtle tappable pencil next to the editable display name (rename) — no chip/outline. */
 @Composable
 private fun EditBadge(onClick: () -> Unit) {
     Box(
-        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(22.dp)
+            .size(28.dp)
             .clip(CircleShape)
-            .background(PlayboardTheme.colors.surface)
-            .border(1.dp, PlayboardTheme.colors.brand.copy(alpha = 0.6f), CircleShape)
             .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-//        Text("✎", color = PlayboardTheme.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-
         Icon(
             imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
-            contentDescription = "Edit",
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .padding(horizontal = 5.dp, vertical = 2.dp),
-            tint = PlayboardTheme.colors.brand // Retains original asset colors
+            contentDescription = "Edit name",
+            tint = PlayboardTheme.colors.textMuted,
+            modifier = Modifier.size(15.dp),
         )
     }
 }
 
 @Composable
 private fun StatTilesGrid(stats: PlayerStats) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // IntrinsicSize.Min + fillMaxHeight makes every tile in a row match the
         // tallest one, so a sub-label (e.g. "Best: N") can't leave them uneven.
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.height(IntrinsicSize.Min),
         ) {
             StatTile("WINS", stats.wins.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
@@ -440,7 +481,7 @@ private fun StatTilesGrid(stats: PlayerStats) {
             StatTile("PTS FOR", stats.pointsFor.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.height(IntrinsicSize.Min),
         ) {
             StatTile(
