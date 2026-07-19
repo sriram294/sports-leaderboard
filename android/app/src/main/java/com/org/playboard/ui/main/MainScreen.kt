@@ -21,14 +21,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +65,37 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
     // profile in place; null shows the leaderboard (docs/requirements/02 §2).
     var viewingProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
     var showingProfileSettings by rememberSaveable { mutableStateOf(false) }
+    // The trail of tabs the user navigated away from, so system Back steps back through
+    // them (Stats -> Profile -> Board -> exit) instead of closing the app. Saved across
+    // rotation/process death; enums stored by name.
+    val tabHistory = rememberSaveable(
+        saver = listSaver(
+            save = { it.map(MainTab::name) },
+            restore = { it.map(MainTab::valueOf).toMutableStateList() },
+        ),
+    ) { mutableStateListOf<MainTab>() }
+
+    // System Back / back-swipe: unwind in-app navigation (which lives in the state above,
+    // not the NavController back stack). Priority: sub-screens first, then the edit form,
+    // then the tab trail, then home. Disabled on a clean Board so Back exits the app.
+    val canGoBack = showingProfileSettings ||
+        viewingProfileUserId != null ||
+        (selectedTab == MainTab.Add && pendingEditMatchId != null) ||
+        tabHistory.isNotEmpty() ||
+        selectedTab != MainTab.Board
+    BackHandler(enabled = canGoBack) {
+        when {
+            showingProfileSettings -> showingProfileSettings = false
+            viewingProfileUserId != null -> viewingProfileUserId = null
+            selectedTab == MainTab.Add && pendingEditMatchId != null -> {
+                // An edit form was opened from the Matches log — Back returns there.
+                pendingEditMatchId = null
+                selectedTab = MainTab.Matches
+            }
+            tabHistory.isNotEmpty() -> selectedTab = tabHistory.removeAt(tabHistory.lastIndex)
+            selectedTab != MainTab.Board -> selectedTab = MainTab.Board // safety net: never exit off a non-home tab
+        }
+    }
 
     // Switching the active group must pop any open leaderboard drill-down — the
     // viewed player belongs to the previous group. Only clears on a real id change
@@ -87,7 +122,11 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                     // Any tab tap leaves a leaderboard drill-down (so Board returns home).
                     viewingProfileUserId = null
                     showingProfileSettings = false
-                    selectedTab = tab
+                    // Record the tab we're leaving so Back can step back through the trail.
+                    if (tab != selectedTab) {
+                        tabHistory.add(selectedTab)
+                        selectedTab = tab
+                    }
                 },
             )
         },
