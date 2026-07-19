@@ -104,7 +104,7 @@ class StatsViewModel @Inject constructor(
         val matches = matchRepository.getMatches(group.id).getOrElse {
             _uiState.update { s -> s.copy(isLoading = false, hasLoadFailed = s.records == null) }
             return
-        }
+        }.matches
         _uiState.update {
             it.copy(
                 isLoading = false,

@@ -231,7 +231,7 @@ private fun BestPartnershipCard(partnership: BestPartnership) {
 @Composable
 private fun RecentFormCard(form: List<PlayerForm>) {
     InsightCard {
-        SectionLabel("RECENT FORM · recent")
+        SectionLabel("FORM · recent")
         Spacer(Modifier.height(4.dp))
         form.forEach { row ->
             Row(

@@ -8,6 +8,7 @@ import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.SessionState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,9 @@ class MatchesViewModel @Inject constructor(
                         it.copy(isLoading = false, noGroup = true, groupId = null, groupName = null, matches = emptyList())
                     }
                 } else {
+                    // New group: forget the previous group's per-day expand overrides so the
+                    // list re-defaults to "newest day expanded, older days collapsed".
+                    _uiState.update { it.copy(expandedDates = emptyMap()) }
                     loadMatches(group, showLoading = true)
                 }
             }
@@ -154,11 +158,49 @@ class MatchesViewModel @Inject constructor(
             )
         }
         matchRepository.getMatches(group.id)
-            .onSuccess { matches -> _uiState.update { it.copy(isLoading = false, matches = matches) } }
+            .onSuccess { page ->
+                // First page always replaces the list and resets pagination to the top.
+                _uiState.update {
+                    it.copy(isLoading = false, matches = page.matches, nextCursor = page.nextCursor)
+                }
+            }
             .onFailure {
                 // Keep a stale list on a silent refresh failure; only show the error
                 // screen when there's nothing to show.
                 _uiState.update { it.copy(isLoading = false, hasLoadFailed = it.matches.isEmpty()) }
             }
+    }
+
+    /**
+     * Appends the next older page (triggered by the "Load older matches" footer). No-op
+     * when a page is already loading or the log is fully loaded.
+     */
+    fun loadMore() {
+        val state = _uiState.value
+        val groupId = state.groupId ?: return
+        val cursor = state.nextCursor ?: return
+        if (state.isLoadingMore) return
+        _uiState.update { it.copy(isLoadingMore = true) }
+        viewModelScope.launch {
+            matchRepository.getMatches(groupId, cursor = cursor)
+                .onSuccess { page ->
+                    _uiState.update {
+                        val existingIds = it.matches.mapTo(HashSet()) { m -> m.id }
+                        val appended = page.matches.filterNot { m -> m.id in existingIds }
+                        it.copy(
+                            isLoadingMore = false,
+                            matches = it.matches + appended,
+                            nextCursor = page.nextCursor,
+                        )
+                    }
+                }
+                // Keep the loaded list; the footer button stays for a manual retry.
+                .onFailure { _uiState.update { it.copy(isLoadingMore = false) } }
+        }
+    }
+
+    /** Toggles whether a day's section is expanded, recording an explicit user override. */
+    fun onDateToggled(date: LocalDate) {
+        _uiState.update { it.copy(expandedDates = it.expandedDates + (date to !it.isDateExpanded(date))) }
     }
 }
