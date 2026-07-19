@@ -5,6 +5,7 @@ import com.org.playboard.dto.match.MatchSummaryDto;
 import com.org.playboard.dto.stats.BestPartnerDto;
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
+import com.org.playboard.dto.stats.PlayerAttendanceDto;
 import com.org.playboard.dto.stats.PlayerStatsDto;
 import com.org.playboard.entity.group.GroupMember;
 import com.org.playboard.entity.group.GroupRole;
@@ -201,6 +202,24 @@ public class StatsQueryService {
                 stats.getBestStreak(),
                 bestPartner,
                 recentMatches);
+    }
+
+    /**
+     * The player's match-activity instants in {@code [from, to)}, backing the Profile
+     * attendance calendar. Same access rules as {@link #getPlayerStats}: the caller must
+     * be an active member, and the target an active non-guest member.
+     */
+    @Transactional(readOnly = true)
+    public PlayerAttendanceDto getAttendance(
+            UUID groupId, UUID targetUserId, UUID callerId, Instant from, Instant to) {
+        membershipGuard.requireActiveMember(groupId, callerId);
+        groupMemberRepository
+                .findByGroupIdAndUserId(groupId, targetUserId)
+                .filter(m -> m.getStatus() == MemberStatus.ACTIVE && m.getRole() != GroupRole.GUEST)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
+        return new PlayerAttendanceDto(
+                matchParticipantRepository.findPlayerActivity(groupId, targetUserId, from, to));
     }
 
     // "Best" = highest win rate together (min 1 game), tie-broken by most

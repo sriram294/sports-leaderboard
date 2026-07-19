@@ -1,12 +1,15 @@
 package com.org.playboard.service.stats;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.org.playboard.common.ApiException;
 import com.org.playboard.dto.match.RecordMatchRequest;
 import com.org.playboard.dto.match.RecordMatchRequest.SetInput;
 import com.org.playboard.dto.match.RecordMatchRequest.TeamInput;
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
+import com.org.playboard.dto.stats.PlayerAttendanceDto;
 import com.org.playboard.dto.stats.PlayerStatsDto;
 import com.org.playboard.entity.group.Group;
 import com.org.playboard.entity.group.GroupMember;
@@ -228,6 +231,56 @@ class StatsQueryServiceIntegrationTest {
         // Sanity: all-time (no window) sees both matches — dev has played twice.
         LeaderboardResponse allTime = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId());
         assertThat(entryFor(allTime, f.dev.getId()).gamesPlayed()).isEqualTo(2);
+    }
+
+    /**
+     * Attendance returns the player's match instants inside {@code [from, to)} only —
+     * out-of-window matches are excluded, and two matches on the same day both come back
+     * (the client buckets instants into local days).
+     */
+    @Test
+    void attendanceReturnsInWindowMatchInstantsOnly() {
+        Fixture f = newFixture();
+        ZoneId zone = ZoneId.of("UTC");
+        LocalDate firstOfMonth = LocalDate.now(zone).withDayOfMonth(1);
+        Instant from = firstOfMonth.atStartOfDay(zone).toInstant();
+        Instant to = firstOfMonth.plusMonths(1).atStartOfDay(zone).toInstant();
+
+        Instant dayOneMorning = from.plus(Duration.ofHours(2));
+        Instant dayOneEvening = from.plus(Duration.ofHours(9)); // same day, distinct instant
+        Instant dayFour = from.plus(Duration.ofDays(3)).plus(Duration.ofHours(1));
+        Instant lastMonth = firstOfMonth.minusDays(5).atStartOfDay(zone).toInstant();
+
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 12, 1, dayOneMorning);
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 15, 1, dayOneEvening);
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 10, 1, dayFour);
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 9, 1, lastMonth);
+
+        PlayerAttendanceDto attendance =
+                statsQueryService.getAttendance(f.group.getId(), f.raj.getId(), f.dev.getId(), from, to);
+
+        assertThat(attendance.playedAt())
+                .containsExactly(dayOneMorning, dayOneEvening, dayFour) // sorted asc, last-month excluded
+                .doesNotContain(lastMonth);
+
+        // A player who didn't play in the window gets an empty list, not an error.
+        PlayerAttendanceDto newbie =
+                statsQueryService.getAttendance(f.group.getId(), f.newbie.getId(), f.raj.getId(), from, to);
+        assertThat(newbie.playedAt()).isEmpty();
+    }
+
+    /** Attendance is gated like stats: a non-member target is rejected. */
+    @Test
+    void attendanceRejectsNonMemberTarget() {
+        Fixture f = newFixture();
+        User outsider = userRepository.save(newUser("outsider")); // saved but never added to the group
+        Instant from = Instant.now().minus(Duration.ofDays(30));
+        Instant to = Instant.now();
+
+        assertThatThrownBy(
+                        () -> statsQueryService.getAttendance(f.group.getId(), outsider.getId(), f.raj.getId(), from, to))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("not a member");
     }
 
     private static LeaderboardEntryDto entryFor(LeaderboardResponse leaderboard, UUID userId) {

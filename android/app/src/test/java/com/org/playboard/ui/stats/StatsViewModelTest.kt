@@ -62,6 +62,7 @@ private class FakePlayboardApi(
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")
+    override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto = matchesResult(groupId)
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto = error("unused")

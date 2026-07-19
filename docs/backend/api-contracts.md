@@ -222,6 +222,18 @@ requirement #2) — same endpoint, different `userId`.
 `bestPartner` is `null` if the player has no completed matches with a
 teammate yet.
 
+### `GET /groups/{groupId}/members/{userId}/attendance?from=&to=`
+Backs the Profile attendance calendar — the distinct match instants the player
+was in within the half-open `[from, to)` window. `from`/`to` are **required**
+ISO-8601 instants; the client computes them from the current calendar month in
+device-local time (matches are stored UTC, so the client buckets the returned
+instants back into local days to paint the month grid). Same access rules as
+`/stats` (caller must be an active member; target must be an active non-guest
+member, else `404 MEMBER_NOT_FOUND`).
+```json
+{ "playedAt": ["2026-07-03T06:58:00Z", "2026-07-05T09:30:00Z"] }
+```
+
 ---
 
 ## Matches
@@ -342,6 +354,7 @@ means an on-device issue; `failed > 0` surfaces the FCM error codes.
 | POST | `/groups/{groupId}/members` | Add a member by email (owner/admin) |
 | GET | `/groups/{groupId}/leaderboard` | Board tab |
 | GET | `/groups/{groupId}/members/{userId}/stats` | Profile tab / tapped player |
+| GET | `/groups/{groupId}/members/{userId}/attendance` | Profile attendance calendar |
 | GET | `/groups/{groupId}/matches` | Matches tab list |
 | GET | `/groups/{groupId}/matches/{matchId}` | Expanded match + history |
 | POST | `/groups/{groupId}/matches` | Record match (Add tab) |
