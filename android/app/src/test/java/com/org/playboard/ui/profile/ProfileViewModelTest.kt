@@ -109,7 +109,7 @@ private open class FakePlayboardApi(
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): PlayerAttendanceDto =
         attendance[userId] ?: PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
-    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto = error("unused")
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?, mine: Boolean?): MatchListResponseDto = error("unused")
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto = error("unused")
     override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto = error("unused")
     override suspend fun deleteMatch(groupId: String, matchId: String) = error("unused")

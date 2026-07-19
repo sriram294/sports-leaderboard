@@ -92,7 +92,7 @@ private class FakePlayboardApi(
         lastRecordRequest = request
         return recordMatchBehavior(request)
     }
-    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?, mine: Boolean?): MatchListResponseDto =
         error("not used in this test")
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
         matchDetail ?: error("no match detail stubbed")

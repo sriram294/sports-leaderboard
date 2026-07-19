@@ -155,12 +155,52 @@ class MatchServiceIntegrationTest {
                     recordRequest(1, List.of(new SetInput((short) 1, (short) 21, (short) 10)), f));
         }
 
-        MatchListResponse firstPage = matchService.listMatches(f.group.getId(), f.raj.getId(), null, 2);
+        MatchListResponse firstPage = matchService.listMatches(f.group.getId(), f.raj.getId(), null, 2, false);
         assertThat(firstPage.matches()).hasSize(2);
         assertThat(firstPage.nextCursor()).isNotNull();
 
         MatchListResponse secondPage =
-                matchService.listMatches(f.group.getId(), f.raj.getId(), firstPage.nextCursor(), 2);
+                matchService.listMatches(f.group.getId(), f.raj.getId(), firstPage.nextCursor(), 2, false);
+        assertThat(secondPage.matches()).hasSize(1);
+        assertThat(secondPage.nextCursor()).isNull();
+    }
+
+    @Test
+    void mineFilterReturnsOnlyMatchesTheCallerPlayedIn() {
+        Fixture f = newFixture();
+        User eve = userRepository.save(newUser("eve"));
+        addMember(f.group, eve, GroupRole.MEMBER);
+
+        // Two matches with raj (raj+dev vs marcus+kiran).
+        for (int i = 0; i < 2; i++) {
+            matchService.createMatch(
+                    f.group.getId(),
+                    f.raj.getId(),
+                    recordRequest(1, List.of(new SetInput((short) 1, (short) 21, (short) 10)), f));
+        }
+        // One match WITHOUT raj (dev+eve vs marcus+kiran).
+        matchService.createMatch(
+                f.group.getId(),
+                f.dev.getId(),
+                new RecordMatchRequest(
+                        Instant.now(),
+                        List.of(
+                                new TeamInput((short) 1, List.of(f.dev.getId(), eve.getId())),
+                                new TeamInput((short) 2, List.of(f.marcus.getId(), f.kiran.getId()))),
+                        List.of(new SetInput((short) 1, (short) 21, (short) 15)),
+                        (short) 1));
+
+        // mine=true scopes to the caller's matches; mine=false returns all.
+        assertThat(matchService.listMatches(f.group.getId(), f.raj.getId(), null, 20, true).matches()).hasSize(2);
+        assertThat(matchService.listMatches(f.group.getId(), eve.getId(), null, 20, true).matches()).hasSize(1);
+        assertThat(matchService.listMatches(f.group.getId(), f.raj.getId(), null, 20, false).matches()).hasSize(3);
+
+        // The filter still paginates: raj has 2, limit 1 → page of 1 + cursor, then 1 more.
+        MatchListResponse firstPage = matchService.listMatches(f.group.getId(), f.raj.getId(), null, 1, true);
+        assertThat(firstPage.matches()).hasSize(1);
+        assertThat(firstPage.nextCursor()).isNotNull();
+        MatchListResponse secondPage =
+                matchService.listMatches(f.group.getId(), f.raj.getId(), firstPage.nextCursor(), 1, true);
         assertThat(secondPage.matches()).hasSize(1);
         assertThat(secondPage.nextCursor()).isNull();
     }

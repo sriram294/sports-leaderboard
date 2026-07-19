@@ -70,6 +70,7 @@ fun MatchesScreen(
         onPullRefresh = viewModel::onPullRefresh,
         onLoadMore = viewModel::loadMore,
         onDateToggled = viewModel::onDateToggled,
+        onToggleMineOnly = viewModel::onToggleMineOnly,
     )
 
     if (uiState.deleteTargetId != null) {
@@ -92,6 +93,7 @@ private fun MatchesContent(
     onPullRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onDateToggled: (LocalDate) -> Unit,
+    onToggleMineOnly: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -99,31 +101,81 @@ private fun MatchesContent(
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 20.dp),
     ) {
-        when {
-            state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
-            state.noGroup -> CenteredMessage("Create or join a group to see its matches.")
-            state.hasLoadFailed -> CenteredBox {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Couldn't load matches.", color = PlayboardTheme.colors.textMuted)
-                    Spacer(Modifier.height(16.dp))
-                    TextButton(onClick = onRetry) { Text("Retry", color = PlayboardTheme.colors.brand) }
+        // The count + "My matches" filter toggle. Kept above the list (not scrolled) and
+        // shown whenever a group is selected, so it's reachable even on an empty result.
+        if (!state.noGroup) {
+            MatchesFilterRow(
+                matchCount = state.matchCount,
+                showMineOnly = state.showMineOnly,
+                onToggleMineOnly = onToggleMineOnly,
+            )
+        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }
+                state.noGroup -> CenteredMessage("Create or join a group to see its matches.")
+                state.hasLoadFailed -> CenteredBox {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Couldn't load matches.", color = PlayboardTheme.colors.textMuted)
+                        Spacer(Modifier.height(16.dp))
+                        TextButton(onClick = onRetry) { Text("Retry", color = PlayboardTheme.colors.brand) }
+                    }
+                }
+                state.matches.isEmpty() -> CenteredMessage(
+                    if (state.showMineOnly) {
+                        "You haven't played any matches in this group yet."
+                    } else {
+                        "No matches recorded yet.\nRecord one from the + tab."
+                    },
+                )
+                else -> PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = onPullRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    MatchList(
+                        state = state,
+                        onMatchClicked = onMatchClicked,
+                        onEditClicked = onEditClicked,
+                        onDeleteClicked = onDeleteClicked,
+                        onLoadMore = onLoadMore,
+                        onDateToggled = onDateToggled,
+                    )
                 }
             }
-            state.matches.isEmpty() -> CenteredMessage("No matches recorded yet.\nRecord one from the + tab.")
-            else -> PullToRefreshBox(
-                isRefreshing = state.isRefreshing,
-                onRefresh = onPullRefresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                MatchList(
-                    state = state,
-                    onMatchClicked = onMatchClicked,
-                    onEditClicked = onEditClicked,
-                    onDeleteClicked = onDeleteClicked,
-                    onLoadMore = onLoadMore,
-                    onDateToggled = onDateToggled,
-                )
-            }
+        }
+    }
+}
+
+/** Header row: loaded-match count on the left, "My matches" filter toggle on the right. */
+@Composable
+private fun MatchesFilterRow(matchCount: Int, showMineOnly: Boolean, onToggleMineOnly: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+    ) {
+        Text(
+            text = "$matchCount ${if (matchCount == 1) "match" else "matches"}",
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+            color = PlayboardTheme.colors.textMuted,
+            modifier = Modifier.weight(1f),
+        )
+        val color = if (showMineOnly) PlayboardTheme.colors.brand else PlayboardTheme.colors.textMuted
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .then(if (showMineOnly) Modifier.background(PlayboardTheme.colors.brand.copy(alpha = 0.15f)) else Modifier)
+                .border(1.dp, color.copy(alpha = if (showMineOnly) 0.8f else 0.4f), RoundedCornerShape(20.dp))
+                .clickable(onClick = onToggleMineOnly)
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text = "My matches",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                color = color,
+                fontWeight = if (showMineOnly) FontWeight.SemiBold else FontWeight.Normal,
+            )
         }
     }
 }
@@ -141,14 +193,6 @@ private fun MatchList(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        item {
-            Text(
-                text = "${state.matchCount} ${if (state.matchCount == 1) "match" else "matches"} ·",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = PlayboardTheme.colors.textMuted,
-                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-            )
-        }
         state.sections.forEach { section ->
             val isDayExpanded = state.isDateExpanded(section.date)
             item(key = "date-${section.date}") {
@@ -501,6 +545,7 @@ private fun MatchesContentPreview() {
             onPullRefresh = {},
             onLoadMore = {},
             onDateToggled = {},
+            onToggleMineOnly = {},
         )
     }
 }

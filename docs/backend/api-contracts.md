@@ -238,9 +238,11 @@ member, else `404 MEMBER_NOT_FOUND`).
 
 ## Matches
 
-### `GET /groups/{groupId}/matches?cursor=&limit=20`
+### `GET /groups/{groupId}/matches?cursor=&limit=20&mine=`
 Flat, cursor-paginated, newest first. The client groups these by date
 locally (matches the "09 Jul · 4 matches" UI) — the server stays simple.
+`mine=true` scopes the page to matches the **caller** participated in (the
+"My matches" filter); cursor/pagination semantics are identical either way.
 ```json
 {
   "matches": [

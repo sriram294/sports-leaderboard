@@ -71,7 +71,7 @@ private class FakePlayboardApi(
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("not used in this test")
-    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?, mine: Boolean?): MatchListResponseDto =
         error("not used in this test")
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
         error("not used in this test")

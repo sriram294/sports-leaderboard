@@ -62,6 +62,8 @@ private class FakePlayboardApi(
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     val deletedIds = mutableListOf<String>()
+    // The "caller" the mine=true filter scopes to (the backend uses the auth principal).
+    var mineUserId: String = "u1"
 
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = error("unused")
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")
@@ -78,14 +80,20 @@ private class FakePlayboardApi(
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
-    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto {
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?, mine: Boolean?): MatchListResponseDto {
+        // mine=true scopes to matches the caller (mineUserId) played in, like the backend.
+        val source = if (mine == true) {
+            matches.filter { m -> m.teams.any { t -> t.players.any { it.userId == mineUserId } } }
+        } else {
+            matches.toList()
+        }
         // Cursor is a plain offset into the newest-first list; nextCursor is set while
         // more matches remain, mirroring the backend's keyset pagination.
         val offset = cursor?.toInt() ?: 0
-        val pageSize = limit ?: matches.size
-        val page = matches.drop(offset).take(pageSize)
+        val pageSize = limit ?: source.size
+        val page = source.drop(offset).take(pageSize)
         val nextOffset = offset + page.size
-        val nextCursor = if (nextOffset < matches.size) nextOffset.toString() else null
+        val nextCursor = if (nextOffset < source.size) nextOffset.toString() else null
         return MatchListResponseDto(page, nextCursor)
     }
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
@@ -117,6 +125,17 @@ private fun summary(id: String, playedAt: String, winner: Int = 1) = MatchSummar
     teams = listOf(
         MatchTeamDto(1, winner == 1, listOf(player("u1", "Raj"), player("u2", "Dev"))),
         MatchTeamDto(2, winner == 2, listOf(player("u3", "Marcus"), player("u4", "Kiran"))),
+    ),
+    sets = listOf(MatchSetDto(1, 21, 12)),
+)
+
+/** A match the signed-in user (u1) did NOT play in — for the "my matches" filter. */
+private fun summaryNoU1(id: String, playedAt: String) = MatchSummaryDto(
+    id = id,
+    playedAt = playedAt,
+    teams = listOf(
+        MatchTeamDto(1, true, listOf(player("u5", "Sam"), player("u6", "Lee"))),
+        MatchTeamDto(2, false, listOf(player("u3", "Marcus"), player("u4", "Kiran"))),
     ),
     sets = listOf(MatchSetDto(1, 21, 12)),
 )
@@ -319,6 +338,34 @@ class MatchesViewModelTest {
 
         viewModel.onDateToggled(newest)
         assertFalse(viewModel.uiState.value.isDateExpanded(newest))
+    }
+
+    @Test
+    fun `my matches filter scopes to the user's matches and toggles back`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            matches = mutableListOf(
+                summary("m1", "2026-07-09T12:00:00Z"),      // u1 plays
+                summary("m2", "2026-07-09T09:00:00Z"),      // u1 plays
+                summaryNoU1("m3", "2026-07-08T12:00:00Z"),  // u1 absent
+            ),
+        )
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.matchCount)
+        assertFalse(viewModel.uiState.value.showMineOnly)
+
+        viewModel.onToggleMineOnly()
+        advanceUntilIdle()
+        val filtered = viewModel.uiState.value
+        assertTrue(filtered.showMineOnly)
+        assertEquals(listOf("m1", "m2"), filtered.matches.map { it.id })
+
+        viewModel.onToggleMineOnly()
+        advanceUntilIdle()
+        val all = viewModel.uiState.value
+        assertFalse(all.showMineOnly)
+        assertEquals(3, all.matchCount)
     }
 
     @Test

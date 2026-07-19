@@ -20,6 +20,8 @@ data class MatchesUiState(
     val currentUserId: String? = null,
     /** Viewer is owner/admin — may delete any match, not just their own. */
     val canModerate: Boolean = false,
+    /** "My matches" filter is active — the list is scoped to the signed-in user's matches. */
+    val showMineOnly: Boolean = false,
     val matches: List<Match> = emptyList(),
     /** Cursor for the next older page; `null` once the log is fully loaded. */
     val nextCursor: String? = null,

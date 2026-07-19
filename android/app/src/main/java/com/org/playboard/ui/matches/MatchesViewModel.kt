@@ -157,7 +157,7 @@ class MatchesViewModel @Inject constructor(
                 canModerate = group.myRole == "owner" || group.myRole == "admin",
             )
         }
-        matchRepository.getMatches(group.id)
+        matchRepository.getMatches(group.id, mine = _uiState.value.showMineOnly)
             .onSuccess { page ->
                 // First page always replaces the list and resets pagination to the top.
                 _uiState.update {
@@ -182,7 +182,7 @@ class MatchesViewModel @Inject constructor(
         if (state.isLoadingMore) return
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            matchRepository.getMatches(groupId, cursor = cursor)
+            matchRepository.getMatches(groupId, cursor = cursor, mine = state.showMineOnly)
                 .onSuccess { page ->
                     _uiState.update {
                         val existingIds = it.matches.mapTo(HashSet()) { m -> m.id }
@@ -202,5 +202,25 @@ class MatchesViewModel @Inject constructor(
     /** Toggles whether a day's section is expanded, recording an explicit user override. */
     fun onDateToggled(date: LocalDate) {
         _uiState.update { it.copy(expandedDates = it.expandedDates + (date to !it.isDateExpanded(date))) }
+    }
+
+    /**
+     * Toggles the "My matches" filter and reloads the list from the top with the new scope.
+     * Clears any open card since it may not be in the filtered result.
+     */
+    fun onToggleMineOnly() {
+        _uiState.update {
+            it.copy(
+                showMineOnly = !it.showMineOnly,
+                expandedId = null,
+                detail = null,
+                isDetailLoading = false,
+                detailFailed = false,
+            )
+        }
+        viewModelScope.launch {
+            val group = groupRepository.selectedGroup.first() ?: return@launch
+            loadMatches(group, showLoading = true)
+        }
     }
 }
