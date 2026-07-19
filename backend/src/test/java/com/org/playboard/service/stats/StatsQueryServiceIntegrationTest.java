@@ -283,6 +283,25 @@ class StatsQueryServiceIntegrationTest {
                 .hasMessageContaining("not a member");
     }
 
+    /** A soft-removed member drops off the all-time leaderboard, though their matches remain. */
+    @Test
+    void removedMemberDropsOffTheLeaderboard() {
+        Fixture f = newFixture();
+        playThreeMatches(f);
+        assertThat(statsQueryService.getLeaderboard(f.group.getId(), f.dev.getId()).rankings())
+                .extracting(LeaderboardEntryDto::userId)
+                .contains(f.raj.getId());
+
+        GroupMember rajMember =
+                groupMemberRepository.findByGroupIdAndUserId(f.group.getId(), f.raj.getId()).orElseThrow();
+        rajMember.setStatus(MemberStatus.REMOVED);
+        groupMemberRepository.save(rajMember);
+
+        LeaderboardResponse after = statsQueryService.getLeaderboard(f.group.getId(), f.dev.getId());
+        assertThat(after.rankings()).extracting(LeaderboardEntryDto::userId).doesNotContain(f.raj.getId());
+        assertThat(after.rankings()).extracting(LeaderboardEntryDto::userId).contains(f.dev.getId());
+    }
+
     private static LeaderboardEntryDto entryFor(LeaderboardResponse leaderboard, UUID userId) {
         return leaderboard.rankings().stream()
                 .filter(e -> e.userId().equals(userId))

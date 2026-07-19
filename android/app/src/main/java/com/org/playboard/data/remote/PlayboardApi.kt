@@ -20,6 +20,8 @@ import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.RegisterDeviceRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
+import com.org.playboard.data.remote.dto.UpdateRoleRequestDto
+import com.org.playboard.data.remote.dto.UpdateSessionRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto
 import com.org.playboard.data.remote.dto.UpdateAvatarRequestDto
@@ -108,6 +110,25 @@ interface PlayboardApi {
         @Path("groupId") groupId: String,
         @Body request: AddMemberRequestDto,
     ): MemberDto
+
+    @DELETE("api/v1/groups/{groupId}/members/{userId}")
+    suspend fun removeMember(
+        @Path("groupId") groupId: String,
+        @Path("userId") userId: String,
+    )
+
+    @PATCH("api/v1/groups/{groupId}/members/{userId}")
+    suspend fun changeMemberRole(
+        @Path("groupId") groupId: String,
+        @Path("userId") userId: String,
+        @Body request: UpdateRoleRequestDto,
+    ): MemberDto
+
+    @PATCH("api/v1/groups/{groupId}/session")
+    suspend fun updateSession(
+        @Path("groupId") groupId: String,
+        @Body request: UpdateSessionRequestDto,
+    ): GroupDto
 
     @GET("api/v1/groups/{groupId}/members/{userId}/stats")
     suspend fun getPlayerStats(

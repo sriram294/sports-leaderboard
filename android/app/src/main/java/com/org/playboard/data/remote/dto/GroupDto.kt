@@ -12,4 +12,6 @@ data class GroupDto(
     val memberCount: Int,
     val matchCount: Int,
     val myRole: String,
+    val sessionStart: String? = null,
+    val sessionEnd: String? = null,
 )

@@ -14,6 +14,7 @@ import com.org.playboard.dto.group.JoinGroupRequest;
 import com.org.playboard.dto.group.MemberDto;
 import com.org.playboard.dto.group.MembersResponse;
 import com.org.playboard.dto.group.RenameGroupRequest;
+import com.org.playboard.dto.group.UpdateSessionRequest;
 import com.org.playboard.entity.group.Group;
 import com.org.playboard.entity.group.GroupInvite;
 import com.org.playboard.entity.group.GroupMember;
@@ -30,8 +31,12 @@ import com.org.playboard.repository.user.UserRepository;
 import com.org.playboard.service.notification.events.MemberAddedEvent;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -56,6 +61,7 @@ public class GroupService {
     // and the email pattern below in sync with it.
     private static final int GUEST_FILLER_COUNT = 3;
     private static final String GUEST_AVATAR_COLOR = "#9AA0A6";
+    private static final DateTimeFormatter SESSION_TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -247,6 +253,118 @@ public class GroupService {
         group.setName(request.name().trim());
         group = groupRepository.save(group);
         return toSummary(group, caller.getRole());
+    }
+
+    /**
+     * Sets (or clears) the group's daily session window. Owner/admin only. Both times must be
+     * supplied together with {@code start < end}, or both omitted to clear — else
+     * {@code 422 GROUP_SESSION_INVALID}. Times are "HH:mm" local wall-clock.
+     */
+    @Transactional
+    public GroupSummaryDto updateSession(UUID groupId, UUID callerId, UpdateSessionRequest request) {
+        GroupMember caller = membershipGuard.requireRole(groupId, callerId, Set.of(GroupRole.OWNER, GroupRole.ADMIN));
+        Group group = caller.getGroup();
+
+        LocalTime start = parseSessionTime(request.start());
+        LocalTime end = parseSessionTime(request.end());
+        boolean bothSet = start != null && end != null;
+        boolean bothNull = start == null && end == null;
+        if (!bothSet && !bothNull) {
+            throw sessionInvalid("Provide both a start and end time, or neither");
+        }
+        if (bothSet && !start.isBefore(end)) {
+            throw sessionInvalid("Session start must be before end");
+        }
+
+        group.setSessionStart(start);
+        group.setSessionEnd(end);
+        group = groupRepository.save(group);
+        return toSummary(group, caller.getRole());
+    }
+
+    /**
+     * Soft-removes a member (owner/admin only). The owner and guests are protected, and an
+     * admin may remove only regular members (not other admins) — only the owner can remove an
+     * admin. The member's matches and stats are kept for history; a later re-add reactivates
+     * their row (see {@link #addMemberByEmail}).
+     */
+    @Transactional
+    public void removeMember(UUID groupId, UUID callerId, UUID targetUserId) {
+        GroupMember caller = membershipGuard.requireRole(groupId, callerId, Set.of(GroupRole.OWNER, GroupRole.ADMIN));
+        if (callerId.equals(targetUserId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "GROUP_CANNOT_REMOVE_SELF", "You can't remove yourself");
+        }
+        GroupMember target = activeMember(groupId, targetUserId);
+        if (target.getRole() == GroupRole.GUEST) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "GROUP_CANNOT_REMOVE_GUEST", "Guests can't be removed");
+        }
+        if (target.getRole() == GroupRole.OWNER) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GROUP_OWNER_PROTECTED", "The group owner can't be removed");
+        }
+        if (caller.getRole() == GroupRole.ADMIN && target.getRole() == GroupRole.ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GROUP_ROLE_FORBIDDEN", "Only the owner can remove an admin");
+        }
+        target.setStatus(MemberStatus.REMOVED);
+        groupMemberRepository.save(target);
+    }
+
+    /**
+     * Changes a member's role between {@code admin} and {@code member}. Owner only. The owner
+     * and guests can't be re-roled, and owner transfer is out of scope (no assigning OWNER).
+     */
+    @Transactional
+    public MemberDto changeMemberRole(UUID groupId, UUID callerId, UUID targetUserId, String roleName) {
+        membershipGuard.requireRole(groupId, callerId, Set.of(GroupRole.OWNER));
+        GroupRole newRole = parseAssignableRole(roleName);
+        if (callerId.equals(targetUserId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "GROUP_CANNOT_CHANGE_OWN_ROLE", "You can't change your own role");
+        }
+        GroupMember target = activeMember(groupId, targetUserId);
+        if (target.getRole() == GroupRole.GUEST) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "GROUP_ROLE_INVALID", "Guests have no assignable role");
+        }
+        if (target.getRole() == GroupRole.OWNER) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GROUP_OWNER_PROTECTED", "The owner's role can't be changed");
+        }
+        target.setRole(newRole);
+        groupMemberRepository.save(target);
+        return MemberDto.from(target);
+    }
+
+    private GroupMember activeMember(UUID groupId, UUID userId) {
+        return groupMemberRepository
+                .findByGroupIdAndUserId(groupId, userId)
+                .filter(m -> m.getStatus() == MemberStatus.ACTIVE)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
+    }
+
+    private GroupRole parseAssignableRole(String roleName) {
+        GroupRole role;
+        try {
+            role = GroupRole.valueOf(roleName.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "GROUP_ROLE_INVALID", "Unknown role");
+        }
+        if (role != GroupRole.ADMIN && role != GroupRole.MEMBER) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "GROUP_ROLE_INVALID", "Role must be admin or member");
+        }
+        return role;
+    }
+
+    private LocalTime parseSessionTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalTime.parse(value.trim(), SESSION_TIME);
+        } catch (DateTimeParseException e) {
+            throw sessionInvalid("Time must be in HH:mm format");
+        }
+    }
+
+    private ApiException sessionInvalid(String message) {
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "GROUP_SESSION_INVALID", message);
     }
 
     @Transactional

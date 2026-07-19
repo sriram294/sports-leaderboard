@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -38,6 +39,13 @@ public class Group extends Auditable {
 
     @Column(name = "avatar_color", nullable = false)
     private String avatarColor;
+
+    // Daily playing-session window (local wall-clock); both null = no set window.
+    @Column(name = "session_start")
+    private LocalTime sessionStart;
+
+    @Column(name = "session_end")
+    private LocalTime sessionEnd;
 
     public UUID getId() {
         return id;
@@ -81,5 +89,21 @@ public class Group extends Auditable {
 
     public void setAvatarColor(String avatarColor) {
         this.avatarColor = avatarColor;
+    }
+
+    public LocalTime getSessionStart() {
+        return sessionStart;
+    }
+
+    public void setSessionStart(LocalTime sessionStart) {
+        this.sessionStart = sessionStart;
+    }
+
+    public LocalTime getSessionEnd() {
+        return sessionEnd;
+    }
+
+    public void setSessionEnd(LocalTime sessionEnd) {
+        this.sessionEnd = sessionEnd;
     }
 }

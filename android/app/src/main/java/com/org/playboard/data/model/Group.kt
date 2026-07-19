@@ -8,7 +8,13 @@ data class Group(
     val memberCount: Int,
     val matchCount: Int,
     val myRole: String,
+    /** Daily session window ("HH:mm" local), or `null` when unset. */
+    val sessionStart: String? = null,
+    val sessionEnd: String? = null,
 ) {
+    /** The signed-in user owns this group — the only role that may change others' roles. */
+    val isOwner: Boolean get() = myRole == "owner"
+
     /**
      * Whether the signed-in user may create invites for this group. The backend
      * restricts `POST /groups/{id}/invites` to owners and admins, so the UI

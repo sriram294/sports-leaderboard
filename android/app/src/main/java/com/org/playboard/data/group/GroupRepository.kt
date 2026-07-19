@@ -11,6 +11,8 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
+import com.org.playboard.data.remote.dto.UpdateRoleRequestDto
+import com.org.playboard.data.remote.dto.UpdateSessionRequestDto
 import com.org.playboard.data.remote.InvalidInviteCodeException
 import com.org.playboard.data.remote.MemberAlreadyExistsException
 import com.org.playboard.di.AppScope
@@ -192,6 +194,36 @@ class GroupRepository @Inject constructor(
         return result
     }
 
+    /**
+     * Soft-removes a member from [groupId] (owner/admin only — gate on [Group.canManage]).
+     * On success [refresh] so member counts and the roster update everywhere.
+     */
+    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
+        val result = runCatching { api.removeMember(groupId, userId) }
+        if (result.isSuccess) refresh()
+        return result
+    }
+
+    /**
+     * Changes a member's role to [role] ("admin"/"member") in [groupId] (owner only — gate on
+     * [Group.isOwner]). On success [refresh] so the roster reflects the new role.
+     */
+    suspend fun changeMemberRole(groupId: String, userId: String, role: String): Result<Unit> {
+        val result = runCatching { api.changeMemberRole(groupId, userId, UpdateRoleRequestDto(role)); Unit }
+        if (result.isSuccess) refresh()
+        return result
+    }
+
+    /**
+     * Sets ([start]/[end] as "HH:mm") or clears (both null) the group's daily session window
+     * (owner/admin only). Updates the cached group in place, like [renameGroup].
+     */
+    suspend fun setSessionTime(groupId: String, start: String?, end: String?): Result<Group> =
+        runCatching { api.updateSession(groupId, UpdateSessionRequestDto(start, end)).toGroup() }
+            .onSuccess { updated ->
+                _groups.update { list -> list.map { if (it.id == updated.id) updated else it } }
+            }
+
     fun selectGroup(groupId: String) {
         _selectedGroupId.value = groupId
         // Persist so the next launch reopens this group (fire-and-forget).
@@ -232,4 +264,6 @@ private fun GroupDto.toGroup() = Group(
     memberCount = memberCount,
     matchCount = matchCount,
     myRole = myRole,
+    sessionStart = sessionStart,
+    sessionEnd = sessionEnd,
 )

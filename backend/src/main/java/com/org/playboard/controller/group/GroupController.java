@@ -10,11 +10,14 @@ import com.org.playboard.dto.group.JoinGroupRequest;
 import com.org.playboard.dto.group.MemberDto;
 import com.org.playboard.dto.group.MembersResponse;
 import com.org.playboard.dto.group.RenameGroupRequest;
+import com.org.playboard.dto.group.UpdateRoleRequest;
+import com.org.playboard.dto.group.UpdateSessionRequest;
 import com.org.playboard.service.group.GroupService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,5 +82,31 @@ public class GroupController {
             @PathVariable UUID groupId,
             @Valid @RequestBody AddMemberRequest request) {
         return groupService.addMemberByEmail(groupId, userId, request);
+    }
+
+    @DeleteMapping("/{groupId}/members/{targetUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID groupId,
+            @PathVariable UUID targetUserId) {
+        groupService.removeMember(groupId, userId, targetUserId);
+    }
+
+    @PatchMapping("/{groupId}/members/{targetUserId}")
+    public MemberDto changeMemberRole(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID groupId,
+            @PathVariable UUID targetUserId,
+            @Valid @RequestBody UpdateRoleRequest request) {
+        return groupService.changeMemberRole(groupId, userId, targetUserId, request.role());
+    }
+
+    @PatchMapping("/{groupId}/session")
+    public GroupSummaryDto updateSession(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID groupId,
+            @RequestBody UpdateSessionRequest request) {
+        return groupService.updateSession(groupId, userId, request);
     }
 }

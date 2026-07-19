@@ -80,10 +80,17 @@ public class StatsQueryService {
     }
 
     private LeaderboardResponse allTimeLeaderboard(UUID groupId) {
+        // Only active, non-guest members rank — a removed member's member_stats row lingers
+        // otherwise, and guests never appear. Mirrors windowedLeaderboard's eligibility.
+        Set<UUID> eligible = groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE).stream()
+                .filter(member -> member.getRole() != GroupRole.GUEST)
+                .map(member -> member.getUser().getId())
+                .collect(Collectors.toSet());
+
         List<LeaderboardEntryDto> rankings = new ArrayList<>();
         int rank = 1;
         for (MemberStats stats : memberStatsRepository.findLeaderboard(groupId)) {
-            if (stats.getMatchesPlayed() == 0) {
+            if (stats.getMatchesPlayed() == 0 || !eligible.contains(stats.getId().getUserId())) {
                 continue;
             }
             User user = stats.getUser();

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
+import com.org.playboard.ui.group.GroupManagementScreen
 import com.org.playboard.ui.matches.MatchesScreen
 import com.org.playboard.ui.profile.ProfileScreen
 import com.org.playboard.ui.profile.SettingsScreen
@@ -65,6 +66,9 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
     // profile in place; null shows the leaderboard (docs/requirements/02 §2).
     var viewingProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
     var showingProfileSettings by rememberSaveable { mutableStateOf(false) }
+    // Set when the profile's group icon is tapped → the group-management drill-down opens
+    // over the Profile tab (its own internal Back handling unwinds it).
+    var showingGroupManagement by rememberSaveable { mutableStateOf(false) }
     // The trail of tabs the user navigated away from, so system Back steps back through
     // them (Stats -> Profile -> Board -> exit) instead of closing the app. Saved across
     // rotation/process death; enums stored by name.
@@ -122,6 +126,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                     // Any tab tap leaves a leaderboard drill-down (so Board returns home).
                     viewingProfileUserId = null
                     showingProfileSettings = false
+                    showingGroupManagement = false
                     // Record the tab we're leaving so Back can step back through the trail.
                     if (tab != selectedTab) {
                         tabHistory.add(selectedTab)
@@ -168,13 +173,18 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                         },
                     )
                     MainTab.Stats -> StatsScreen()
-                    MainTab.Profile -> if (showingProfileSettings) {
-                        SettingsScreen(
+                    MainTab.Profile -> when {
+                        showingProfileSettings -> SettingsScreen(
                             updateViewModel = updateViewModel,
                             onBack = { showingProfileSettings = false },
                         )
-                    } else {
-                        ProfileScreen(onOpenSettings = { showingProfileSettings = true })
+                        showingGroupManagement -> GroupManagementScreen(
+                            onExit = { showingGroupManagement = false },
+                        )
+                        else -> ProfileScreen(
+                            onOpenSettings = { showingProfileSettings = true },
+                            onOpenGroupManagement = { showingGroupManagement = true },
+                        )
                     }
                 }
             }
