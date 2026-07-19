@@ -32,11 +32,11 @@ data class ProfileUiState(
     val isOwnProfile: Boolean = true,
     val stats: PlayerStats? = null,
     /**
-     * The month shown by the attendance calendar (the current calendar month), and the
-     * local days within it the player was in a match. Attendance loads independently of
-     * stats and degrades silently, so these stay defaulted on a failure.
+     * The calendar months shown by the attendance heatmap (the last 3, oldest first), and
+     * the local days within them the player was in a match. Attendance loads independently
+     * of stats and degrades silently, so these stay defaulted on a failure.
      */
-    val attendanceMonth: YearMonth? = null,
+    val attendanceMonths: List<YearMonth> = emptyList(),
     val attendanceDays: Set<LocalDate> = emptySet(),
     /** An avatar upload is in flight — the identity card shows a spinner. */
     val isUploadingPhoto: Boolean = false,

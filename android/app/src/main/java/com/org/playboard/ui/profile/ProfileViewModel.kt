@@ -10,6 +10,7 @@ import com.org.playboard.data.model.UserSession
 import com.org.playboard.data.stats.StatsRepository
 import com.org.playboard.data.user.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -200,12 +201,12 @@ class ProfileViewModel @Inject constructor(
             return
         }
         val zone = ZoneId.systemDefault()
-        val month = YearMonth.now(zone)
+        val months = heatmapMonths(LocalDate.now(zone))
         _uiState.update {
             it.copy(
                 isLoading = showLoading, hasLoadFailed = false, noGroup = false,
                 groupName = group.name, isOwnProfile = isOwnProfile,
-                attendanceMonth = month,
+                attendanceMonths = months,
                 // Drop stale stats/attendance on a foreground (re)load so a failure can't
                 // show a different player's data; a silent revision refresh keeps them.
                 stats = if (showLoading) null else it.stats,
@@ -215,7 +216,7 @@ class ProfileViewModel @Inject constructor(
         statsRepository.getPlayerStats(group.id, targetId)
             .onSuccess { stats ->
                 _uiState.update { it.copy(isLoading = false, stats = stats) }
-                loadAttendance(group.id, targetId, month, zone)
+                loadAttendance(group.id, targetId, months, zone)
             }
             .onFailure {
                 // Keep stale stats on a silent refresh failure; only show the error
@@ -229,8 +230,13 @@ class ProfileViewModel @Inject constructor(
      * failure leaves the calendar empty and never trips [ProfileUiState.hasLoadFailed]
      * (same degrade-silently principle as the Board form bar).
      */
-    private suspend fun loadAttendance(groupId: String, userId: String, month: YearMonth, zone: ZoneId) {
-        val (from, to) = currentMonthWindow(month, zone)
+    private suspend fun loadAttendance(
+        groupId: String,
+        userId: String,
+        months: List<YearMonth>,
+        zone: ZoneId,
+    ) {
+        val (from, to) = heatmapWindow(months, zone)
         statsRepository.getPlayerAttendance(groupId, userId, from, to)
             .onSuccess { days -> _uiState.update { it.copy(attendanceDays = days) } }
     }
