@@ -86,6 +86,7 @@ fun ProfileScreen(
     onBack: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
     onOpenSettings: (() -> Unit)? = null,
+    onOpenGroupManagement: (() -> Unit)? = null,
 ) {
     // Drive whose profile the shared ViewModel loads whenever we (re)enter with a
     // new target; setting null when already own is suppressed downstream.
@@ -102,6 +103,7 @@ fun ProfileScreen(
         onRenameSubmit = viewModel::onRenameSubmitted,
         onRenameDismiss = viewModel::onRenameDismissed,
         onOpenSettings = onOpenSettings,
+        onOpenGroupManagement = onOpenGroupManagement,
     )
 }
 
@@ -118,6 +120,7 @@ private fun ProfileContent(
     onRenameSubmit: () -> Unit = {},
     onRenameDismiss: () -> Unit = {},
     onOpenSettings: (() -> Unit)? = null,
+    onOpenGroupManagement: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -162,17 +165,28 @@ private fun ProfileContent(
         if (onBack != null) {
             BackRow(onBack = onBack)
         }
-        if (state.isOwnProfile && onBack == null && onOpenSettings != null) {
+        if (state.isOwnProfile && onBack == null && (onOpenSettings != null || onOpenGroupManagement != null)) {
             Row(
                 horizontalArrangement = Arrangement.Start,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_settings),
-                        contentDescription = "Settings",
-                        tint = PlayboardTheme.colors.textPrimary,
-                    )
+                if (onOpenSettings != null) {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings),
+                            contentDescription = "Settings",
+                            tint = PlayboardTheme.colors.textPrimary,
+                        )
+                    }
+                }
+                if (onOpenGroupManagement != null) {
+                    IconButton(onClick = onOpenGroupManagement) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_group),
+                            contentDescription = "Manage groups",
+                            tint = PlayboardTheme.colors.textPrimary,
+                        )
+                    }
                 }
             }
         }

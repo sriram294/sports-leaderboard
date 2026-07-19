@@ -2,6 +2,8 @@ package com.org.playboard.dto.group;
 
 import com.org.playboard.entity.group.Group;
 import com.org.playboard.entity.group.GroupRole;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -13,7 +15,11 @@ public record GroupSummaryDto(
         String sportCode,
         long memberCount,
         long matchCount,
-        String myRole) {
+        String myRole,
+        String sessionStart,
+        String sessionEnd) {
+
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     public static GroupSummaryDto of(Group group, long memberCount, long matchCount, GroupRole myRole) {
         return new GroupSummaryDto(
@@ -23,6 +29,12 @@ public record GroupSummaryDto(
                 group.getSport().getCode(),
                 memberCount,
                 matchCount,
-                myRole.name().toLowerCase(Locale.ROOT));
+                myRole.name().toLowerCase(Locale.ROOT),
+                formatTime(group.getSessionStart()),
+                formatTime(group.getSessionEnd()));
+    }
+
+    private static String formatTime(LocalTime time) {
+        return time == null ? null : time.format(TIME);
     }
 }

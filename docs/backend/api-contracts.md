@@ -118,9 +118,11 @@ later if photo volume grows — doesn't change this contract's shape.)
 { "groups": [
   { "id": "uuid", "name": "Saturday Smashers", "avatarColor": "#C7EA2B",
     "sportCode": "badminton_doubles", "memberCount": 6, "matchCount": 10,
-    "myRole": "owner" }
+    "myRole": "owner", "sessionStart": "19:00", "sessionEnd": "21:00" }
 ] }
 ```
+`sessionStart`/`sessionEnd` are the group's daily playing window ("HH:mm" local
+wall-clock), or `null` when unset. Same shape on the create/join/rename responses.
 
 ### `POST /groups`
 Request: `{ "name": "Saturday Smashers", "sportCode": "badminton_doubles" }`
@@ -158,6 +160,26 @@ Add a person to the group by email + name — onboards someone who can't sign in
 yet (e.g. no iOS app). Requires `owner`/`admin` (`403 GROUP_ROLE_FORBIDDEN`
 otherwise). Request: `{ "email": "sam@gmail.com", "displayName": "Sam" }` →
 `201` `MemberDto` (the added member, role `member`).
+
+### `DELETE /groups/{groupId}/members/{userId}`
+Soft-removes a member → `204`. Owner/admin only. The owner (`403
+GROUP_OWNER_PROTECTED`), guests (`400 GROUP_CANNOT_REMOVE_GUEST`), and self (`400
+GROUP_CANNOT_REMOVE_SELF`) can't be removed; an admin may remove only regular
+members, not other admins (`403 GROUP_ROLE_FORBIDDEN` — only the owner can). The
+member's matches/stats stay for history but drop off the roster and leaderboard;
+re-adding by email reactivates them.
+
+### `PATCH /groups/{groupId}/members/{userId}`
+Change a member's role. **Owner only.** Request: `{ "role": "admin" }` (or
+`"member"`) → `200` `MemberDto`. The owner and guests can't be re-roled, owner
+can't change their own role, and `owner` can't be assigned (`400
+GROUP_ROLE_INVALID`); owner transfer is out of scope.
+
+### `PATCH /groups/{groupId}/session`
+Set/clear the group's daily session window. Owner/admin only. Request:
+`{ "start": "19:00", "end": "21:00" }` (or `{ "start": null, "end": null }` to
+clear) → `200` group object. `422 GROUP_SESSION_INVALID` unless both times are
+given with `start < end`, or both omitted.
 Creates the person as a real member: they appear in the roster, are pickable for
 matches, and accrue stats (they join the leaderboard after their first match).
 The email is normalized (trimmed + lowercased); if a user with that email already

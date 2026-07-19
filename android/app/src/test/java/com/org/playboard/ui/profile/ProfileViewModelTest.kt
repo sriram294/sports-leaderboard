@@ -102,6 +102,9 @@ private open class FakePlayboardApi(
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
+    override suspend fun removeMember(groupId: String, userId: String) = error("unused")
+    override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
+    override suspend fun updateSession(groupId: String, request: com.org.playboard.data.remote.dto.UpdateSessionRequestDto): com.org.playboard.data.remote.dto.GroupDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto {
         statsCalls++
         return stats[userId] ?: error("no stats for $userId")

@@ -13,6 +13,7 @@ import com.org.playboard.dto.group.JoinGroupRequest;
 import com.org.playboard.dto.group.MemberDto;
 import com.org.playboard.dto.group.MembersResponse;
 import com.org.playboard.dto.group.RenameGroupRequest;
+import com.org.playboard.dto.group.UpdateSessionRequest;
 import com.org.playboard.entity.group.GroupMember;
 import com.org.playboard.entity.group.MemberStatus;
 import com.org.playboard.entity.user.User;
@@ -249,6 +250,94 @@ class GroupServiceIntegrationTest {
                         group.id(), plain.getId(), new AddMemberRequest("someone@example.com", "Someone")))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("GROUP_ROLE_FORBIDDEN"));
+    }
+
+    @Test
+    void removeMemberSoftRemovesAndEnforcesRules() {
+        User owner = userRepository.save(newUser());
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Manage", "badminton_doubles"));
+        MemberDto m1 = groupService.addMemberByEmail(group.id(), owner.getId(), new AddMemberRequest("m1@example.com", "M One"));
+        MemberDto m2 = groupService.addMemberByEmail(group.id(), owner.getId(), new AddMemberRequest("m2@example.com", "M Two"));
+
+        // Owner can't remove self or a guest filler.
+        assertApiCode(() -> groupService.removeMember(group.id(), owner.getId(), owner.getId()), "GROUP_CANNOT_REMOVE_SELF");
+        UUID guestId = groupService.listMembers(group.id(), owner.getId()).guests().get(0).userId();
+        assertApiCode(() -> groupService.removeMember(group.id(), owner.getId(), guestId), "GROUP_CANNOT_REMOVE_GUEST");
+
+        // Owner removes m1 -> drops from the roster (soft remove).
+        groupService.removeMember(group.id(), owner.getId(), m1.userId());
+        assertThat(groupService.listMembers(group.id(), owner.getId()).members())
+                .extracting("userId").doesNotContain(m1.userId()).contains(m2.userId());
+        assertThat(groupMemberRepository.findByGroupIdAndUserId(group.id(), m1.userId()).orElseThrow().getStatus())
+                .isEqualTo(MemberStatus.REMOVED);
+
+        // Promote m2 -> admin. An admin can't remove the owner or another admin, but can remove a member.
+        groupService.changeMemberRole(group.id(), owner.getId(), m2.userId(), "admin");
+        MemberDto m3 = groupService.addMemberByEmail(group.id(), owner.getId(), new AddMemberRequest("m3@example.com", "M Three"));
+        groupService.changeMemberRole(group.id(), owner.getId(), m3.userId(), "admin");
+        assertApiCode(() -> groupService.removeMember(group.id(), m2.userId(), owner.getId()), "GROUP_OWNER_PROTECTED");
+        assertApiCode(() -> groupService.removeMember(group.id(), m2.userId(), m3.userId()), "GROUP_ROLE_FORBIDDEN");
+
+        MemberDto m4 = groupService.addMemberByEmail(group.id(), owner.getId(), new AddMemberRequest("m4@example.com", "M Four"));
+        groupService.removeMember(group.id(), m2.userId(), m4.userId());
+        assertThat(groupService.listMembers(group.id(), owner.getId()).members())
+                .extracting("userId").doesNotContain(m4.userId());
+    }
+
+    @Test
+    void changeMemberRoleIsOwnerOnlyAndProtectsOwner() {
+        User owner = userRepository.save(newUser());
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Roles", "badminton_doubles"));
+        MemberDto m1 = groupService.addMemberByEmail(group.id(), owner.getId(), new AddMemberRequest("r1@example.com", "R One"));
+
+        // Owner promotes then demotes.
+        assertThat(groupService.changeMemberRole(group.id(), owner.getId(), m1.userId(), "admin").role()).isEqualTo("admin");
+        assertThat(groupService.changeMemberRole(group.id(), owner.getId(), m1.userId(), "member").role()).isEqualTo("member");
+
+        // Owner can't assign OWNER, can't change own role.
+        assertApiCode(() -> groupService.changeMemberRole(group.id(), owner.getId(), m1.userId(), "owner"), "GROUP_ROLE_INVALID");
+        assertApiCode(() -> groupService.changeMemberRole(group.id(), owner.getId(), owner.getId(), "member"), "GROUP_CANNOT_CHANGE_OWN_ROLE");
+
+        // An admin (not owner) can't change roles.
+        groupService.changeMemberRole(group.id(), owner.getId(), m1.userId(), "admin");
+        MemberDto m2 = groupService.addMemberByEmail(group.id(), owner.getId(), new AddMemberRequest("r2@example.com", "R Two"));
+        assertApiCode(() -> groupService.changeMemberRole(group.id(), m1.userId(), m2.userId(), "admin"), "GROUP_ROLE_FORBIDDEN");
+    }
+
+    @Test
+    void updateSessionSetsClearsAndValidates() {
+        User owner = userRepository.save(newUser());
+        User plain = userRepository.save(newUser());
+        GroupSummaryDto group =
+                groupService.createGroup(owner.getId(), new CreateGroupRequest("Session", "badminton_doubles"));
+        InviteResponse invite = groupService.createInvite(group.id(), owner.getId(), new CreateInviteRequest(null, null));
+        groupService.joinGroup(plain.getId(), new JoinGroupRequest(invite.code()));
+
+        GroupSummaryDto set = groupService.updateSession(group.id(), owner.getId(), new UpdateSessionRequest("19:00", "21:00"));
+        assertThat(set.sessionStart()).isEqualTo("19:00");
+        assertThat(set.sessionEnd()).isEqualTo("21:00");
+        // Persists onto the group list.
+        assertThat(groupService.listGroupsForUser(owner.getId()).groups().get(0).sessionStart()).isEqualTo("19:00");
+
+        GroupSummaryDto cleared = groupService.updateSession(group.id(), owner.getId(), new UpdateSessionRequest(null, null));
+        assertThat(cleared.sessionStart()).isNull();
+        assertThat(cleared.sessionEnd()).isNull();
+
+        // Invalid: start >= end, only one provided, bad format.
+        assertApiCode(() -> groupService.updateSession(group.id(), owner.getId(), new UpdateSessionRequest("21:00", "19:00")), "GROUP_SESSION_INVALID");
+        assertApiCode(() -> groupService.updateSession(group.id(), owner.getId(), new UpdateSessionRequest("19:00", null)), "GROUP_SESSION_INVALID");
+        assertApiCode(() -> groupService.updateSession(group.id(), owner.getId(), new UpdateSessionRequest("7pm", "9pm")), "GROUP_SESSION_INVALID");
+
+        // Owner/admin only.
+        assertApiCode(() -> groupService.updateSession(group.id(), plain.getId(), new UpdateSessionRequest("19:00", "21:00")), "GROUP_ROLE_FORBIDDEN");
+    }
+
+    private static void assertApiCode(org.assertj.core.api.ThrowableAssert.ThrowingCallable call, String code) {
+        assertThatThrownBy(call)
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo(code));
     }
 
     private static User newUser() {
