@@ -299,23 +299,27 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `loads attendance for the current month, bucketed into local days`() = runTest(testDispatcher) {
+    fun `loads attendance over the last 3 months, bucketed into local days`() = runTest(testDispatcher) {
         val zone = java.time.ZoneId.systemDefault()
-        val month = java.time.YearMonth.now(zone)
-        // Two matches on distinct days of the current month (noon-local avoids day drift).
-        val day3 = month.atDay(3).atTime(12, 0).atZone(zone).toInstant()
-        val day15 = month.atDay(15).atTime(12, 0).atZone(zone).toInstant()
+        val today = java.time.LocalDate.now(zone)
+        // One match this month and one ~2 months back — both inside the heatmap window.
+        val recent = today.withDayOfMonth(1).atTime(12, 0).atZone(zone).toInstant()
+        val older = today.minusMonths(2).withDayOfMonth(2).atTime(12, 0).atZone(zone).toInstant()
         val api = FakePlayboardApi(
             groups = listOf(groupDto()),
             stats = mapOf("u1" to statsDto()),
-            attendance = mapOf("u1" to PlayerAttendanceDto(listOf(day3.toString(), day15.toString()))),
+            attendance = mapOf("u1" to PlayerAttendanceDto(listOf(recent.toString(), older.toString()))),
         )
         val (viewModel, _, _) = readyViewModel(api)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals(month, state.attendanceMonth)
-        assertEquals(setOf(month.atDay(3), month.atDay(15)), state.attendanceDays)
+        assertEquals(3, state.attendanceMonths.size)
+        assertEquals(java.time.YearMonth.from(today), state.attendanceMonths.last())
+        assertEquals(
+            setOf(today.withDayOfMonth(1), today.minusMonths(2).withDayOfMonth(2)),
+            state.attendanceDays,
+        )
     }
 
     @Test

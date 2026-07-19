@@ -69,7 +69,6 @@ import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.Instant
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -252,8 +251,8 @@ private fun StatsList(
             }
         }
         item { StatTilesGrid(stats = stats) }
-        state.attendanceMonth?.let { month ->
-            item { AttendanceCalendar(month = month, activeDays = state.attendanceDays) }
+        if (state.attendanceMonths.isNotEmpty()) {
+            item { AttendanceCalendar(months = state.attendanceMonths, activeDays = state.attendanceDays) }
         }
         stats.bestPartner?.let { partner ->
             item { BestPartnerCard(partner = partner) }
@@ -670,9 +669,13 @@ private val previewStats = PlayerStats(
     ),
 )
 
-private val previewAttendanceMonth = YearMonth.of(2026, 7)
-private val previewAttendanceDays: Set<LocalDate> =
-    listOf(3, 5, 8, 12, 13, 19, 20, 26).mapTo(mutableSetOf()) { previewAttendanceMonth.atDay(it) }
+private val previewAttendanceMonths = heatmapMonths(LocalDate.of(2026, 7, 19))
+private val previewAttendanceDays: Set<LocalDate> = setOf(
+    LocalDate.of(2026, 4, 6), LocalDate.of(2026, 4, 20),
+    LocalDate.of(2026, 5, 4), LocalDate.of(2026, 5, 20),
+    LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 15), LocalDate.of(2026, 6, 27),
+    LocalDate.of(2026, 7, 3), LocalDate.of(2026, 7, 12), LocalDate.of(2026, 7, 13),
+)
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1100)
 @Composable
@@ -684,7 +687,7 @@ private fun ProfileContentPreview() {
                 groupName = "Saturday Smashers",
                 email = "raj@gmail.com",
                 stats = previewStats,
-                attendanceMonth = previewAttendanceMonth,
+                attendanceMonths = previewAttendanceMonths,
                 attendanceDays = previewAttendanceDays,
             ),
             onRetry = {},
@@ -703,7 +706,7 @@ private fun ViewedPlayerProfilePreview() {
                 groupName = "Saturday Smashers",
                 isOwnProfile = false,
                 stats = previewStats,
-                attendanceMonth = previewAttendanceMonth,
+                attendanceMonths = previewAttendanceMonths,
                 attendanceDays = previewAttendanceDays,
             ),
             onRetry = {},
