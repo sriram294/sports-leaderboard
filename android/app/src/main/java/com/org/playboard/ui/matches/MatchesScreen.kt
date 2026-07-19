@@ -48,6 +48,7 @@ import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -67,6 +68,8 @@ fun MatchesScreen(
         onDeleteClicked = viewModel::onDeleteClicked,
         onRetry = viewModel::retry,
         onPullRefresh = viewModel::onPullRefresh,
+        onLoadMore = viewModel::loadMore,
+        onDateToggled = viewModel::onDateToggled,
     )
 
     if (uiState.deleteTargetId != null) {
@@ -87,6 +90,8 @@ private fun MatchesContent(
     onDeleteClicked: (String) -> Unit,
     onRetry: () -> Unit,
     onPullRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
+    onDateToggled: (LocalDate) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -115,6 +120,8 @@ private fun MatchesContent(
                     onMatchClicked = onMatchClicked,
                     onEditClicked = onEditClicked,
                     onDeleteClicked = onDeleteClicked,
+                    onLoadMore = onLoadMore,
+                    onDateToggled = onDateToggled,
                 )
             }
         }
@@ -127,6 +134,8 @@ private fun MatchList(
     onMatchClicked: (String) -> Unit,
     onEditClicked: (String) -> Unit,
     onDeleteClicked: (String) -> Unit,
+    onLoadMore: () -> Unit,
+    onDateToggled: (LocalDate) -> Unit,
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -134,36 +143,89 @@ private fun MatchList(
     ) {
         item {
             Text(
-                text = "${state.matchCount} doubles ${if (state.matchCount == 1) "match" else "matches"} · tap to expand",
+                text = "${state.matchCount} ${if (state.matchCount == 1) "match" else "matches"} ·",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
                 color = PlayboardTheme.colors.textMuted,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
             )
         }
         state.sections.forEach { section ->
+            val isDayExpanded = state.isDateExpanded(section.date)
             item(key = "date-${section.date}") {
-                Text(
-                    text = "${dateLabel(section.date)} · ${section.matches.size} ${if (section.matches.size == 1) "match" else "matches"}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = PlayboardTheme.colors.textMuted,
-                    modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
+                DateHeader(
+                    section = section,
+                    isExpanded = isDayExpanded,
+                    onClick = { onDateToggled(section.date) },
                 )
             }
-            items(section.matches, key = { it.id }) { match ->
-                MatchCard(
-                    match = match,
-                    isExpanded = state.expandedId == match.id,
-                    isDetailLoading = state.expandedId == match.id && state.isDetailLoading,
-                    detailFailed = state.expandedId == match.id && state.detailFailed,
-                    detail = if (state.expandedId == match.id) state.detail else null,
-                    canModify = state.detail?.let { state.expandedId == match.id && state.canModify(it) } ?: false,
-                    onClick = { onMatchClicked(match.id) },
-                    onEdit = { onEditClicked(match.id) },
-                    onDelete = { onDeleteClicked(match.id) },
-                )
+            if (isDayExpanded) {
+                items(section.matches, key = { it.id }) { match ->
+                    MatchCard(
+                        match = match,
+                        isExpanded = state.expandedId == match.id,
+                        isDetailLoading = state.expandedId == match.id && state.isDetailLoading,
+                        detailFailed = state.expandedId == match.id && state.detailFailed,
+                        detail = if (state.expandedId == match.id) state.detail else null,
+                        canModify = state.detail?.let { state.expandedId == match.id && state.canModify(it) } ?: false,
+                        onClick = { onMatchClicked(match.id) },
+                        onEdit = { onEditClicked(match.id) },
+                        onDelete = { onDeleteClicked(match.id) },
+                    )
+                }
+            }
+        }
+        if (state.canLoadMore) {
+            item(key = "load-more") {
+                LoadMoreButton(isLoading = state.isLoadingMore, onClick = onLoadMore)
             }
         }
         item { Spacer(Modifier.height(12.dp)) }
+    }
+}
+
+/** A tappable day header; tapping collapses/expands the day's matches below it. */
+@Composable
+private fun DateHeader(section: MatchDateSection, isExpanded: Boolean, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(top = 12.dp, bottom = 2.dp),
+    ) {
+        Text(
+            text = "${dateLabel(section.date)} · ${section.matches.size} ${if (section.matches.size == 1) "match" else "matches"}",
+            style = MaterialTheme.typography.labelSmall,
+            color = PlayboardTheme.colors.textMuted,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = if (isExpanded) "▴" else "▾",
+            color = PlayboardTheme.colors.textMuted,
+            fontSize = 12.sp,
+        )
+    }
+}
+
+/** Footer that fetches the next older page of matches on tap. */
+@Composable
+private fun LoadMoreButton(isLoading: Boolean, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, PlayboardTheme.colors.brand.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .clickable(enabled = !isLoading, onClick = onClick)
+            .padding(vertical = 12.dp),
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(color = PlayboardTheme.colors.brand, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+        } else {
+            Text("Load older matches", color = PlayboardTheme.colors.brand, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 
@@ -437,6 +499,8 @@ private fun MatchesContentPreview() {
             onDeleteClicked = {},
             onRetry = {},
             onPullRefresh = {},
+            onLoadMore = {},
+            onDateToggled = {},
         )
     }
 }

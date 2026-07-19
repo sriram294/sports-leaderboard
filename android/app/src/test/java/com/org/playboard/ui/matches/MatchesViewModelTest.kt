@@ -77,8 +77,16 @@ private class FakePlayboardApi(
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
-    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
-        MatchListResponseDto(matches.toList())
+    override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto {
+        // Cursor is a plain offset into the newest-first list; nextCursor is set while
+        // more matches remain, mirroring the backend's keyset pagination.
+        val offset = cursor?.toInt() ?: 0
+        val pageSize = limit ?: matches.size
+        val page = matches.drop(offset).take(pageSize)
+        val nextOffset = offset + page.size
+        val nextCursor = if (nextOffset < matches.size) nextOffset.toString() else null
+        return MatchListResponseDto(page, nextCursor)
+    }
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto =
         details[matchId] ?: error("no detail for $matchId")
     override suspend fun editMatch(groupId: String, matchId: String, request: RecordMatchRequestDto): MatchDetailDto =
@@ -123,6 +131,14 @@ private fun detailDto(id: String, recordedByUserId: String) = MatchDetailDto(
 )
 
 private fun player(id: String, name: String) = MatchPlayerDto(id, name, "#FF3D8A", null)
+
+/** [count] matches, newest first, one minute apart on the same day. */
+private fun manyMatches(count: Int): MutableList<MatchSummaryDto> {
+    val base = Instant.parse("2026-07-09T12:00:00Z")
+    return (1..count).mapTo(mutableListOf()) { i ->
+        summary("m$i", base.minusSeconds(i * 60L).toString())
+    }
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MatchesViewModelTest {
@@ -229,6 +245,79 @@ class MatchesViewModelTest {
         assertFalse(state.isDeleting)
         assertEquals(listOf("m2"), state.matches.map { it.id })
         assertEquals(listOf("m1"), api.deletedIds)
+    }
+
+    @Test
+    fun `loads only the first page and can load more`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto()), matches = manyMatches(25))
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(20, state.matchCount)   // PAGE_SIZE
+        assertTrue(state.canLoadMore)
+    }
+
+    @Test
+    fun `loadMore appends the next page and stops when exhausted`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto()), matches = manyMatches(25))
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.loadMore()
+        advanceUntilIdle()
+        var state = viewModel.uiState.value
+        assertEquals(25, state.matchCount)
+        assertFalse(state.isLoadingMore)
+        assertFalse(state.canLoadMore)
+
+        // Fully loaded → further loadMore is a no-op.
+        viewModel.loadMore()
+        advanceUntilIdle()
+        state = viewModel.uiState.value
+        assertEquals(25, state.matchCount)
+    }
+
+    @Test
+    fun `pull to refresh resets pagination to the first page`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(groups = listOf(groupDto()), matches = manyMatches(25))
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+        viewModel.loadMore()
+        advanceUntilIdle()
+        assertEquals(25, viewModel.uiState.value.matchCount)
+
+        viewModel.onPullRefresh()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(20, state.matchCount)
+        assertTrue(state.canLoadMore)
+    }
+
+    @Test
+    fun `newest day defaults expanded, older days collapsed, and toggling flips both`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            matches = mutableListOf(
+                summary("m1", "2026-07-09T12:00:00Z"),
+                summary("m2", "2026-07-08T12:00:00Z"),
+            ),
+        )
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+
+        // Derive dates from sections so the assertion is timezone-independent.
+        val newest = viewModel.uiState.value.sections[0].date
+        val older = viewModel.uiState.value.sections[1].date
+        assertTrue(viewModel.uiState.value.isDateExpanded(newest))
+        assertFalse(viewModel.uiState.value.isDateExpanded(older))
+
+        viewModel.onDateToggled(older)
+        assertTrue(viewModel.uiState.value.isDateExpanded(older))
+
+        viewModel.onDateToggled(newest)
+        assertFalse(viewModel.uiState.value.isDateExpanded(newest))
     }
 
     @Test

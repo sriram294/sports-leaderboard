@@ -30,6 +30,15 @@ sealed class RecordMatchException(message: String) : Exception(message) {
     class InvalidScores : RecordMatchException("MATCH_INVALID_SCORES")
 }
 
+/** Default match-list page size — mirrors the backend contract's `limit=20`. */
+private const val PAGE_SIZE = 20
+
+/**
+ * One cursor-paginated page of matches (newest first). [nextCursor] is `null` when there
+ * are no more matches to load — see `GET /groups/{id}/matches` in api-contracts.md.
+ */
+data class MatchPage(val matches: List<Match>, val nextCursor: String?)
+
 /** Records matches for a group. One recorded match changes leaderboard/stats,
  *  so success bumps [GroupRepository.dataRevision] to prompt the Board to refresh. */
 @Singleton
@@ -98,9 +107,21 @@ class MatchRepository @Inject constructor(
             }
         }
 
-    /** The group's matches, newest first (first page only for now). */
-    suspend fun getMatches(groupId: String): Result<List<Match>> =
-        runCatching { api.getMatches(groupId).matches.map(MatchSummaryDto::toMatch) }
+    /**
+     * One page of the group's matches, newest first. Pass [cursor] = `null` for the
+     * first page; subsequent pages use the previous page's [MatchPage.nextCursor].
+     * @param limit page size (defaults to [PAGE_SIZE]).
+     */
+    suspend fun getMatches(
+        groupId: String,
+        cursor: String? = null,
+        limit: Int = PAGE_SIZE,
+    ): Result<MatchPage> =
+        runCatching {
+            api.getMatches(groupId, cursor, limit).let {
+                MatchPage(it.matches.map(MatchSummaryDto::toMatch), it.nextCursor)
+            }
+        }
 
     suspend fun getMatchDetail(groupId: String, matchId: String): Result<MatchDetail> =
         runCatching { api.getMatchDetail(groupId, matchId).toDetail() }
