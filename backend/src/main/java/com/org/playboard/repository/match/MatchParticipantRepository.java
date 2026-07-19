@@ -51,6 +51,23 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
         """)
     List<Match> findRecentMatchesForPlayer(@Param("groupId") UUID groupId, @Param("userId") UUID userId, Pageable pageable);
 
+    // Backs the Profile attendance calendar — the distinct played_at instants for a
+    // player in a group within a [from, to) window. The client buckets these into
+    // local calendar days (played_at is UTC), so we return raw instants, not dates.
+    @Query("""
+        select distinct m.playedAt
+        from MatchParticipant mp
+          join mp.match m
+        where mp.user.id = :userId and m.group.id = :groupId and m.deleted = false
+          and m.playedAt >= :from and m.playedAt < :to
+        order by m.playedAt asc
+        """)
+    List<Instant> findPlayerActivity(
+            @Param("groupId") UUID groupId,
+            @Param("userId") UUID userId,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
     // Backs "Best Partner" (computed on demand, not materialized — see
     // data-model.md § Recompute strategy). Ad-hoc join on the shared
     // match_team_id since there's no mapped inverse association from

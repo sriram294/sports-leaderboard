@@ -15,6 +15,8 @@ import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.di.AuthenticatedApi
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,6 +31,23 @@ class StatsRepository @Inject constructor(
 ) {
     suspend fun getPlayerStats(groupId: String, userId: String): Result<PlayerStats> =
         runCatching { api.getPlayerStats(groupId, userId).toStats() }
+
+    /**
+     * The local calendar days on which the player was in a match, within `[from, to)`.
+     * The backend returns UTC match instants; we bucket them into device-local days so
+     * the calendar matches how the Matches list / form bar group by day.
+     */
+    suspend fun getPlayerAttendance(
+        groupId: String,
+        userId: String,
+        from: String,
+        to: String,
+    ): Result<Set<LocalDate>> =
+        runCatching {
+            val zone = ZoneId.systemDefault()
+            api.getPlayerAttendance(groupId, userId, from, to).playedAt
+                .mapTo(mutableSetOf()) { Instant.parse(it).atZone(zone).toLocalDate() }
+        }
 }
 
 private fun PlayerStatsDto.toStats() = PlayerStats(

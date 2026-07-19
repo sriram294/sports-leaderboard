@@ -10,6 +10,8 @@ import com.org.playboard.data.model.UserSession
 import com.org.playboard.data.stats.StatsRepository
 import com.org.playboard.data.user.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.YearMonth
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -197,21 +199,39 @@ class ProfileViewModel @Inject constructor(
             }
             return
         }
+        val zone = ZoneId.systemDefault()
+        val month = YearMonth.now(zone)
         _uiState.update {
             it.copy(
                 isLoading = showLoading, hasLoadFailed = false, noGroup = false,
                 groupName = group.name, isOwnProfile = isOwnProfile,
-                // Drop stale stats on a foreground (re)load so a failure can't show a
-                // different player's numbers; a silent revision refresh keeps them.
+                attendanceMonth = month,
+                // Drop stale stats/attendance on a foreground (re)load so a failure can't
+                // show a different player's data; a silent revision refresh keeps them.
                 stats = if (showLoading) null else it.stats,
+                attendanceDays = if (showLoading) emptySet() else it.attendanceDays,
             )
         }
         statsRepository.getPlayerStats(group.id, targetId)
-            .onSuccess { stats -> _uiState.update { it.copy(isLoading = false, stats = stats) } }
+            .onSuccess { stats ->
+                _uiState.update { it.copy(isLoading = false, stats = stats) }
+                loadAttendance(group.id, targetId, month, zone)
+            }
             .onFailure {
                 // Keep stale stats on a silent refresh failure; only show the error
                 // screen when there's nothing to show.
                 _uiState.update { it.copy(isLoading = false, hasLoadFailed = it.stats == null) }
             }
+    }
+
+    /**
+     * Loads the current month's attendance for the shown player. Secondary to stats: a
+     * failure leaves the calendar empty and never trips [ProfileUiState.hasLoadFailed]
+     * (same degrade-silently principle as the Board form bar).
+     */
+    private suspend fun loadAttendance(groupId: String, userId: String, month: YearMonth, zone: ZoneId) {
+        val (from, to) = currentMonthWindow(month, zone)
+        statsRepository.getPlayerAttendance(groupId, userId, from, to)
+            .onSuccess { days -> _uiState.update { it.copy(attendanceDays = days) } }
     }
 }

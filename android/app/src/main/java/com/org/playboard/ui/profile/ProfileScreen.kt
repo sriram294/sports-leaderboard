@@ -68,6 +68,8 @@ import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -250,6 +252,9 @@ private fun StatsList(
             }
         }
         item { StatTilesGrid(stats = stats) }
+        state.attendanceMonth?.let { month ->
+            item { AttendanceCalendar(month = month, activeDays = state.attendanceDays) }
+        }
         stats.bestPartner?.let { partner ->
             item { BestPartnerCard(partner = partner) }
         }
@@ -665,6 +670,10 @@ private val previewStats = PlayerStats(
     ),
 )
 
+private val previewAttendanceMonth = YearMonth.of(2026, 7)
+private val previewAttendanceDays: Set<LocalDate> =
+    listOf(3, 5, 8, 12, 13, 19, 20, 26).mapTo(mutableSetOf()) { previewAttendanceMonth.atDay(it) }
+
 @Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1100)
 @Composable
 private fun ProfileContentPreview() {
@@ -675,6 +684,8 @@ private fun ProfileContentPreview() {
                 groupName = "Saturday Smashers",
                 email = "raj@gmail.com",
                 stats = previewStats,
+                attendanceMonth = previewAttendanceMonth,
+                attendanceDays = previewAttendanceDays,
             ),
             onRetry = {},
         )
@@ -692,6 +703,8 @@ private fun ViewedPlayerProfilePreview() {
                 groupName = "Saturday Smashers",
                 isOwnProfile = false,
                 stats = previewStats,
+                attendanceMonth = previewAttendanceMonth,
+                attendanceDays = previewAttendanceDays,
             ),
             onRetry = {},
             onBack = {},

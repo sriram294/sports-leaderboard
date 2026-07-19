@@ -26,6 +26,7 @@ import com.org.playboard.data.remote.dto.MatchSetDto
 import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.PlayerAttendanceDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
@@ -59,6 +60,7 @@ import org.junit.rules.TemporaryFolder
 private open class FakePlayboardApi(
     var groups: List<GroupDto> = emptyList(),
     var stats: Map<String, PlayerStatsDto> = emptyMap(),
+    var attendance: Map<String, PlayerAttendanceDto> = emptyMap(),
 ) : PlayboardApi {
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
@@ -104,6 +106,8 @@ private open class FakePlayboardApi(
         statsCalls++
         return stats[userId] ?: error("no stats for $userId")
     }
+    override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): PlayerAttendanceDto =
+        attendance[userId] ?: PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto = error("unused")
     override suspend fun getMatchDetail(groupId: String, matchId: String): MatchDetailDto = error("unused")
@@ -292,6 +296,41 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.stats?.bestPartner)
+    }
+
+    @Test
+    fun `loads attendance for the current month, bucketed into local days`() = runTest(testDispatcher) {
+        val zone = java.time.ZoneId.systemDefault()
+        val month = java.time.YearMonth.now(zone)
+        // Two matches on distinct days of the current month (noon-local avoids day drift).
+        val day3 = month.atDay(3).atTime(12, 0).atZone(zone).toInstant()
+        val day15 = month.atDay(15).atTime(12, 0).atZone(zone).toInstant()
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            stats = mapOf("u1" to statsDto()),
+            attendance = mapOf("u1" to PlayerAttendanceDto(listOf(day3.toString(), day15.toString()))),
+        )
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(month, state.attendanceMonth)
+        assertEquals(setOf(month.atDay(3), month.atDay(15)), state.attendanceDays)
+    }
+
+    @Test
+    fun `an attendance failure still renders stats`() = runTest(testDispatcher) {
+        val api = object : FakePlayboardApi(groups = listOf(groupDto()), stats = mapOf("u1" to statsDto())) {
+            override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): PlayerAttendanceDto =
+                error("attendance down")
+        }
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.hasLoadFailed)
+        assertEquals(8, state.stats?.matchesPlayed)
+        assertTrue(state.attendanceDays.isEmpty())
     }
 
     @Test

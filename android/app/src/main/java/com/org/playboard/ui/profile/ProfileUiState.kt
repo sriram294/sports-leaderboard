@@ -4,6 +4,8 @@ import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.PlayerStats
 import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
 
 /** Immutable state for the Profile tab (docs/requirements/05-profile.md). */
 data class ProfileUiState(
@@ -29,6 +31,13 @@ data class ProfileUiState(
      */
     val isOwnProfile: Boolean = true,
     val stats: PlayerStats? = null,
+    /**
+     * The month shown by the attendance calendar (the current calendar month), and the
+     * local days within it the player was in a match. Attendance loads independently of
+     * stats and degrades silently, so these stay defaulted on a failure.
+     */
+    val attendanceMonth: YearMonth? = null,
+    val attendanceDays: Set<LocalDate> = emptySet(),
     /** An avatar upload is in flight — the identity card shows a spinner. */
     val isUploadingPhoto: Boolean = false,
     /** A retryable rename/upload failure to surface, cleared on the next attempt. */

@@ -68,6 +68,7 @@ private class FakePlayboardApi(
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
     override suspend fun addMember(groupId: String, request: AddMemberRequestDto): MemberDto = addMemberResult(request)
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("not used in this test")
+    override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("not used in this test")
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?): MatchListResponseDto =
