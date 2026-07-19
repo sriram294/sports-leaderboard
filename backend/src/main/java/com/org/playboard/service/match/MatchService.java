@@ -94,17 +94,22 @@ public class MatchService {
     }
 
     @Transactional(readOnly = true)
-    public MatchListResponse listMatches(UUID groupId, UUID callerId, String cursor, Integer limit) {
+    public MatchListResponse listMatches(UUID groupId, UUID callerId, String cursor, Integer limit, boolean mine) {
         membershipGuard.requireActiveMember(groupId, callerId);
         int effectiveLimit = clamp(limit == null ? DEFAULT_PAGE_LIMIT : limit, 1, MAX_PAGE_LIMIT);
         Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
 
         List<Match> page;
         if (cursor == null || cursor.isBlank()) {
-            page = matchRepository.findFirstPage(groupId, pageable);
+            // mine=true scopes the page to matches the caller participated in.
+            page = mine
+                    ? matchRepository.findFirstPageForUser(groupId, callerId, pageable)
+                    : matchRepository.findFirstPage(groupId, pageable);
         } else {
             DecodedCursor decoded = decodeCursor(cursor);
-            page = matchRepository.findNextPage(groupId, decoded.playedAt(), decoded.id(), pageable);
+            page = mine
+                    ? matchRepository.findNextPageForUser(groupId, callerId, decoded.playedAt(), decoded.id(), pageable)
+                    : matchRepository.findNextPage(groupId, decoded.playedAt(), decoded.id(), pageable);
         }
 
         boolean hasMore = page.size() > effectiveLimit;

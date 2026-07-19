@@ -34,8 +34,9 @@ public class MatchController {
             @AuthenticationPrincipal UUID userId,
             @PathVariable UUID groupId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(required = false) Integer limit) {
-        return matchService.listMatches(groupId, userId, cursor, limit);
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false, defaultValue = "false") boolean mine) {
+        return matchService.listMatches(groupId, userId, cursor, limit, mine);
     }
 
     @GetMapping("/{matchId}")

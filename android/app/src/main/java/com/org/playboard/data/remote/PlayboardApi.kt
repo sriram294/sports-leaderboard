@@ -134,6 +134,7 @@ interface PlayboardApi {
         @Path("groupId") groupId: String,
         @Query("cursor") cursor: String? = null,
         @Query("limit") limit: Int? = null,
+        @Query("mine") mine: Boolean? = null,
     ): MatchListResponseDto
 
     @GET("api/v1/groups/{groupId}/matches/{matchId}")

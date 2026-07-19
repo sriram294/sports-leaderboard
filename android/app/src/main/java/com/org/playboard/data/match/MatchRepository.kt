@@ -111,14 +111,16 @@ class MatchRepository @Inject constructor(
      * One page of the group's matches, newest first. Pass [cursor] = `null` for the
      * first page; subsequent pages use the previous page's [MatchPage.nextCursor].
      * @param limit page size (defaults to [PAGE_SIZE]).
+     * @param mine when `true`, scopes the page to matches the caller played in.
      */
     suspend fun getMatches(
         groupId: String,
         cursor: String? = null,
         limit: Int = PAGE_SIZE,
+        mine: Boolean = false,
     ): Result<MatchPage> =
         runCatching {
-            api.getMatches(groupId, cursor, limit).let {
+            api.getMatches(groupId, cursor, limit, mine.takeIf { it }).let {
                 MatchPage(it.matches.map(MatchSummaryDto::toMatch), it.nextCursor)
             }
         }

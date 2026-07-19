@@ -36,4 +36,30 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
             @Param("playedAt") Instant playedAt,
             @Param("id") UUID id,
             Pageable pageable);
+
+    // "My matches" filter variants of the two pages above: joined to match_participants so
+    // only matches the given user played in are returned. unique(match_id, user_id) means a
+    // user appears at most once per match, so the join yields no duplicate match rows.
+    @Query("""
+        select m from Match m
+          join MatchParticipant mp on mp.match = m
+        where m.group.id = :groupId and m.deleted = false and mp.user.id = :userId
+        order by m.playedAt desc, m.id desc
+        """)
+    List<Match> findFirstPageForUser(
+            @Param("groupId") UUID groupId, @Param("userId") UUID userId, Pageable pageable);
+
+    @Query("""
+        select m from Match m
+          join MatchParticipant mp on mp.match = m
+        where m.group.id = :groupId and m.deleted = false and mp.user.id = :userId
+          and (m.playedAt < :playedAt or (m.playedAt = :playedAt and m.id < :id))
+        order by m.playedAt desc, m.id desc
+        """)
+    List<Match> findNextPageForUser(
+            @Param("groupId") UUID groupId,
+            @Param("userId") UUID userId,
+            @Param("playedAt") Instant playedAt,
+            @Param("id") UUID id,
+            Pageable pageable);
 }
