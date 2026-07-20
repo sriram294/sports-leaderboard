@@ -28,7 +28,11 @@ insights. It's an Android app backed by a custom REST API.
   `DB_PASSWORD` + non-blank `GOOGLE_CLIENT_ID` + a ≥32-byte `JWT_SECRET`).
 
 ## Architecture & conventions (`PROJECT_RULES.md`)
-- Kotlin + Compose, **Material 3**, dark theme only (`BrandLime` accents; see `ui/theme/Color.kt`).
+- Kotlin + Compose, **Material 3**, dark theme by default with a working light theme
+  (user switch in Settings, backed by `data/settings/ThemeStore.kt`) — palette changes must
+  cover both (`BrandLime` accents; see `ui/theme/Color.kt`). Screens sit on an ambient-glow
+  background painted by `ui/components/PlayboardBackground.kt`, so a screen root must **not**
+  paint its own `background` — that would occlude the glow.
 - **Screen-level horizontal padding is `10.dp`** — every page's root container uses this
   gutter so content aligns with the shared header. New screens must follow it. Padding
   inside cards/rows/buttons is independent.

@@ -44,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.data.model.Member
 import com.org.playboard.data.model.UserSession
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 
 /** Add Match tab — record a doubles result (docs/requirements/04-add-match.md). */
@@ -137,7 +138,6 @@ private fun AddMatchForm(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 10.dp)
@@ -508,7 +508,7 @@ private fun WinnerCard(
 @Composable
 private fun CenteredBox(content: @Composable () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) { content() }
 }
@@ -543,24 +543,26 @@ private val previewRoster = listOf(
 @Composable
 private fun AddMatchFormPreview() {
     PlayboardTheme {
-        AddMatchForm(
-            state = AddMatchUiState(
-                isLoading = false,
-                groupId = "g1",
-                groupName = "Saturday Smashers",
-                recorder = UserSession("u1", "Raj", "raj@example.com", null, null, "#9ADE28"),
-                roster = previewRoster,
-                team1 = listOf("u1", "u2"),
-                team2 = listOf("u3"),
-                sets = listOf(SetScoreInput("21", "12"), SetScoreInput("21", "17")),
-            ),
-            onEmptySlotClicked = {},
-            onRemovePlayer = {},
-            onSetScoreChanged = { _, _, _ -> },
-            onAddSet = {},
-            onRemoveSet = {},
-            onWinnerSelected = {},
-            onRecord = {},
-        )
+        PlayboardBackground {
+            AddMatchForm(
+                state = AddMatchUiState(
+                    isLoading = false,
+                    groupId = "g1",
+                    groupName = "Saturday Smashers",
+                    recorder = UserSession("u1", "Raj", "raj@example.com", null, null, "#9ADE28"),
+                    roster = previewRoster,
+                    team1 = listOf("u1", "u2"),
+                    team2 = listOf("u3"),
+                    sets = listOf(SetScoreInput("21", "12"), SetScoreInput("21", "17")),
+                ),
+                onEmptySlotClicked = {},
+                onRemovePlayer = {},
+                onSetScoreChanged = { _, _, _ -> },
+                onAddSet = {},
+                onRemoveSet = {},
+                onWinnerSelected = {},
+                onRecord = {},
+            )
+        }
     }
 }

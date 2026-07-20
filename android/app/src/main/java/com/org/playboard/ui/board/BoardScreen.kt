@@ -3,6 +3,7 @@ package com.org.playboard.ui.board
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -66,6 +67,7 @@ import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.share.renderAndShareLeaderboard
 import com.org.playboard.ui.theme.DarkPlayboardColors
 import com.org.playboard.ui.theme.LocalPlayboardColors
+import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 import kotlinx.coroutines.launch
 
@@ -116,7 +118,6 @@ private fun BoardContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 10.dp),
     ) {
         when {
@@ -170,7 +171,18 @@ private fun BoardContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    // This overlay shares its Box with the LazyColumn, so rows genuinely scroll
+                    // behind it — the fill is what hides them, not decoration. A scrim rather
+                    // than a flat block, so rows fade out under the bar instead of being cut.
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                PlayboardTheme.colors.background.copy(alpha = 0f),
+                                PlayboardTheme.colors.background.copy(alpha = 0.92f),
+                                PlayboardTheme.colors.background,
+                            ),
+                        ),
+                    )
                     // Clears the bottom bar's lime "+", which MainScreen lifts ~10.dp above the
                     // nav bar and the Scaffold draws over this content.
                     .padding(bottom = 12.dp)
@@ -342,14 +354,16 @@ private fun PodiumSlot(
                     size = avatarSize,
                 )
             }
-            // Numbered rank badge, tucked at the bottom-center of the avatar. The background-
-            // colored outer ring separates it from the avatar's color ring behind it.
+            // Numbered rank badge, tucked at the bottom-center of the avatar. The outer ring
+            // separates it from the avatar's color ring behind it. Kept slightly translucent
+            // so it tints with whatever part of the ambient glow sits behind it rather than
+            // showing as a flat patch of the base color.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(badgeSize)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(PlayboardTheme.colors.background.copy(alpha = 0.85f))
                     .padding(2.dp)
                     .clip(CircleShape)
                     .background(color),
@@ -398,7 +412,14 @@ private fun RankingsCard(
     onSortColumnSelected: (RankingSortColumn) -> Unit,
     onPlayerClick: (String) -> Unit,
 ) {
-    Surface(shape = RoundedCornerShape(20.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
+    // The hairline edge is what makes the card read as sitting *above* the ambient glow;
+    // without it the surface and the background are close enough to blur together.
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = PlayboardTheme.colors.surface,
+        border = BorderStroke(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.10f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
@@ -626,14 +647,16 @@ private val previewState = BoardUiState(
 @Composable
 private fun BoardContentPreview() {
     PlayboardTheme {
-        BoardContent(
-            uiState = previewState,
-            onSortColumnSelected = {},
-            onTimeRangeSelected = {},
-            onRetry = {},
-            onPullRefresh = {},
-            onPlayerClick = {},
-            onShare = {},
-        )
+        PlayboardBackground {
+            BoardContent(
+                uiState = previewState,
+                onSortColumnSelected = {},
+                onTimeRangeSelected = {},
+                onRetry = {},
+                onPullRefresh = {},
+                onPlayerClick = {},
+                onShare = {},
+            )
+        }
     }
 }

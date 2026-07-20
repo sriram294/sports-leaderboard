@@ -1,7 +1,6 @@
 package com.org.playboard.ui.group
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +63,6 @@ fun GroupManagementScreen(onExit: () -> Unit, viewModel: GroupManagementViewMode
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 10.dp),
     ) {
         val group = state.selectedGroup

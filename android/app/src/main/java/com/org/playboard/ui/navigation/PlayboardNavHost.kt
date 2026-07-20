@@ -1,6 +1,5 @@
 package com.org.playboard.ui.navigation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -17,6 +16,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.org.playboard.data.model.SessionState
+import com.org.playboard.ui.components.playboardGlow
+import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.login.LoginScreen
 import com.org.playboard.ui.main.MainScreen
 import com.org.playboard.ui.update.AppUpdatePrompt
@@ -65,10 +66,11 @@ fun PlayboardNavHost(
 
 @Composable
 private fun SplashScreen() {
+    // Carries the glow so there's no flash of flat color before the first real frame.
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .playboardGlow(PlayboardTheme.colors),
         contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
