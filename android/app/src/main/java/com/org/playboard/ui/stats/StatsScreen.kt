@@ -40,6 +40,7 @@ import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.FormPill
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 
 /** Stats/Insights tab — group analytics dashboard (docs/requirements/06-stats.md). */
@@ -59,7 +60,6 @@ private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 10.dp),
     ) {
         when {
@@ -412,7 +412,9 @@ private val previewState = StatsUiState(
 @Composable
 private fun StatsContentPreview() {
     PlayboardTheme {
-        StatsContent(state = previewState, onRetry = {}, onPullRefresh = {})
+        PlayboardBackground {
+            StatsContent(state = previewState, onRetry = {}, onPullRefresh = {})
+        }
     }
 }
 
@@ -420,10 +422,12 @@ private fun StatsContentPreview() {
 @Composable
 private fun StatsEmptyPreview() {
     PlayboardTheme {
-        StatsContent(
-            state = StatsUiState(isLoading = false, hasMatches = false, groupName = "New Crew"),
-            onRetry = {},
-            onPullRefresh = {},
-        )
+        PlayboardBackground {
+            StatsContent(
+                state = StatsUiState(isLoading = false, hasMatches = false, groupName = "New Crew"),
+                onRetry = {},
+                onPullRefresh = {},
+            )
+        }
     }
 }

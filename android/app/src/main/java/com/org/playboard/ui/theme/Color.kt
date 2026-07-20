@@ -6,9 +6,8 @@ import androidx.compose.ui.graphics.Color
 // Raw palette values. The app supports a dark (default) and a light theme;
 // UI reads these through [PlayboardColors] via `PlayboardTheme.colors.*` rather
 // than referencing the raw values directly, so a theme switch flips every
-// screen at once. The one deliberate exception is the exported leaderboard
-// share card, which stays fixed-dark regardless of the in-app theme and so
-// points at the Dark* constants below directly.
+// screen at once. That includes the exported leaderboard share card, which is
+// rendered inside a real PlayboardTheme and so follows the user's theme.
 // ---------------------------------------------------------------------------
 
 // Brand accent — the dark value's hex matches the backend's AvatarColorPicker
@@ -25,6 +24,18 @@ val DarkBackground = Color(0xFF0A0A0A)
 val DarkSurface = Color(0xFF141414)
 val LightBackground = Color(0xFFFAFAFA)
 val LightSurface = Color(0xFFFFFFFF)
+
+// Ambient background glow — two low-opacity radial light bleeds painted over the
+// flat [DarkBackground]/[LightBackground] base by PlayboardBackground. Alpha is
+// baked into the constant so the whole effect is tunable from one place. These
+// stay faint on purpose: the leaderboard is dense numeric content, and the light
+// theme's muted text is only ~4.9:1 on its background before any tint is added.
+val DarkGlowWarm = Color(0x269ADE28)
+val DarkGlowCool = Color(0x1A5B8CFF)
+// The light theme deliberately reuses the *bright* lime rather than LightBrand —
+// the darker #4E8C0A reads as muddy olive when washed over near-white.
+val LightGlowWarm = Color(0x2B9ADE28)
+val LightGlowCool = Color(0x172563EB)
 
 // Text
 val DarkTextPrimary = Color(0xFFF5F5F5)
@@ -52,6 +63,10 @@ val LightWinRateLow = Color(0xFF2563EB)
 data class PlayboardColors(
     val background: Color,
     val surface: Color,
+    /** Warm brand-tinted light bleed drawn behind the app header. Alpha is baked in. */
+    val glowWarm: Color,
+    /** Cooler counter-bleed drawn low and to the right. Alpha is baked in. */
+    val glowCool: Color,
     val textPrimary: Color,
     val textMuted: Color,
     /** Brand accent — used both as a fill and as accent text/icons on [background]. */
@@ -67,6 +82,8 @@ data class PlayboardColors(
 val DarkPlayboardColors = PlayboardColors(
     background = DarkBackground,
     surface = DarkSurface,
+    glowWarm = DarkGlowWarm,
+    glowCool = DarkGlowCool,
     textPrimary = DarkTextPrimary,
     textMuted = DarkTextMuted,
     brand = DarkBrand,
@@ -80,6 +97,8 @@ val DarkPlayboardColors = PlayboardColors(
 val LightPlayboardColors = PlayboardColors(
     background = LightBackground,
     surface = LightSurface,
+    glowWarm = LightGlowWarm,
+    glowCool = LightGlowCool,
     textPrimary = LightTextPrimary,
     textMuted = LightTextMuted,
     brand = LightBrand,

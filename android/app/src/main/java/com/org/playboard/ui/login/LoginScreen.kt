@@ -2,7 +2,6 @@ package com.org.playboard.ui.login
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +23,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.R
 import com.org.playboard.ui.components.AppWordmark
+import com.org.playboard.ui.components.playboardGlow
 import com.org.playboard.ui.theme.PlayboardTheme
 
 /** Entry point / auth gate — see docs/requirements/01-login.md, docs/prototype/login.pdf. */
@@ -48,11 +47,9 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.background),
-                )
-            )
+            // Was a bespoke surface→background radial; now shares the app-wide glow so login
+            // and the board read as the same surface.
+            .playboardGlow(PlayboardTheme.colors)
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp)) {
             Spacer(modifier = Modifier.weight(1f))

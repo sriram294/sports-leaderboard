@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.playboardGlow
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.LocalDate
@@ -59,7 +60,7 @@ fun LeaderboardShareCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(PlayboardTheme.colors.background)
+            .playboardGlow(PlayboardTheme.colors)
             .padding(15.dp),
     ) {
         // Header — wordmark, group name, date.
@@ -156,14 +157,15 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
                     size = avatarSize,
                 )
             }
-            // Numbered rank badge, tucked at the bottom-center of the avatar. The background-
-            // colored outer ring separates it from the avatar's color ring behind it.
+            // Numbered rank badge, tucked at the bottom-center of the avatar. The outer ring
+            // separates it from the avatar's color ring behind it. Slightly translucent so it
+            // tints with the ambient glow behind it instead of showing as a flat patch.
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(badgeSize)
                     .clip(CircleShape)
-                    .background(PlayboardTheme.colors.background)
+                    .background(PlayboardTheme.colors.background.copy(alpha = 0.85f))
                     .padding(2.dp)
                     .clip(CircleShape)
                     .background(color),

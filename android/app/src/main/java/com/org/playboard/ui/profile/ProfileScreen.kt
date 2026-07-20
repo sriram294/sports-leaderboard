@@ -68,6 +68,7 @@ import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.PlayerStats
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
+import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -158,7 +159,6 @@ private fun ProfileContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 10.dp),
     ) {
         // Drill-down back affordance (leaderboard → player); absent on the Profile tab.
@@ -736,17 +736,19 @@ private val previewAttendanceDays: Set<LocalDate> = setOf(
 @Composable
 private fun ProfileContentPreview() {
     PlayboardTheme {
-        ProfileContent(
-            state = ProfileUiState(
-                isLoading = false,
-                groupName = "Saturday Smashers",
-                email = "raj@gmail.com",
-                stats = previewStats,
-                attendanceMonths = previewAttendanceMonths,
-                attendanceDays = previewAttendanceDays,
-            ),
-            onRetry = {},
-        )
+        PlayboardBackground {
+            ProfileContent(
+                state = ProfileUiState(
+                    isLoading = false,
+                    groupName = "Saturday Smashers",
+                    email = "raj@gmail.com",
+                    stats = previewStats,
+                    attendanceMonths = previewAttendanceMonths,
+                    attendanceDays = previewAttendanceDays,
+                ),
+                onRetry = {},
+            )
+        }
     }
 }
 
@@ -754,18 +756,20 @@ private fun ProfileContentPreview() {
 @Composable
 private fun ViewedPlayerProfilePreview() {
     PlayboardTheme {
-        // Drill-down from the leaderboard: back row shown, no account section.
-        ProfileContent(
-            state = ProfileUiState(
-                isLoading = false,
-                groupName = "Saturday Smashers",
-                isOwnProfile = false,
-                stats = previewStats,
-                attendanceMonths = previewAttendanceMonths,
-                attendanceDays = previewAttendanceDays,
-            ),
-            onRetry = {},
-            onBack = {},
-        )
+        PlayboardBackground {
+            // Drill-down from the leaderboard: back row shown, no account section.
+            ProfileContent(
+                state = ProfileUiState(
+                    isLoading = false,
+                    groupName = "Saturday Smashers",
+                    isOwnProfile = false,
+                    stats = previewStats,
+                    attendanceMonths = previewAttendanceMonths,
+                    attendanceDays = previewAttendanceDays,
+                ),
+                onRetry = {},
+                onBack = {},
+            )
+        }
     }
 }

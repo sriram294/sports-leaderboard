@@ -1,6 +1,5 @@
 package com.org.playboard.ui.profile
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -29,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.BuildConfig
+import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.update.AppUpdateViewModel
 
@@ -68,7 +67,6 @@ private fun SettingsScreenContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 10.dp),
     ) {
         BackRowForSettings(onBack = onBack)
@@ -211,15 +209,17 @@ private fun BackRowForSettings(onBack: () -> Unit) {
 @Composable
 private fun SettingsScreenPreview() {
     PlayboardTheme(darkTheme = true) {
-        SettingsScreenContent(
-            email = "raj@gmail.com",
-            versionName = "1.8",
-            isDarkTheme = true,
-            onBack = {},
-            onSignOut = {},
-            onCheckForUpdates = {},
-            onDarkThemeChange = {},
-        )
+        PlayboardBackground {
+            SettingsScreenContent(
+                email = "raj@gmail.com",
+                versionName = "1.8",
+                isDarkTheme = true,
+                onBack = {},
+                onSignOut = {},
+                onCheckForUpdates = {},
+                onDarkThemeChange = {},
+            )
+        }
     }
 }
 
@@ -227,14 +227,16 @@ private fun SettingsScreenPreview() {
 @Composable
 private fun SettingsScreenLightPreview() {
     PlayboardTheme(darkTheme = false) {
-        SettingsScreenContent(
-            email = "raj@gmail.com",
-            versionName = "1.8",
-            isDarkTheme = false,
-            onBack = {},
-            onSignOut = {},
-            onCheckForUpdates = {},
-            onDarkThemeChange = {},
-        )
+        PlayboardBackground {
+            SettingsScreenContent(
+                email = "raj@gmail.com",
+                versionName = "1.8",
+                isDarkTheme = false,
+                onBack = {},
+                onSignOut = {},
+                onCheckForUpdates = {},
+                onDarkThemeChange = {},
+            )
+        }
     }
 }

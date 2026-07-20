@@ -1,5 +1,6 @@
 package com.org.playboard.ui.matches
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +47,7 @@ import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -98,7 +100,6 @@ private fun MatchesContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 10.dp),
     ) {
         // The count + "My matches" filter toggle. Kept above the list (not scrolled) and
@@ -288,6 +289,8 @@ private fun MatchCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = PlayboardTheme.colors.surface,
+        // Hairline edge lifts the card off the ambient background — see RankingsCard.
+        border = BorderStroke(1.dp, PlayboardTheme.colors.textMuted.copy(alpha = 0.10f)),
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
     ) {
@@ -528,24 +531,26 @@ private val previewDetail = MatchDetail(
 @Composable
 private fun MatchesContentPreview() {
     PlayboardTheme {
-        MatchesContent(
-            state = MatchesUiState(
-                isLoading = false,
-                groupId = "g1",
-                groupName = "Saturday Smashers",
-                currentUserId = "u1",
-                matches = listOf(previewMatch),
-                expandedId = "m1",
-                detail = previewDetail,
-            ),
-            onMatchClicked = {},
-            onEditClicked = {},
-            onDeleteClicked = {},
-            onRetry = {},
-            onPullRefresh = {},
-            onLoadMore = {},
-            onDateToggled = {},
-            onToggleMineOnly = {},
-        )
+        PlayboardBackground {
+            MatchesContent(
+                state = MatchesUiState(
+                    isLoading = false,
+                    groupId = "g1",
+                    groupName = "Saturday Smashers",
+                    currentUserId = "u1",
+                    matches = listOf(previewMatch),
+                    expandedId = "m1",
+                    detail = previewDetail,
+                ),
+                onMatchClicked = {},
+                onEditClicked = {},
+                onDeleteClicked = {},
+                onRetry = {},
+                onPullRefresh = {},
+                onLoadMore = {},
+                onDateToggled = {},
+                onToggleMineOnly = {},
+            )
+        }
     }
 }

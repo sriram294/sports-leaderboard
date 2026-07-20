@@ -39,12 +39,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.R
 import com.org.playboard.ui.components.AppWordmark
+import com.org.playboard.ui.components.playboardGlow
 import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
 import com.org.playboard.ui.group.GroupManagementScreen
@@ -148,8 +153,15 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
         lastGroupId = current
     }
 
+    // The ambient glow is painted once, here, behind the Scaffold — not per tab, since
+    // each tab's content starts below the header and would anchor the glow's origin wrong.
+    // The Scaffold itself must stay transparent for it to show through; that in turn means
+    // spelling out contentColor, because Material derives it from containerColor and
+    // resolves Transparent to an unspecified (black) content color.
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        modifier = Modifier.playboardGlow(PlayboardTheme.colors),
+        containerColor = Color.Transparent,
+        contentColor = PlayboardTheme.colors.textPrimary,
         bottomBar = {
             MainBottomBar(
                 selectedTab = selectedTab,
@@ -251,11 +263,18 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
 
 @Composable
 private fun MainBottomBar(selectedTab: MainTab, onTabSelected: (MainTab) -> Unit) {
+    // Transparent so the ambient glow runs unbroken to the bottom of the screen instead of
+    // being cut off by a 76.dp slab. Safe because the Scaffold's inner padding already
+    // reserves this bar's height, so content never scrolls underneath it — the only thing
+    // behind the bar is the background itself. A hairline keeps the bar legible as a bar.
+    val hairline = PlayboardTheme.colors.textMuted.copy(alpha = 0.12f)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(PlayboardTheme.colors.surface)
+            .drawBehind {
+                drawLine(hairline, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+            }
             .navigationBarsPadding()
             .height(76.dp),
     ) {
@@ -319,13 +338,30 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .fillMaxSize()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) {
+        val brand = PlayboardTheme.colors.brand
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .offset(y = (-10).dp)
                 .size(58.dp)
+                // Halo, drawn rather than laid out: a wrapping container big enough to hold
+                // it would overflow the 76.dp bar and shove the label down. drawBehind sits
+                // before the clip below, so the glow is free to spill past the button.
+                .drawBehind {
+                    // Tight enough that it reads as a rim of light on the button rather
+                    // than a lamp behind the nav bar.
+                    val glowRadius = size.minDimension * 0.66f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(brand.copy(alpha = 0.30f), Color.Transparent),
+                            center = center,
+                            radius = glowRadius,
+                        ),
+                        radius = glowRadius,
+                    )
+                }
                 .clip(CircleShape)
-                .background(PlayboardTheme.colors.brand),
+                .background(brand),
         ) {
             Text(
                 text = "+",
