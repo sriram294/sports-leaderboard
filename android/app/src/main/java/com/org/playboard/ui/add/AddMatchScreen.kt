@@ -140,7 +140,7 @@ private fun AddMatchForm(
             .background(MaterialTheme.colorScheme.background)
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 10.dp)
             .padding(bottom = 24.dp),
     ) {
         if (state.isEditing) {

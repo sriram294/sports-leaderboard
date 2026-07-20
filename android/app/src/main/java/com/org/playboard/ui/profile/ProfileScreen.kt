@@ -159,7 +159,7 @@ private fun ProfileContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 10.dp),
     ) {
         // Drill-down back affordance (leaderboard → player); absent on the Profile tab.
         if (onBack != null) {

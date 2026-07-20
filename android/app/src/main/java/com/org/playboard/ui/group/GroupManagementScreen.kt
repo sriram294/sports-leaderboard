@@ -65,7 +65,7 @@ fun GroupManagementScreen(onExit: () -> Unit, viewModel: GroupManagementViewMode
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 10.dp),
     ) {
         val group = state.selectedGroup
         if (group == null) {

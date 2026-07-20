@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -162,30 +163,45 @@ private fun GroupSwitcherCard(
     isExpanded: Boolean,
     onToggle: () -> Unit,
 ) {
+    // Slim single-line pill: the app header above it already names the app, so the
+    // switcher only needs to say which group is active. Dropping the "GROUP" label
+    // and shrinking the avatar keeps the leaderboard high on the screen.
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = PlayboardTheme.colors.surface,
         modifier = Modifier.fillMaxWidth(),
         onClick = onToggle,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            GroupAvatar(name = group.name, avatarColorHex = group.avatarColor, size = 40.dp)
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(text = "GROUP", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
+            GroupAvatar(name = group.name, avatarColorHex = group.avatarColor, size = 26.dp)
+            // Name + caret share one weighted slot so the caret trails the name
+            // directly (rather than being pushed out to the player count).
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+            ) {
                 Text(
                     text = group.name,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                     fontWeight = FontWeight.SemiBold,
                     color = PlayboardTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Text(
+                    text = if (isExpanded) "▴" else "▾",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
+                    color = PlayboardTheme.colors.textMuted,
+                    modifier = Modifier.padding(start = 6.dp),
                 )
             }
-
             Text(
-                text = "${group.memberCount} players ${if (isExpanded) "▴" else "▾"}",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
+                text = "${group.memberCount} players",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
                 color = PlayboardTheme.colors.textMuted,
             )
         }

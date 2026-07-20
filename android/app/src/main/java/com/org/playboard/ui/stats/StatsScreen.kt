@@ -60,7 +60,7 @@ private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 10.dp),
     ) {
         when {
             state.isLoading -> CenteredBox { CircularProgressIndicator(color = PlayboardTheme.colors.brand) }

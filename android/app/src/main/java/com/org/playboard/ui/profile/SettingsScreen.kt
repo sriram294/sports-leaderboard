@@ -69,7 +69,7 @@ private fun SettingsScreenContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 10.dp),
     ) {
         BackRowForSettings(onBack = onBack)
         Text(

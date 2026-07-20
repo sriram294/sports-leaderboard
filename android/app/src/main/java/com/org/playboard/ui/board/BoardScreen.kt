@@ -193,7 +193,7 @@ private fun TopPlayersHeader(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp),
+            .padding(top = 10.dp),
     ) {
         Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
         Spacer(modifier = Modifier.width(6.dp))

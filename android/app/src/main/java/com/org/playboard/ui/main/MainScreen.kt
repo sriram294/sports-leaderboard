@@ -4,6 +4,7 @@ import com.org.playboard.ui.theme.PlayboardTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +43,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.org.playboard.R
+import com.org.playboard.ui.components.AppWordmark
 import com.org.playboard.ui.add.AddMatchScreen
 import com.org.playboard.ui.board.BoardScreen
 import com.org.playboard.ui.group.GroupManagementScreen
@@ -50,6 +54,13 @@ import com.org.playboard.ui.profile.SettingsScreen
 import com.org.playboard.ui.stats.StatsScreen
 import com.org.playboard.ui.switcher.GroupSwitcher
 import com.org.playboard.ui.update.AppUpdateViewModel
+
+/**
+ * Side gutter for the shared header. This is the app-wide page gutter every screen
+ * uses (see PROJECT_RULES.md), so the wordmark, the group switcher and each tab's
+ * content all line up on the same vertical edges.
+ */
+private val HeaderGutter = 10.dp
 
 /**
  * Post-login shell: the 5-tab bottom bar present on every screen
@@ -66,6 +77,11 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
     // profile in place; null shows the leaderboard (docs/requirements/02 §2).
     var viewingProfileUserId by rememberSaveable { mutableStateOf<String?>(null) }
     var showingProfileSettings by rememberSaveable { mutableStateOf(false) }
+    // Settings renders inside the Profile tab, so the header gear has to switch tabs to
+    // open it. This records the tab the user was actually on so closing Settings returns
+    // there rather than stranding them on a Profile tab they never asked for. Null when
+    // Settings was opened the original way (from within Profile).
+    var settingsReturnTab by rememberSaveable { mutableStateOf<MainTab?>(null) }
     // Set when the profile's group icon is tapped → the group-management drill-down opens
     // over the Profile tab (its own internal Back handling unwinds it).
     var showingGroupManagement by rememberSaveable { mutableStateOf(false) }
@@ -79,6 +95,23 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
         ),
     ) { mutableStateListOf<MainTab>() }
 
+    // Opening Settings from the header gear: it lives under the Profile tab, so jump
+    // there, clearing any in-place drill-down the way a tab tap does.
+    val openSettings = {
+        if (!showingProfileSettings) {
+            settingsReturnTab = selectedTab.takeIf { it != MainTab.Profile }
+            viewingProfileUserId = null
+            showingGroupManagement = false
+            selectedTab = MainTab.Profile
+            showingProfileSettings = true
+        }
+    }
+    val closeSettings = {
+        showingProfileSettings = false
+        settingsReturnTab?.let { selectedTab = it }
+        settingsReturnTab = null
+    }
+
     // System Back / back-swipe: unwind in-app navigation (which lives in the state above,
     // not the NavController back stack). Priority: sub-screens first, then the edit form,
     // then the tab trail, then home. Disabled on a clean Board so Back exits the app.
@@ -89,7 +122,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
         selectedTab != MainTab.Board
     BackHandler(enabled = canGoBack) {
         when {
-            showingProfileSettings -> showingProfileSettings = false
+            showingProfileSettings -> closeSettings()
             viewingProfileUserId != null -> viewingProfileUserId = null
             selectedTab == MainTab.Add && pendingEditMatchId != null -> {
                 // An edit form was opened from the Matches log — Back returns there.
@@ -126,6 +159,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                     // Any tab tap leaves a leaderboard drill-down (so Board returns home).
                     viewingProfileUserId = null
                     showingProfileSettings = false
+                    settingsReturnTab = null
                     showingGroupManagement = false
                     // Record the tab we're leaving so Back can step back through the trail.
                     if (tab != selectedTab) {
@@ -137,12 +171,35 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Shared group switcher — the top header on every tab, in place of the
-            // old per-page titles (docs/requirements/00-overview.md § Group). The
-            // Scaffold's inner padding already clears the status bar, so no extra
+            // App header: the wordmark identifies the app on every tab, with the
+            // group switcher demoted to a slim pill beneath it. Both sit at the
+            // same 10.dp gutter the Board content uses, so the switcher's edges
+            // line up with the leaderboard card below it.
+            // The Scaffold's inner padding already clears the status bar, so no extra
             // statusBarsPadding() here (that was double-counting the inset).
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = HeaderGutter, end = HeaderGutter, top = 8.dp),
+            ) {
+                AppWordmark(
+                    logoHeight = 26.dp,
+                    fontSize = 20.sp,
+                    horizontalArrangement = Arrangement.Start,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = openSettings, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_settings),
+                        contentDescription = "Settings",
+                        tint = PlayboardTheme.colors.textMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
             GroupSwitcher(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = HeaderGutter, vertical = 8.dp),
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTab) {
@@ -176,13 +233,13 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                     MainTab.Profile -> when {
                         showingProfileSettings -> SettingsScreen(
                             updateViewModel = updateViewModel,
-                            onBack = { showingProfileSettings = false },
+                            onBack = closeSettings,
                         )
                         showingGroupManagement -> GroupManagementScreen(
                             onExit = { showingGroupManagement = false },
                         )
                         else -> ProfileScreen(
-                            onOpenSettings = { showingProfileSettings = true },
+                            onOpenSettings = openSettings,
                             onOpenGroupManagement = { showingGroupManagement = true },
                         )
                     }
