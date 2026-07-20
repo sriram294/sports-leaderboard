@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,7 +42,7 @@ fun AppWordmark(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = horizontalArrangement,
-        modifier = modifier,
+        modifier = Modifier.padding(horizontal = 10.dp),
     ) {
         Image(
             painter = painterResource(R.drawable.logo_playboard_racket),
