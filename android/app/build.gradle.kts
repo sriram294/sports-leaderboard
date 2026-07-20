@@ -22,7 +22,7 @@ val keystoreProperties = Properties().apply {
 
 // Single source of truth for the app version — reused by both defaultConfig
 // (below) and the artifact name, so the two never drift.
-val appVersionName = "3.6"
+val appVersionName = "3.5"
 
 // Name the built artifacts "Playboard-<version>" instead of the module name
 // "app", so the APK is e.g. Playboard-1.5-debug.apk / Playboard-1.5-release.apk.
@@ -45,7 +45,7 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 27
+        versionCode = 26
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
