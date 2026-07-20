@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -337,13 +338,28 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .fillMaxSize()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
     ) {
+        val brand = PlayboardTheme.colors.brand
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .offset(y = (-10).dp)
                 .size(58.dp)
+                // Halo, drawn rather than laid out: a wrapping container big enough to hold
+                // it would overflow the 76.dp bar and shove the label down. drawBehind sits
+                // before the clip below, so the glow is free to spill past the button.
+                .drawBehind {
+                    val glowRadius = size.minDimension * 0.95f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(brand.copy(alpha = 0.45f), Color.Transparent),
+                            center = center,
+                            radius = glowRadius,
+                        ),
+                        radius = glowRadius,
+                    )
+                }
                 .clip(CircleShape)
-                .background(PlayboardTheme.colors.brand),
+                .background(brand),
         ) {
             Text(
                 text = "+",
