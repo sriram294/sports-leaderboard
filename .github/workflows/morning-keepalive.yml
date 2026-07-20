@@ -9,23 +9,32 @@
 # Pinging through the session, and past the point where the quiet period elapses,
 # means the scan is running when it needs to be.
 #
-#   08:00 IST  ping starts — also spares the first player a ~14s cold start at login
-#   09:30 IST  last match of a typical session
+# Note the 15-minute interval does NOT hold the service continuously awake: it sleeps
+# after 10 idle minutes, so it naps for roughly the last 5 minutes of each gap and
+# cold-starts on the next ping. That's fine for the scan — the job's 2-minute initial
+# delay still lands inside each awake window, so it effectively runs every 15 minutes —
+# but a player opening the app can still hit a ~14s cold start. Drop to every 5 minutes
+# if that becomes worth the extra awake time.
+#
+#   06:00 IST  ping starts
+#   09:45 IST  latest a session can end and still have its recap land in the window
 #   10:15 IST  45-minute quiet period elapsed -> scan fires, pushes go out
-#   10:30 IST  ping stops, service is free to sleep for the other ~21 hours
+#   10:30 IST  ping stops, service is free to sleep for the other ~19 hours
 #
 # The quiet period is set by PLAYBOARD_SESSION_QUIET_PERIOD on Railway (PT45M).
-# If that value changes, move the end of this window with it or the scan will be
-# asleep again when it matters.
+# What matters for notifications is the END of this window, not the start: the scan
+# comes due 45 minutes after the LAST match, so a session finishing after 09:45 would
+# have its recap fall past 10:30 with the service already asleep. Extend the tail (not
+# the head) if sessions start running later, and move it in step with the quiet period.
 
 name: Morning keepalive
 
 on:
   schedule:
     # GitHub cron is UTC; IST is UTC+05:30 and India has no DST, so these are stable
-    # year-round. Together they cover 08:00–10:30 IST every 15 minutes.
-    - cron: '30,45 2 * * *'   # 08:00, 08:15 IST
-    - cron: '*/15 3-4 * * *'  # 08:30 – 10:15 IST
+    # year-round. Together they cover 06:00–10:30 IST every 15 minutes.
+    - cron: '30,45 0 * * *'   # 06:00, 06:15 IST
+    - cron: '*/15 1-4 * * *'  # 06:30 – 10:15 IST
     - cron: '0 5 * * *'       # 10:30 IST
   # Lets you wake the backend on demand — handy before an off-schedule session.
   workflow_dispatch:
