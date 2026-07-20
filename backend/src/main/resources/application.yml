@@ -47,6 +47,15 @@ playboard:
     # no-op (see FirebaseConfig / PushNotificationService). Encode the key with
     # e.g. `base64 -w0 service-account.json` and set it on Railway.
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+  notifications:
+    # End-of-session rank-change push (SessionRankChangeJob). A group's session is
+    # considered over once no match has been logged for `session-quiet-period`; the
+    # scan runs every `session-scan-interval` over groups that played within
+    # `session-lookback`. Shorten the quiet period to test without waiting 90 minutes.
+    session-quiet-period: ${PLAYBOARD_SESSION_QUIET_PERIOD:PT90M}
+    session-scan-interval: ${PLAYBOARD_SESSION_SCAN_INTERVAL:PT15M}
+    session-scan-initial-delay: ${PLAYBOARD_SESSION_SCAN_INITIAL_DELAY:PT2M}
+    session-lookback: ${PLAYBOARD_SESSION_LOOKBACK:PT24H}
   update:
     debug:
       version-code: ${PLAYBOARD_UPDATE_DEBUG_VERSION_CODE:}

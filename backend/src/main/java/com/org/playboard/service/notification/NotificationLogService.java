@@ -1,11 +1,9 @@
 package com.org.playboard.service.notification;
 
-import com.org.playboard.entity.notification.NotificationLog;
 import com.org.playboard.repository.notification.NotificationLogRepository;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,18 +26,15 @@ public class NotificationLogService {
      * sending: the database, not a prior read, is what makes this safe against a
      * redeploy mid-job or a second instance running the same scheduled work.
      *
-     * <p>Runs in its own transaction so the unique violation rolls back only the
-     * failed claim, and flushes inside the try so that violation surfaces here rather
-     * than at the caller's commit.
+     * <p>Runs in its own transaction so a claim is durable the moment it is taken, rather
+     * than riding on whatever the caller does next.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean claim(UUID userId, NotificationCategory category, String dedupeKey) {
-        try {
-            repository.saveAndFlush(new NotificationLog(userId, category, dedupeKey));
-            return true;
-        } catch (DataIntegrityViolationException alreadySent) {
+        boolean claimed = repository.insertIfAbsent(userId, category.name(), dedupeKey) == 1;
+        if (!claimed) {
             log.debug("Already sent {} '{}' to user {}; skipping.", category, dedupeKey, userId);
-            return false;
         }
+        return claimed;
     }
 }
