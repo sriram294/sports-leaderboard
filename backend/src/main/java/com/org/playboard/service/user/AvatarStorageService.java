@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
  * Local-disk avatar storage (dev/small-scale). Swapping to an S3-compatible
  * bucket later is a drop-in replacement of this one class — {@link
  * com.org.playboard.service.user.UserService} only depends on {@link #store}
- * returning a URL, not on how/where the bytes land (see project-structure.md
+ * returning a path, not on how/where the bytes land (see project-structure.md
  * § Open questions).
  */
 @Component
@@ -25,13 +25,9 @@ public class AvatarStorageService {
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/png", "image/jpeg", "image/webp");
 
     private final Path avatarDir;
-    private final String publicBaseUrl;
 
-    public AvatarStorageService(
-            @Value("${playboard.storage.avatar-dir}") String avatarDir,
-            @Value("${playboard.storage.public-base-url}") String publicBaseUrl) {
+    public AvatarStorageService(@Value("${playboard.storage.avatar-dir}") String avatarDir) {
         this.avatarDir = Path.of(avatarDir).toAbsolutePath().normalize();
-        this.publicBaseUrl = publicBaseUrl;
         try {
             Files.createDirectories(this.avatarDir);
         } catch (IOException e) {
@@ -52,7 +48,9 @@ public class AvatarStorageService {
         } catch (IOException e) {
             throw new UncheckedIOException("Could not store avatar for user " + userId, e);
         }
-        return publicBaseUrl + "/avatars/" + filename;
+        // Host-free on purpose — AvatarUrlResolver applies PUBLIC_BASE_URL at read
+        // time. "/avatars/**" is the URL path WebConfig maps onto this directory.
+        return "/avatars/" + filename;
     }
 
     /** Delete any stored photo for the user — called when they switch to a default avatar. */

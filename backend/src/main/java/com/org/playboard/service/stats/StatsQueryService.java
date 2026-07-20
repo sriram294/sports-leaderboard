@@ -19,6 +19,7 @@ import com.org.playboard.repository.match.MatchParticipantRepository.WindowedSta
 import com.org.playboard.repository.stats.MemberStatsRepository;
 import com.org.playboard.service.group.GroupMembershipGuard;
 import com.org.playboard.service.match.MatchService;
+import com.org.playboard.service.user.AvatarUrlResolver;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -44,18 +45,21 @@ public class StatsQueryService {
     private final MemberStatsRepository memberStatsRepository;
     private final MatchParticipantRepository matchParticipantRepository;
     private final MatchService matchService;
+    private final AvatarUrlResolver avatarUrls;
 
     public StatsQueryService(
             GroupMembershipGuard membershipGuard,
             GroupMemberRepository groupMemberRepository,
             MemberStatsRepository memberStatsRepository,
             MatchParticipantRepository matchParticipantRepository,
-            MatchService matchService) {
+            MatchService matchService,
+            AvatarUrlResolver avatarUrls) {
         this.membershipGuard = membershipGuard;
         this.groupMemberRepository = groupMemberRepository;
         this.memberStatsRepository = memberStatsRepository;
         this.matchParticipantRepository = matchParticipantRepository;
         this.matchService = matchService;
+        this.avatarUrls = avatarUrls;
     }
 
     @Transactional(readOnly = true)
@@ -98,7 +102,7 @@ public class StatsQueryService {
                     rank++,
                     user.getId(),
                     user.getDisplayName(),
-                    user.getPhotoUrl(),
+                    avatarUrls.resolve(user.getPhotoUrl()),
                     user.getAvatarId(),
                     user.getAvatarColor(),
                     stats.getMatchesPlayed(),
@@ -139,7 +143,7 @@ public class StatsQueryService {
                     0, // rank assigned after sorting
                     user.getId(),
                     user.getDisplayName(),
-                    user.getPhotoUrl(),
+                    avatarUrls.resolve(user.getPhotoUrl()),
                     user.getAvatarId(),
                     user.getAvatarColor(),
                     gamesPlayed,
@@ -196,7 +200,7 @@ public class StatsQueryService {
         return new PlayerStatsDto(
                 user.getId(),
                 user.getDisplayName(),
-                user.getPhotoUrl(),
+                avatarUrls.resolve(user.getPhotoUrl()),
                 user.getAvatarId(),
                 user.getAvatarColor(),
                 stats.getMatchesPlayed(),

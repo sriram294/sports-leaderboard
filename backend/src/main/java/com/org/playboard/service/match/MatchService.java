@@ -30,6 +30,7 @@ import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.repository.match.MatchSetRepository;
 import com.org.playboard.repository.match.MatchTeamRepository;
 import com.org.playboard.repository.user.UserRepository;
+import com.org.playboard.service.user.AvatarUrlResolver;
 import com.org.playboard.service.group.GroupMembershipGuard;
 import com.org.playboard.service.notification.events.MatchRecordedEvent;
 import com.org.playboard.service.notification.events.MatchUpdatedEvent;
@@ -69,6 +70,7 @@ public class MatchService {
     private final GroupMembershipGuard membershipGuard;
     private final StatsRecalculationService statsRecalculationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final AvatarUrlResolver avatarUrls;
 
     public MatchService(
             MatchRepository matchRepository,
@@ -80,7 +82,8 @@ public class MatchService {
             UserRepository userRepository,
             GroupMembershipGuard membershipGuard,
             StatsRecalculationService statsRecalculationService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            AvatarUrlResolver avatarUrls) {
         this.matchRepository = matchRepository;
         this.matchTeamRepository = matchTeamRepository;
         this.matchParticipantRepository = matchParticipantRepository;
@@ -91,6 +94,7 @@ public class MatchService {
         this.membershipGuard = membershipGuard;
         this.statsRecalculationService = statsRecalculationService;
         this.eventPublisher = eventPublisher;
+        this.avatarUrls = avatarUrls;
     }
 
     @Transactional(readOnly = true)
@@ -357,7 +361,7 @@ public class MatchService {
                                         user.getId(),
                                         user.getDisplayName(),
                                         user.getAvatarColor(),
-                                        user.getPhotoUrl(),
+                                        avatarUrls.resolve(user.getPhotoUrl()),
                                         user.getAvatarId());
                             })
                             .toList();

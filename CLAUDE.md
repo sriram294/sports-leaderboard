@@ -43,8 +43,11 @@ insights. It's an Android app backed by a custom REST API.
 ## Feature workflow (per slice)
 Build one requirement slice at a time: read `docs/requirements/0X-*.md` + the matching
 prototype PDF → branch off `master` → implement (data → ViewModel/UiState → Compose screen)
-→ add unit tests → `:app:testDebugUnitTest` + `:app:assembleDebug` → always increment the versioncode and versionname when opening a PR → open a PR **against
-`master`**. **Never self-merge** — the user reviews/merges; Railway then redeploys the
+→ add unit tests → `:app:testDebugUnitTest` + `:app:assembleDebug` → open a PR **against
+`master`**. **Bump `versionCode` + `appVersionName` in `android/app/build.gradle.kts`
+whenever the PR touches `android/`** (including the Android half of a full-stack PR) —
+that version is what ships an APK and drives the in-app update prompt. Backend-only or
+docs-only PRs leave it alone; bumping there would cut a release with no app change in it. **Never self-merge** — the user reviews/merges; Railway then redeploys the
 backend. Full-stack features go in a single PR (backend + Android). Confirm a Railway
 deploy landed by reading the live schema:
 `curl -s .../v3/api-docs | jq '.components.schemas.<Dto>.properties | keys'`.

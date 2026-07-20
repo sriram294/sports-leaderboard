@@ -28,6 +28,7 @@ import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.user.UserRepository;
+import com.org.playboard.service.user.AvatarUrlResolver;
 import com.org.playboard.service.notification.events.MemberAddedEvent;
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -71,6 +72,7 @@ public class GroupService {
     private final MatchRepository matchRepository;
     private final GroupMembershipGuard membershipGuard;
     private final ApplicationEventPublisher eventPublisher;
+    private final AvatarUrlResolver avatarUrls;
     private final SecureRandom random = new SecureRandom();
 
     public GroupService(
@@ -81,7 +83,8 @@ public class GroupService {
             UserRepository userRepository,
             MatchRepository matchRepository,
             GroupMembershipGuard membershipGuard,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            AvatarUrlResolver avatarUrls) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupInviteRepository = groupInviteRepository;
@@ -90,6 +93,7 @@ public class GroupService {
         this.matchRepository = matchRepository;
         this.membershipGuard = membershipGuard;
         this.eventPublisher = eventPublisher;
+        this.avatarUrls = avatarUrls;
     }
 
     @Transactional(readOnly = true)
@@ -238,7 +242,7 @@ public class GroupService {
 
         eventPublisher.publishEvent(new MemberAddedEvent(group.getId(), group.getName(), user.getId()));
 
-        return MemberDto.from(member);
+        return MemberDto.from(member, avatarUrls);
     }
 
     /**
@@ -328,7 +332,7 @@ public class GroupService {
         }
         target.setRole(newRole);
         groupMemberRepository.save(target);
-        return MemberDto.from(target);
+        return MemberDto.from(target, avatarUrls);
     }
 
     private GroupMember activeMember(UUID groupId, UUID userId) {
@@ -391,12 +395,12 @@ public class GroupService {
         List<GroupMember> active = groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE);
         List<MemberDto> members = active.stream()
                 .filter(m -> m.getRole() != GroupRole.GUEST)
-                .map(MemberDto::from)
+                .map(m -> MemberDto.from(m, avatarUrls))
                 .toList();
         // Guest fillers, ordered "Guest 1/2/3" for a stable picker order.
         List<MemberDto> guests = active.stream()
                 .filter(m -> m.getRole() == GroupRole.GUEST)
-                .map(MemberDto::from)
+                .map(m -> MemberDto.from(m, avatarUrls))
                 .sorted(Comparator.comparing(MemberDto::displayName))
                 .toList();
         return new MembersResponse(members, guests);

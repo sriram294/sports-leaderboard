@@ -11,6 +11,7 @@ import com.org.playboard.entity.auth.RefreshToken;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.auth.RefreshTokenRepository;
 import com.org.playboard.repository.user.UserRepository;
+import com.org.playboard.service.user.AvatarUrlResolver;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -24,16 +25,19 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final JwtService jwtService;
+    private final AvatarUrlResolver avatarUrls;
 
     public AuthService(
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
             GoogleTokenVerifier googleTokenVerifier,
-            JwtService jwtService) {
+            JwtService jwtService,
+            AvatarUrlResolver avatarUrls) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.googleTokenVerifier = googleTokenVerifier;
         this.jwtService = jwtService;
+        this.avatarUrls = avatarUrls;
     }
 
     @Transactional
@@ -54,7 +58,7 @@ public class AuthService {
                 tokens.accessToken(),
                 tokens.refreshToken(),
                 JwtService.ACCESS_TOKEN_TTL.toSeconds(),
-                UserSummaryDto.from(user));
+                UserSummaryDto.from(user, avatarUrls));
     }
 
     @Transactional
