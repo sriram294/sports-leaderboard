@@ -99,7 +99,7 @@ private fun MatchesContent(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 10.dp),
     ) {
         // The count + "My matches" filter toggle. Kept above the list (not scrolled) and
         // shown whenever a group is selected, so it's reachable even on an empty result.
@@ -190,7 +190,7 @@ private fun MatchList(
     onDateToggled: (LocalDate) -> Unit,
 ) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
         state.sections.forEach { section ->

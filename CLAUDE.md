@@ -29,6 +29,9 @@ insights. It's an Android app backed by a custom REST API.
 
 ## Architecture & conventions (`PROJECT_RULES.md`)
 - Kotlin + Compose, **Material 3**, dark theme only (`BrandLime` accents; see `ui/theme/Color.kt`).
+- **Screen-level horizontal padding is `10.dp`** — every page's root container uses this
+  gutter so content aligns with the shared header. New screens must follow it. Padding
+  inside cards/rows/buttons is independent.
 - **MVVM + Repository**, Hilt DI. One screen per package; reusable UI in `ui/components`.
   Immutable UI state; no business logic in composables. KDoc public classes/functions.
 - Android structure: `data/` (`remote/dto` `@Serializable` DTOs → `PlayboardApi` (Retrofit)
