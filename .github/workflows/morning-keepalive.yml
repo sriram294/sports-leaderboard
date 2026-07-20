@@ -1,0 +1,50 @@
+# Keeps the backend awake across the morning play session.
+#
+# Why this exists: the Railway service runs serverless and sleeps after 10 minutes
+# of inactivity. A sleeping container runs no JVM, so SessionRankChangeJob's
+# @Scheduled timer does not tick — the end-of-session rank-change push would only go
+# out whenever someone next happened to open the app (and would be lost entirely if
+# nobody did so within the job's 24h lookback).
+#
+# Pinging through the session, and past the point where the quiet period elapses,
+# means the scan is running when it needs to be.
+#
+#   08:00 IST  ping starts — also spares the first player a ~14s cold start at login
+#   09:30 IST  last match of a typical session
+#   10:15 IST  45-minute quiet period elapsed -> scan fires, pushes go out
+#   10:30 IST  ping stops, service is free to sleep for the other ~21 hours
+#
+# The quiet period is set by PLAYBOARD_SESSION_QUIET_PERIOD on Railway (PT45M).
+# If that value changes, move the end of this window with it or the scan will be
+# asleep again when it matters.
+
+name: Morning keepalive
+
+on:
+  schedule:
+    # GitHub cron is UTC; IST is UTC+05:30 and India has no DST, so these are stable
+    # year-round. Together they cover 08:00–10:30 IST every 15 minutes.
+    - cron: '30,45 2 * * *'   # 08:00, 08:15 IST
+    - cron: '*/15 3-4 * * *'  # 08:30 – 10:15 IST
+    - cron: '0 5 * * *'       # 10:30 IST
+  # Lets you wake the backend on demand — handy before an off-schedule session.
+  workflow_dispatch:
+
+# Scheduled runs only ever fire from the default branch (master).
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the backend
+        run: |
+          # /api/v1/app/update is public (permitAll), so no credentials are needed.
+          # --max-time is generous because a cold start costs ~14s of JVM + Spring
+          # boot before anything responds; that wait IS the wake-up working.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 \
+            https://playboard-prd.cooperbcknd.in/api/v1/app/update)
+          echo "Backend responded with HTTP $code"
+          # Fail loudly on a real outage rather than silently pinging a dead host for
+          # weeks — a broken keepalive means missing notifications, which is otherwise
+          # invisible.
+          [ "$code" = "200" ]
