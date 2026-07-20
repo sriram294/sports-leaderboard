@@ -7,7 +7,7 @@ insights. It's an Android app backed by a custom REST API.
 ## Repository layout
 - `android/` — Kotlin + Jetpack Compose app (package `com.org.playboard`).
 - `backend/` — Java + Spring Boot + Postgres API (package `com.org.playboard`), deployed
-  on **Railway from `master`** at `https://playboard-prd.up.railway.app`.
+  on **Railway from `master`** at `https://playboard-prd.cooperbcknd.in`.
 - `docs/` — the source of truth:
   - `docs/requirements/00–06-*.md` — per-screen specs (Login, Board, Matches, Add, Profile, Stats).
   - `docs/backend/api-contracts.md` — REST contract; `docs/backend/data-model.md` — schema.

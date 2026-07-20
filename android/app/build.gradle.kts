@@ -22,7 +22,7 @@ val keystoreProperties = Properties().apply {
 
 // Single source of truth for the app version — reused by both defaultConfig
 // (below) and the artifact name, so the two never drift.
-val appVersionName = "3.4"
+val appVersionName = "3.5"
 
 // Name the built artifacts "Playboard-<version>" instead of the module name
 // "app", so the APK is e.g. Playboard-1.5-debug.apk / Playboard-1.5-release.apk.
@@ -45,18 +45,15 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 25
+        versionCode = 26
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Dev backend address. 10.0.2.2 is the Android *emulator's* alias for
-        // the host's localhost — it doesn't work on a physical device, which
-        // needs the host's actual WiFi LAN IP instead (both device and host
-        // must be on the same network). This IP is DHCP-assigned and can
-        // change on reconnect — re-check with `ip -4 addr show scope global`
-        // on the host if the app stops reaching the backend.
-        buildConfigField("String", "BASE_URL", "\"https://playboard-prd.up.railway.app/\"")
+        // Production backend, served from the Railway custom domain. Must keep
+        // the scheme and the trailing slash — Retrofit's baseUrl() rejects a
+        // schemeless value and drops the last path segment without the slash.
+        buildConfigField("String", "BASE_URL", "\"https://playboard-prd.cooperbcknd.in/\"")
         // Web-application OAuth Client ID (same value as the backend's
         // GOOGLE_CLIENT_ID env var) — not a secret, safe to version-control.
         buildConfigField(
