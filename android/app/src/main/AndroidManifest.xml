@@ -39,10 +39,19 @@
             </intent-filter>
         </service>
 
-        <!-- Channel a notification lands on if a background data message omits one. -->
+        <!-- Channel a notification lands on if a background data message omits one.
+             The backend names the channel explicitly on every push, so this is only a
+             fallback — but it must stay valid or those pushes would be dropped. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="@string/notification_channel_match_activity" />
+
+        <!-- Small icon for pushes the system renders itself (app backgrounded). Without
+             this, those fall back to the full-colour launcher icon, which Android draws
+             as a featureless white blob because small icons use only the alpha channel. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_name" />
 
         <!-- Grants other apps temporary read access to the rendered leaderboard PNG
              we hand to the Android share sheet (see ui/share/LeaderboardShareRenderer). -->

@@ -118,6 +118,24 @@ public class StatsQueryService {
     }
 
     private LeaderboardResponse windowedLeaderboard(UUID groupId, Instant from, Instant to) {
+        return new LeaderboardResponse(rankedStandings(groupId, from, to));
+    }
+
+    /**
+     * Ranked standings computed from raw matches in {@code [from, to)}. Backs both the
+     * This Week / This Month board and the end-of-session rank-change notification,
+     * which calls it twice — with {@code from = EPOCH} so the window becomes
+     * "everything up to {@code to}" — to compare standings before and after a session.
+     *
+     * <p>Callers that need to compare two results must both come through here. The
+     * all-time path ranks a DB-generated {@code win_rate} while this one computes a
+     * 4-dp {@link BigDecimal}; diffing one against the other could report a rank change
+     * that never happened.
+     *
+     * <p>Transactional in its own right because the job calls it outside a request.
+     */
+    @Transactional(readOnly = true)
+    public List<LeaderboardEntryDto> rankedStandings(UUID groupId, Instant from, Instant to) {
         // Only active, non-guest members can rank (guests are excluded from the
         // leaderboard, matching the all-time member_stats path).
         Map<UUID, User> eligible = new HashMap<>();
@@ -170,7 +188,7 @@ public class StatsQueryService {
         for (LeaderboardEntryDto e : entries) {
             ranked.add(withRank(e, rank++));
         }
-        return new LeaderboardResponse(ranked);
+        return ranked;
     }
 
     private static LeaderboardEntryDto withRank(LeaderboardEntryDto e, int rank) {

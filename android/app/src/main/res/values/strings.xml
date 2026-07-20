@@ -1,8 +1,19 @@
 <resources>
     <string name="app_name">Playboard</string>
 
-    <!-- Notification channel for group activity pushes (new/edited matches, group adds). -->
+    <!-- Notification channels. One per kind of push, so muting one doesn't silence the rest.
+         The ids must match NotificationCategory on the backend, which names the channel on
+         every push. match_activity's id predates the split — keep it so existing installs
+         don't lose the setting they already chose. -->
     <string name="notification_channel_match_activity" translatable="false">match_activity</string>
     <string name="notification_channel_match_activity_name">Match activity</string>
-    <string name="notification_channel_match_activity_desc">New matches, edits, and group updates</string>
+    <string name="notification_channel_match_activity_desc">New matches and edits in your groups</string>
+
+    <string name="notification_channel_daily_summary" translatable="false">daily_summary</string>
+    <string name="notification_channel_daily_summary_name">Daily summary</string>
+    <string name="notification_channel_daily_summary_desc">How your leaderboard position moved after a session</string>
+
+    <string name="notification_channel_group_updates" translatable="false">group_updates</string>
+    <string name="notification_channel_group_updates_name">Group updates</string>
+    <string name="notification_channel_group_updates_desc">Roster and admin changes in your groups</string>
 </resources>

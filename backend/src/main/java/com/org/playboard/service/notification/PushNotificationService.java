@@ -1,5 +1,7 @@
 package com.org.playboard.service.notification;
 
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.MessagingErrorCode;
@@ -49,13 +51,18 @@ public class PushNotificationService {
     }
 
     /**
-     * Delivers a notification to every registered device of the given users.
-     * Tokens FCM reports as permanently invalid are pruned. Runs in its own
-     * transaction (the triggering one has already committed). Returns a
-     * {@link PushResult} for diagnostics.
+     * Delivers a notification to every registered device of the given users, on the
+     * channel belonging to {@code category}. Tokens FCM reports as permanently
+     * invalid are pruned. Runs in its own transaction (the triggering one has already
+     * committed). Returns a {@link PushResult} for diagnostics.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public PushResult sendToUsers(Collection<UUID> userIds, String title, String body, Map<String, String> data) {
+    public PushResult sendToUsers(
+            Collection<UUID> userIds,
+            NotificationCategory category,
+            String title,
+            String body,
+            Map<String, String> data) {
         FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
         if (messaging == null) {
             log.info("Firebase disabled; skipping push \"{}\" to {} user(s).", title, userIds.size());
@@ -84,6 +91,15 @@ public class PushNotificationService {
             try {
                 MulticastMessage message = MulticastMessage.builder()
                         .setNotification(Notification.builder().setTitle(title).setBody(body).build())
+                        // The channel must be named here, not just client-side: a push that
+                        // arrives while the app is backgrounded is rendered by the system,
+                        // which falls back to the manifest's default channel otherwise —
+                        // putting every category back on one channel.
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setNotification(AndroidNotification.builder()
+                                        .setChannelId(category.channelId())
+                                        .build())
+                                .build())
                         .putAllData(data == null ? Map.of() : data)
                         .addAllTokens(batch)
                         .build();

@@ -62,4 +62,25 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
             @Param("playedAt") Instant playedAt,
             @Param("id") UUID id,
             Pageable pageable);
+
+    // --- Session-end detection (SessionRankChangeJob) ---
+
+    /** Groups with any recent play, so the scan never walks the whole match table. */
+    @Query("""
+        select distinct m.group.id from Match m
+        where m.deleted = false and m.playedAt >= :since
+        """)
+    List<UUID> findGroupIdsWithMatchesSince(@Param("since") Instant since);
+
+    /**
+     * Ascending play times for one group, used to find the gap that separates one
+     * playing session from the next. Projects the instants only — the job never needs
+     * the match rows themselves.
+     */
+    @Query("""
+        select m.playedAt from Match m
+        where m.group.id = :groupId and m.deleted = false and m.playedAt >= :since
+        order by m.playedAt asc
+        """)
+    List<Instant> findPlayedAtSince(@Param("groupId") UUID groupId, @Param("since") Instant since);
 }

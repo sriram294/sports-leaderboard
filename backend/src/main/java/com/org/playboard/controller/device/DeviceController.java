@@ -3,6 +3,7 @@ package com.org.playboard.controller.device;
 import com.org.playboard.dto.device.RegisterDeviceRequest;
 import com.org.playboard.dto.device.UnregisterDeviceRequest;
 import com.org.playboard.service.device.DeviceService;
+import com.org.playboard.service.notification.NotificationCategory;
 import com.org.playboard.service.notification.PushNotificationService;
 import com.org.playboard.service.notification.PushResult;
 import jakarta.validation.Valid;
@@ -54,6 +55,7 @@ public class DeviceController {
     public PushResult sendTest(@AuthenticationPrincipal UUID userId) {
         return pushNotificationService.sendToUsers(
                 List.of(userId),
+                NotificationCategory.MATCH_ACTIVITY,
                 "Playboard test",
                 "If you can see this, push notifications work 🏸",
                 Map.of("type", "test"));

@@ -39,7 +39,7 @@ class PushNotificationServiceTest {
     void noOpWhenFirebaseDisabled() {
         var service = new PushNotificationService(provider(null), repo);
 
-        var result = service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
+        var result = service.sendToUsers(List.of(UUID.randomUUID()), NotificationCategory.MATCH_ACTIVITY, "title", "body", Map.of());
 
         org.junit.jupiter.api.Assertions.assertFalse(result.firebaseEnabled());
         // Never even looks up tokens when Firebase isn't configured.
@@ -52,7 +52,7 @@ class PushNotificationServiceTest {
         var service = new PushNotificationService(provider(messaging), repo);
         when(repo.findByUserIdIn(anyCollection())).thenReturn(List.of());
 
-        service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
+        service.sendToUsers(List.of(UUID.randomUUID()), NotificationCategory.MATCH_ACTIVITY, "title", "body", Map.of());
 
         verify(messaging, never()).sendEachForMulticast(any());
     }
@@ -76,7 +76,7 @@ class PushNotificationServiceTest {
         when(batch.getResponses()).thenReturn(List.of(goodResponse, deadResponse));
         when(messaging.sendEachForMulticast(any(MulticastMessage.class))).thenReturn(batch);
 
-        service.sendToUsers(List.of(UUID.randomUUID()), "title", "body", Map.of());
+        service.sendToUsers(List.of(UUID.randomUUID()), NotificationCategory.MATCH_ACTIVITY, "title", "body", Map.of());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> captor = ArgumentCaptor.forClass(List.class);

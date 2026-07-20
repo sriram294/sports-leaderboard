@@ -30,6 +30,7 @@ import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.user.UserRepository;
 import com.org.playboard.service.user.AvatarUrlResolver;
 import com.org.playboard.service.notification.events.MemberAddedEvent;
+import com.org.playboard.service.notification.events.MemberRoleChangedEvent;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -332,6 +333,11 @@ public class GroupService {
         }
         target.setRole(newRole);
         groupMemberRepository.save(target);
+        // Read the group's fields here, inside the transaction — the listener runs
+        // post-commit on an async thread with no session to lazy-load them from.
+        Group group = target.getGroup();
+        eventPublisher.publishEvent(
+                new MemberRoleChangedEvent(group.getId(), group.getName(), targetUserId, newRole));
         return MemberDto.from(target, avatarUrls);
     }
 
