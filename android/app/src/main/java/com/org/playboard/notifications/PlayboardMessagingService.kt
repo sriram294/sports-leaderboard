@@ -31,6 +31,11 @@ import kotlinx.coroutines.runBlocking
  */
 class PlayboardMessagingService : FirebaseMessagingService() {
 
+    companion object {
+        /** Group the push refers to. Mirrors the backend's `groupId` data key — see [showNotification]. */
+        const val EXTRA_GROUP_ID = "groupId"
+    }
+
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface MessagingEntryPoint {
@@ -54,10 +59,14 @@ class PlayboardMessagingService : FirebaseMessagingService() {
         val notification = message.notification
         val title = notification?.title ?: message.data["title"] ?: getString(R.string.app_name)
         val body = notification?.body ?: message.data["body"] ?: return
-        showNotification(title, body)
+        // Prefer the channel the backend named; fall back to inferring it from the
+        // payload type so a push is never posted to a channel that doesn't exist.
+        val channelId = notification?.channelId
+            ?: NotificationChannels.forType(this, message.data["type"])
+        showNotification(title, body, channelId, message.data["groupId"])
     }
 
-    private fun showNotification(title: String, body: String) {
+    private fun showNotification(title: String, body: String, channelId: String, groupId: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
@@ -67,15 +76,23 @@ class PlayboardMessagingService : FirebaseMessagingService() {
 
         val intent = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            // Same key the backend uses in the data payload, because a push that arrives
+            // while the app is backgrounded is rendered by the system, which copies the
+            // payload straight onto the launch intent's extras. Matching the key means
+            // MainActivity reads one place for both paths.
+            .apply { if (groupId != null) putExtra(EXTRA_GROUP_ID, groupId) }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            // Distinct request code per group. With a shared one, FLAG_UPDATE_CURRENT
+            // would rewrite the extras of every outstanding PendingIntent, so tapping an
+            // older notification would open whichever group pushed most recently.
+            groupId?.hashCode() ?: 0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val builder = NotificationCompat.Builder(this, NotificationChannels.matchActivityId(this))
-            .setSmallIcon(R.drawable.app_icon_large)
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_stat_name)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

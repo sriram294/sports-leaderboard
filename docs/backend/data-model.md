@@ -252,7 +252,30 @@ create table device_tokens (
 );
 
 create index idx_device_tokens_user on device_tokens(user_id);
+
+-- Pushes already sent. Senders claim a row before sending, so the unique index
+-- (not a prior read) is what prevents a repeat send when a job re-runs — after a
+-- redeploy mid-run, or on a second instance. Also answers "why did I get this?".
+-- user_id is a bare FK column: rows are written from post-commit async threads
+-- with no open session, and nothing navigates back to the user.
+create table notification_log (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references users(id) on delete cascade,
+    category    text not null,
+    dedupe_key  text not null,
+    created_at  timestamptz not null default now(),
+    updated_at  timestamptz not null default now()
+);
+
+create unique index idx_notification_log_dedupe
+    on notification_log(user_id, category, dedupe_key);
+create index idx_notification_log_created_at on notification_log(created_at);
 ```
+
+`category` holds a `NotificationCategory` name (`MATCH_ACTIVITY`, `DAILY_SUMMARY`,
+`GROUP_UPDATE`); each maps to an Android notification channel of the same id, so a
+user can mute one kind of push without silencing the rest. `dedupe_key` is
+scoped by the sender — e.g. `rank_change:<groupId>:<sessionStart>`.
 
 ## Recompute strategy
 

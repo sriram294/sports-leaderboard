@@ -1,10 +1,12 @@
 package com.org.playboard.service.notification;
 
+import com.org.playboard.entity.group.GroupRole;
 import com.org.playboard.entity.group.MemberStatus;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.service.notification.events.MatchRecordedEvent;
 import com.org.playboard.service.notification.events.MatchUpdatedEvent;
 import com.org.playboard.service.notification.events.MemberAddedEvent;
+import com.org.playboard.service.notification.events.MemberRoleChangedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,6 +42,7 @@ public class NotificationEventListener {
         log.info("MatchRecorded in group {}: notifying {} member(s).", event.groupId(), recipients.size());
         pushNotificationService.sendToUsers(
                 recipients,
+                NotificationCategory.MATCH_ACTIVITY,
                 "New match in " + event.groupName(),
                 event.summary(),
                 Map.of("type", "match", "groupId", event.groupId().toString(), "matchId", event.matchId().toString()));
@@ -52,6 +55,7 @@ public class NotificationEventListener {
         log.info("MatchUpdated in group {}: notifying {} member(s).", event.groupId(), recipients.size());
         pushNotificationService.sendToUsers(
                 recipients,
+                NotificationCategory.MATCH_ACTIVITY,
                 "Match updated in " + event.groupName(),
                 event.summary(),
                 Map.of("type", "match", "groupId", event.groupId().toString(), "matchId", event.matchId().toString()));
@@ -63,8 +67,29 @@ public class NotificationEventListener {
         log.info("MemberAdded to group {}: notifying the added user.", event.groupId());
         pushNotificationService.sendToUsers(
                 List.of(event.addedUserId()),
+                NotificationCategory.GROUP_UPDATE,
                 event.groupName(),
                 "You were added to " + event.groupName(),
+                Map.of("type", "group", "groupId", event.groupId().toString()));
+    }
+
+    /**
+     * Only promotions are announced. A demotion is a quiet administrative act — telling
+     * someone they've been stripped of admin would be a worse experience than saying
+     * nothing, and they'll see it on the group screen.
+     */
+    @Async
+    @TransactionalEventListener
+    public void onMemberRoleChanged(MemberRoleChangedEvent event) {
+        if (event.newRole() != GroupRole.ADMIN) {
+            return;
+        }
+        log.info("Member promoted to admin in group {}: notifying them.", event.groupId());
+        pushNotificationService.sendToUsers(
+                List.of(event.targetUserId()),
+                NotificationCategory.GROUP_UPDATE,
+                event.groupName(),
+                "You're now an admin of " + event.groupName(),
                 Map.of("type", "group", "groupId", event.groupId().toString()));
     }
 
