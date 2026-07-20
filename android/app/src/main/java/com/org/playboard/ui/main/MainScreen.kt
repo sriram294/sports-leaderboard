@@ -348,10 +348,12 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 // it would overflow the 76.dp bar and shove the label down. drawBehind sits
                 // before the clip below, so the glow is free to spill past the button.
                 .drawBehind {
-                    val glowRadius = size.minDimension * 0.95f
+                    // Tight enough that it reads as a rim of light on the button rather
+                    // than a lamp behind the nav bar.
+                    val glowRadius = size.minDimension * 0.66f
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(brand.copy(alpha = 0.45f), Color.Transparent),
+                            colors = listOf(brand.copy(alpha = 0.30f), Color.Transparent),
                             center = center,
                             radius = glowRadius,
                         ),
