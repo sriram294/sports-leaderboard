@@ -16,22 +16,27 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AvatarStorageService avatarStorageService;
+    private final AvatarUrlResolver avatarUrls;
 
-    public UserService(UserRepository userRepository, AvatarStorageService avatarStorageService) {
+    public UserService(
+            UserRepository userRepository,
+            AvatarStorageService avatarStorageService,
+            AvatarUrlResolver avatarUrls) {
         this.userRepository = userRepository;
         this.avatarStorageService = avatarStorageService;
+        this.avatarUrls = avatarUrls;
     }
 
     @Transactional(readOnly = true)
     public UserDto getById(UUID userId) {
-        return UserDto.from(findUser(userId));
+        return UserDto.from(findUser(userId), avatarUrls);
     }
 
     @Transactional
     public UserDto updateDisplayName(UUID userId, String displayName) {
         User user = findUser(userId);
         user.setDisplayName(displayName);
-        return UserDto.from(user);
+        return UserDto.from(user, avatarUrls);
     }
 
     @Transactional
@@ -40,7 +45,7 @@ public class UserService {
         user.setPhotoUrl(avatarStorageService.store(userId, file));
         // A photo and a default avatar are mutually exclusive — the photo wins.
         user.setAvatarId(null);
-        return UserDto.from(user);
+        return UserDto.from(user, avatarUrls);
     }
 
     @Transactional
@@ -55,7 +60,7 @@ public class UserService {
             avatarStorageService.remove(userId);
             user.setPhotoUrl(null);
         }
-        return UserDto.from(user);
+        return UserDto.from(user, avatarUrls);
     }
 
     private User findUser(UUID userId) {

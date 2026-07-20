@@ -1,6 +1,7 @@
 package com.org.playboard.dto.user;
 
 import com.org.playboard.entity.user.User;
+import com.org.playboard.service.user.AvatarUrlResolver;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,12 +14,12 @@ public record UserDto(
         String avatarColor,
         Instant createdAt) {
 
-    public static UserDto from(User user) {
+    public static UserDto from(User user, AvatarUrlResolver avatarUrls) {
         return new UserDto(
                 user.getId(),
                 user.getDisplayName(),
                 user.getEmail(),
-                user.getPhotoUrl(),
+                avatarUrls.resolve(user.getPhotoUrl()),
                 user.getAvatarId(),
                 user.getAvatarColor(),
                 user.getCreatedAt());
