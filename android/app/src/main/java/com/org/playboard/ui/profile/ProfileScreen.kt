@@ -405,11 +405,11 @@ private fun HeroAvatar(
                     .border(2.dp, PlayboardTheme.colors.background, CircleShape)
                     .clickable(onClick = onEdit),
             ) {
-                Text(
-                    text = "+",
-                    color = PlayboardTheme.colors.onBrand,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                Icon(
+                    painter = painterResource(R.drawable.ic_create),
+                    contentDescription = "Change photo",
+                    tint = PlayboardTheme.colors.onBrand,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -481,7 +481,7 @@ private fun EditBadge(onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
+            imageVector = ImageVector.vectorResource(id = R.drawable.ic_edit),
             contentDescription = "Edit name",
             tint = PlayboardTheme.colors.textMuted,
             modifier = Modifier.size(15.dp),
@@ -690,7 +690,12 @@ private fun BackRow(onBack: () -> Unit) {
             .clickable(onClick = onBack)
             .padding(vertical = 10.dp, horizontal = 4.dp),
     ) {
-        Text(text = "←", color = PlayboardTheme.colors.brand, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp))
+        Icon(
+            painter = painterResource(R.drawable.ic_back_arrow),
+            contentDescription = null, // "Leaderboard" alongside already labels the row
+            tint = PlayboardTheme.colors.brand,
+            modifier = Modifier.size(18.dp),
+        )
         Spacer(Modifier.width(8.dp))
         Text(
             text = "Leaderboard",

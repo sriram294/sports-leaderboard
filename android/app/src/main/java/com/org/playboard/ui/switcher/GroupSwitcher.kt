@@ -1,10 +1,12 @@
 package com.org.playboard.ui.switcher
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -151,7 +154,12 @@ private fun GroupSwitcherContent(
                 GroupsLoadState.LOADING -> StatusCard(text = "Loading groups…", showSpinner = true)
                 GroupsLoadState.FAILED -> StatusCard(text = "Couldn't load groups. Tap to retry.", onClick = onRetry)
                 GroupsLoadState.LOADED ->
-                    StatusCard(text = "＋  Create or join a group", onClick = onCreateOrJoinGroupClicked, accent = true)
+                    StatusCard(
+                        text = "Create or join a group",
+                        accent = true,
+                        icon = R.drawable.ic_create,
+                        onClick = onCreateOrJoinGroupClicked,
+                    )
             }
         }
     }
@@ -214,6 +222,7 @@ private fun StatusCard(
     text: String,
     showSpinner: Boolean = false,
     accent: Boolean = false,
+    @DrawableRes icon: Int? = null,
     onClick: (() -> Unit)? = null,
 ) {
     Surface(
@@ -236,11 +245,22 @@ private fun StatusCard(
                     modifier = Modifier.padding(start = 12.dp),
                 )
             } else {
+                val contentColor =
+                    if (accent) PlayboardTheme.colors.brand else PlayboardTheme.colors.textMuted
+                if (icon != null) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null, // the card's own text labels the action
+                        tint = contentColor,
+                        modifier = Modifier.size(20.dp).padding(end = 2.dp),
+                    )
+                    Spacer(Modifier.size(10.dp))
+                }
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (accent) PlayboardTheme.colors.brand else PlayboardTheme.colors.textMuted,
+                    color = contentColor,
                 )
             }
         }
@@ -311,7 +331,7 @@ private fun YourGroupsPanel(
 //                        )
 
                         Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.pencil),
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_edit),
                             contentDescription = "Edit",
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -328,19 +348,31 @@ private fun YourGroupsPanel(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             if (canInviteSelected) {
-                PanelActionRow(icon = "↗", label = "Invite players", onClick = onInvitePlayersClicked)
+                PanelActionRow(
+                    icon = R.drawable.ic_invite,
+                    label = "Invite players",
+                    onClick = onInvitePlayersClicked,
+                )
             }
             if (canManageSelected) {
-                PanelActionRow(icon = "✉", label = "Add member by email", onClick = onAddMemberClicked)
+                PanelActionRow(
+                    icon = R.drawable.ic_mail,
+                    label = "Add member by email",
+                    onClick = onAddMemberClicked,
+                )
             }
-            PanelActionRow(icon = "+", label = "Create or join a group", onClick = onCreateOrJoinGroupClicked)
+            PanelActionRow(
+                icon = R.drawable.ic_create,
+                label = "Create or join a group",
+                onClick = onCreateOrJoinGroupClicked,
+            )
         }
     }
 }
 
 /** A tappable action row at the foot of the group switcher (invite, create/join). */
 @Composable
-private fun PanelActionRow(icon: String, label: String, onClick: () -> Unit) {
+private fun PanelActionRow(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -348,7 +380,12 @@ private fun PanelActionRow(icon: String, label: String, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        Text(text = icon, color = PlayboardTheme.colors.brand, style = MaterialTheme.typography.bodyLarge)
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null, // the adjacent label already names the action
+            tint = PlayboardTheme.colors.brand,
+            modifier = Modifier.size(20.dp),
+        )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
