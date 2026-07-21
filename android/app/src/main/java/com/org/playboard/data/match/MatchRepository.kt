@@ -67,6 +67,10 @@ class MatchRepository @Inject constructor(
      * record. Recomputes stats server-side, so bump the data revision on success.
      * @param sets ordered (team1, team2) score pairs, set 1 first.
      * @param winningTeamNo 1 or 2.
+     * @param playedAt the match's original played time, round-tripped from the loaded
+     *   detail. The endpoint overwrites `played_at` with whatever it receives, so sending
+     *   "now" here would re-date the match to the moment it was edited and move it under
+     *   today's heading in the Matches log.
      */
     suspend fun editMatch(
         groupId: String,
@@ -75,8 +79,12 @@ class MatchRepository @Inject constructor(
         team2PlayerIds: List<String>,
         sets: List<Pair<Int, Int>>,
         winningTeamNo: Int,
+        playedAt: Instant,
     ): Result<Unit> =
-        runCatching { api.editMatch(groupId, matchId, buildRequest(team1PlayerIds, team2PlayerIds, sets, winningTeamNo)); Unit }
+        runCatching {
+            api.editMatch(groupId, matchId, buildRequest(team1PlayerIds, team2PlayerIds, sets, winningTeamNo, playedAt))
+            Unit
+        }
             .onSuccess { groupRepository.notifyMatchesChanged() }
             .recoverMatchValidation()
 
@@ -85,8 +93,9 @@ class MatchRepository @Inject constructor(
         team2PlayerIds: List<String>,
         sets: List<Pair<Int, Int>>,
         winningTeamNo: Int,
+        playedAt: Instant = Instant.now(),
     ) = RecordMatchRequestDto(
-        playedAt = Instant.now().toString(),
+        playedAt = playedAt.toString(),
         teams = listOf(
             TeamInputDto(teamNo = 1, playerIds = team1PlayerIds),
             TeamInputDto(teamNo = 2, playerIds = team2PlayerIds),

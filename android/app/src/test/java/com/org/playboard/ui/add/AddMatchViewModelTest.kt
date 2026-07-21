@@ -431,6 +431,27 @@ class AddMatchViewModelTest {
             assertEquals("recorded events", 1, recorded.size)
         }
 
+    @Test
+    fun `saving an edit keeps the original played date`() = runTest(testDispatcher) {
+        // Regression: editMatch used to reuse the create path's request builder, which
+        // stamps playedAt = now(). That re-dated every edited match to the edit time and
+        // moved it under today's heading in the Matches log.
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto("g1", "Smashers")),
+            members = fourPlayers,
+            matchDetail = detailDto(winningTeamNo = 2),
+        )
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onModeRequested("m1")
+        advanceUntilIdle()
+        viewModel.onRecord()
+        advanceUntilIdle()
+
+        assertEquals("played date round-trips", "2026-07-09T06:58:00Z", api.lastEditRequest!!.playedAt)
+    }
+
     /** A two-set match: u1/u2 (team 1) vs u3/u4 (team 2), with [winningTeamNo] marked the winner. */
     private fun detailDto(winningTeamNo: Int) = MatchDetailDto(
         id = "m1",
