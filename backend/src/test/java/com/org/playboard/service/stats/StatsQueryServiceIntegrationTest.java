@@ -110,13 +110,17 @@ class StatsQueryServiceIntegrationTest {
     }
 
     /**
-     * Everyone ends on exactly 50%, so the win-rate key can't separate anyone and the
-     * points difference has to. Carl and Dina take the most wins (2 apiece) but the
-     * worst difference — under the old "win rate, then wins" rule they'd have led the
-     * board; ranking last is what proves difference now outranks wins.
+     * Everyone ends on exactly 50%, which now separates into two tiers rather than one
+     * tie: Carl and Dina played four games to everyone else's two, so their 50% is better
+     * evidenced and rates above it (15.0 vs 9.4) even though they hold the <em>worst</em>
+     * points difference. That inverts the pre-rating behaviour, where the equal win rates
+     * tied and points difference alone decided — Carl and Dina used to rank last.
+     *
+     * <p>Points difference still decides <em>within</em> an equal rating, which is what
+     * separates Ann/Bob (+14) from Eve/Finn (0) below.
      */
     @Test
-    void pointsDifferenceBreaksWinRateTiesAheadOfWins() {
+    void moreGamesAtTheSameRateOutranksABetterPointsDifference() {
         Sport sport = sportRepository.findByCode("badminton_doubles").orElseThrow();
         User ann = userRepository.save(newUser("ann"));
         User bob = userRepository.save(newUser("bob"));
@@ -152,17 +156,27 @@ class StatsQueryServiceIntegrationTest {
         List<UUID> order = leaderboard.rankings().stream().map(LeaderboardEntryDto::userId).toList();
         assertThat(order).hasSize(6);
         // Pairs share identical stats, so their internal order is the arbitrary-but-stable id key.
-        assertThat(order.subList(0, 2)).containsExactlyInAnyOrder(ann.getId(), bob.getId());
-        assertThat(order.subList(2, 4)).containsExactlyInAnyOrder(eve.getId(), finn.getId());
-        assertThat(order.subList(4, 6)).containsExactlyInAnyOrder(carl.getId(), dina.getId());
+        assertThat(order.subList(0, 2))
+                .as("four games at 50%% is better evidenced than two, so Carl/Dina lead")
+                .containsExactlyInAnyOrder(carl.getId(), dina.getId());
+        assertThat(order.subList(2, 4))
+                .as("equal rating, so the better points difference wins")
+                .containsExactlyInAnyOrder(ann.getId(), bob.getId());
+        assertThat(order.subList(4, 6)).containsExactlyInAnyOrder(eve.getId(), finn.getId());
 
-        LeaderboardEntryDto annEntry = leaderboard.rankings().get(0);
-        assertThat(annEntry.pointsFor()).isEqualTo(40);
-        assertThat(annEntry.pointsAgainst()).isEqualTo(26);
+        LeaderboardEntryDto topEntry = leaderboard.rankings().get(0);
+        assertThat(topEntry.gamesPlayed()).isEqualTo(4);
+        assertThat(topEntry.pointsDiff()).isEqualTo(-14);
 
-        LeaderboardEntryDto lastEntry = leaderboard.rankings().get(5);
-        assertThat(lastEntry.wins()).isEqualTo(2);
-        assertThat(lastEntry.pointsFor() - lastEntry.pointsAgainst()).isEqualTo(-14);
+        // The two-game players tie on rating and split on difference.
+        assertThat(leaderboard.rankings().get(2).pointsDiff()).isEqualTo(14);
+        assertThat(leaderboard.rankings().get(4).pointsDiff()).isZero();
+        assertThat(leaderboard.rankings().get(2).rating())
+                .isEqualByComparingTo(leaderboard.rankings().get(4).rating());
+
+        // Median games is 2, so the threshold floors at 1 and nobody is provisional.
+        assertThat(leaderboard.minGamesToRank()).isEqualTo(1);
+        assertThat(leaderboard.rankings()).noneMatch(LeaderboardEntryDto::provisional);
     }
 
     /** Ordering is fully determined, so repeated reads of a tied board can't shuffle. */
@@ -179,6 +193,42 @@ class StatsQueryServiceIntegrationTest {
                 .toList();
 
         assertThat(second).containsExactlyElementsOf(first);
+    }
+
+    /**
+     * The all-time and windowed leaderboards are two different queries — a
+     * {@code member_stats} read versus a raw-match aggregate — so they can drift apart.
+     * They used to order independently (JPQL versus a Java comparator), and the old code
+     * warned that diffing one against the other "could report a rank change that never
+     * happened"; the end-of-session notification does exactly that kind of diff.
+     *
+     * <p>Both now run through {@code LeaderboardRanker}, so a window covering all of
+     * history must be indistinguishable from the all-time board. This is the regression
+     * guard that keeps it that way.
+     */
+    @Test
+    void aWindowCoveringAllHistoryMatchesTheAllTimeBoard() {
+        Fixture f = newFixture();
+        playThreeMatches(f);
+
+        LeaderboardResponse allTime = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId());
+        LeaderboardResponse windowed = statsQueryService.getLeaderboard(
+                f.group.getId(), f.raj.getId(), Instant.EPOCH, Instant.now().plus(Duration.ofDays(1)));
+
+        assertThat(windowed.minGamesToRank()).isEqualTo(allTime.minGamesToRank());
+        assertThat(windowed.rankings()).hasSameSizeAs(allTime.rankings());
+        for (int i = 0; i < allTime.rankings().size(); i++) {
+            LeaderboardEntryDto a = allTime.rankings().get(i);
+            LeaderboardEntryDto w = windowed.rankings().get(i);
+            assertThat(w.userId()).as("position %d", i).isEqualTo(a.userId());
+            assertThat(w.rank()).isEqualTo(a.rank());
+            assertThat(w.provisional()).isEqualTo(a.provisional());
+            assertThat(w.rating()).as("rating for %s", a.displayName()).isEqualByComparingTo(a.rating());
+            assertThat(w.winRate()).isEqualByComparingTo(a.winRate());
+            assertThat(w.gamesPlayed()).isEqualTo(a.gamesPlayed());
+            assertThat(w.wins()).isEqualTo(a.wins());
+            assertThat(w.pointsDiff()).isEqualTo(a.pointsDiff());
+        }
     }
 
     /**
