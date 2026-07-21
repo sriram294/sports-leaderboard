@@ -1,6 +1,7 @@
 package com.org.playboard.service.notification;
 
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
+import com.org.playboard.service.stats.LeaderboardRanker.Standings;
 import com.org.playboard.entity.group.Group;
 import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.match.MatchRepository;
@@ -91,9 +92,16 @@ public class SessionRankChangeJob {
 
         // Both sides through the same routine, so the two rankings are directly comparable.
         // `to` is exclusive, so the session's own first match is correctly outside "before".
-        List<LeaderboardEntryDto> before = statsQueryService.rankedStandings(groupId, Instant.EPOCH, start);
-        List<LeaderboardEntryDto> after = statsQueryService.rankedStandings(groupId, Instant.EPOCH, now);
-        List<RankChange> changes = RankChange.between(before, after);
+        //
+        // "after" is computed first so its provisional threshold can be pinned into
+        // "before". That threshold is derived from the group's median games played, so
+        // without pinning it, one player's session could move the median, change who counts
+        // as ranked, and shift everyone's rank — firing "you moved up a place" at people who
+        // never played. Pinned, the only movement between the two lists comes from real play.
+        Standings after = statsQueryService.rankedStandings(groupId, Instant.EPOCH, now, null);
+        Standings before =
+                statsQueryService.rankedStandings(groupId, Instant.EPOCH, start, after.minGamesToRank());
+        List<RankChange> changes = RankChange.between(before.entries(), after.entries());
         if (changes.isEmpty()) {
             return;
         }

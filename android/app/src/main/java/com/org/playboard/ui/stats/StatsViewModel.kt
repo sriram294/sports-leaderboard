@@ -100,7 +100,7 @@ class StatsViewModel @Inject constructor(
         val rankings = leaderboardRepository.getLeaderboard(group.id).getOrElse {
             _uiState.update { s -> s.copy(isLoading = false, hasLoadFailed = s.records == null) }
             return
-        }
+        }.rankings
         val matches = matchRepository.getMatches(group.id).getOrElse {
             _uiState.update { s -> s.copy(isLoading = false, hasLoadFailed = s.records == null) }
             return

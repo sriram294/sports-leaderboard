@@ -44,6 +44,7 @@ suspend fun renderAndShareLeaderboard(
     context: Context,
     group: Group,
     rankings: List<PlayerRanking>,
+    minGamesToRank: Int,
     darkTheme: Boolean,
 ) {
     val activity = ActivityProvider.currentActivity
@@ -53,7 +54,7 @@ suspend fun renderAndShareLeaderboard(
         return
     }
     try {
-        val bitmap = withContext(Dispatchers.Main) { captureCard(activity, group, rankings, darkTheme) }
+        val bitmap = withContext(Dispatchers.Main) { captureCard(activity, group, rankings, minGamesToRank, darkTheme) }
         val uri = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "shared").apply { mkdirs() }
             val file = File(dir, shareImageFileName(group.id))
@@ -82,6 +83,7 @@ private suspend fun captureCard(
     activity: Activity,
     group: Group,
     rankings: List<PlayerRanking>,
+    minGamesToRank: Int,
     darkTheme: Boolean,
 ): Bitmap {
     val root = activity.findViewById<ViewGroup>(android.R.id.content)
@@ -91,7 +93,7 @@ private suspend fun captureCard(
         layoutParams = FrameLayout.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             PlayboardTheme(darkTheme = darkTheme) {
-                LeaderboardShareCard(group = group, rankings = rankings)
+                LeaderboardShareCard(group = group, rankings = rankings, minGamesToRank = minGamesToRank)
             }
         }
     }

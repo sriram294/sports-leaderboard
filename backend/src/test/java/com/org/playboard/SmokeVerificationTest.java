@@ -145,8 +145,8 @@ class SmokeVerificationTest {
                 .orElseThrow();
         assertThat(reloadedStats.getWinRate()).isEqualByComparingTo("1.0000");
 
-        // Leaderboard ordering query
-        assertThat(memberStatsRepository.findLeaderboard(group.getId())).hasSize(1);
+        // Leaderboard rows for a group (ordering now lives in LeaderboardRanker)
+        assertThat(memberStatsRepository.findByGroupId(group.getId())).hasSize(1);
 
         // JSONB snapshot round-trip
         MatchEvent reloadedEvent = matchEventRepository.findByMatchIdOrderByCreatedAt(match.getId()).get(0);

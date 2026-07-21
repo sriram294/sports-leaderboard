@@ -19,6 +19,8 @@ import com.org.playboard.repository.match.MatchParticipantRepository.WindowedSta
 import com.org.playboard.repository.stats.MemberStatsRepository;
 import com.org.playboard.service.group.GroupMembershipGuard;
 import com.org.playboard.service.match.MatchService;
+import com.org.playboard.service.stats.LeaderboardRanker.RawStatRow;
+import com.org.playboard.service.stats.LeaderboardRanker.Standings;
 import com.org.playboard.service.user.AvatarUrlResolver;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -70,72 +72,72 @@ public class StatsQueryService {
     /**
      * Leaderboard for a group. When {@code from} and {@code to} are both supplied the
      * ranking is computed for that {@code [from, to)} window by aggregating raw matches
-     * (This Week / This Month); otherwise it reads the all-time {@code member_stats}
-     * snapshot. Both paths share the same ordering, guest-exclusion, and
-     * zero-matches-omitted rules.
+     * (This Month); otherwise it reads the all-time {@code member_stats} snapshot.
+     *
+     * <p>Both paths collect raw totals and then hand them to {@link LeaderboardRanker}, so
+     * ordering, rating and the provisional threshold have a single implementation. They
+     * previously ordered independently — one in JPQL, one in a Java comparator — which
+     * could report a rank change that never happened.
      */
     @Transactional(readOnly = true)
     public LeaderboardResponse getLeaderboard(UUID groupId, UUID callerId, Instant from, Instant to) {
         membershipGuard.requireActiveMember(groupId, callerId);
-        if (from == null || to == null) {
-            return allTimeLeaderboard(groupId);
-        }
-        return windowedLeaderboard(groupId, from, to);
+        Standings standings = from == null || to == null
+                ? allTimeStandings(groupId, null)
+                : rankedStandings(groupId, from, to, null);
+        return new LeaderboardResponse(standings.entries(), standings.minGamesToRank());
     }
 
-    private LeaderboardResponse allTimeLeaderboard(UUID groupId) {
+    /**
+     * All-time standings from the {@code member_stats} snapshot.
+     *
+     * @param thresholdOverride see {@link #rankedStandings}.
+     */
+    @Transactional(readOnly = true)
+    public Standings allTimeStandings(UUID groupId, Integer thresholdOverride) {
         // Only active, non-guest members rank — a removed member's member_stats row lingers
-        // otherwise, and guests never appear. Mirrors windowedLeaderboard's eligibility.
+        // otherwise, and guests never appear. Mirrors rankedStandings' eligibility.
         Set<UUID> eligible = groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE).stream()
                 .filter(member -> member.getRole() != GroupRole.GUEST)
                 .map(member -> member.getUser().getId())
                 .collect(Collectors.toSet());
 
-        List<LeaderboardEntryDto> rankings = new ArrayList<>();
-        int rank = 1;
-        for (MemberStats stats : memberStatsRepository.findLeaderboard(groupId)) {
-            if (stats.getMatchesPlayed() == 0 || !eligible.contains(stats.getId().getUserId())) {
+        Map<UUID, User> users = new HashMap<>();
+        List<RawStatRow> rows = new ArrayList<>();
+        for (MemberStats stats : memberStatsRepository.findByGroupId(groupId)) {
+            UUID userId = stats.getId().getUserId();
+            if (stats.getMatchesPlayed() == 0 || !eligible.contains(userId)) {
                 continue;
             }
-            User user = stats.getUser();
-            rankings.add(new LeaderboardEntryDto(
-                    rank++,
-                    user.getId(),
-                    user.getDisplayName(),
-                    avatarUrls.resolve(user.getPhotoUrl()),
-                    user.getAvatarId(),
-                    user.getAvatarColor(),
+            users.put(userId, stats.getUser());
+            rows.add(new RawStatRow(
+                    userId,
                     stats.getMatchesPlayed(),
                     stats.getWins(),
-                    stats.getLosses(),
                     stats.getPointsFor(),
                     stats.getPointsAgainst(),
-                    stats.getWinRate(),
                     stats.getCurrentStreak(),
                     stats.getBestStreak()));
         }
-        return new LeaderboardResponse(rankings);
-    }
-
-    private LeaderboardResponse windowedLeaderboard(UUID groupId, Instant from, Instant to) {
-        return new LeaderboardResponse(rankedStandings(groupId, from, to));
+        return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(users));
     }
 
     /**
      * Ranked standings computed from raw matches in {@code [from, to)}. Backs both the
-     * This Week / This Month board and the end-of-session rank-change notification,
-     * which calls it twice — with {@code from = EPOCH} so the window becomes
-     * "everything up to {@code to}" — to compare standings before and after a session.
+     * This Month board and the end-of-session rank-change notification, which calls it
+     * twice — with {@code from = EPOCH} so the window becomes "everything up to
+     * {@code to}" — to compare standings before and after a session.
      *
-     * <p>Callers that need to compare two results must both come through here. The
-     * all-time path ranks a DB-generated {@code win_rate} while this one computes a
-     * 4-dp {@link BigDecimal}; diffing one against the other could report a rank change
-     * that never happened.
+     * @param thresholdOverride pins the provisional threshold instead of deriving it from
+     *     this window's median. Callers comparing two standings <b>must</b> pin the second
+     *     to the first's {@link Standings#minGamesToRank()}: the threshold is a group
+     *     statistic, so one player's games can shift it, reshuffle the ranked set, and make
+     *     it look like players who never played changed rank.
      *
      * <p>Transactional in its own right because the job calls it outside a request.
      */
     @Transactional(readOnly = true)
-    public List<LeaderboardEntryDto> rankedStandings(UUID groupId, Instant from, Instant to) {
+    public Standings rankedStandings(UUID groupId, Instant from, Instant to, Integer thresholdOverride) {
         // Only active, non-guest members can rank (guests are excluded from the
         // leaderboard, matching the all-time member_stats path).
         Map<UUID, User> eligible = new HashMap<>();
@@ -145,57 +147,46 @@ public class StatsQueryService {
             }
         }
 
-        List<LeaderboardEntryDto> entries = new ArrayList<>();
+        List<RawStatRow> rows = new ArrayList<>();
         for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
-            User user = eligible.get(row.getUserId());
             int gamesPlayed = (int) row.getGamesPlayed();
-            if (user == null || gamesPlayed == 0) {
+            if (!eligible.containsKey(row.getUserId()) || gamesPlayed == 0) {
                 continue;
             }
-            int wins = (int) row.getWins();
-            int pointsFor = (int) row.getPointsFor();
-            int pointsAgainst = (int) row.getPointsAgainst();
-            BigDecimal winRate = BigDecimal.valueOf(wins)
-                    .divide(BigDecimal.valueOf(gamesPlayed), 4, RoundingMode.HALF_UP);
-            entries.add(new LeaderboardEntryDto(
-                    0, // rank assigned after sorting
+            rows.add(new RawStatRow(
+                    row.getUserId(),
+                    gamesPlayed,
+                    (int) row.getWins(),
+                    (int) row.getPointsFor(),
+                    (int) row.getPointsAgainst(),
+                    0, // streaks are all-time only and not shown on the board
+                    0));
+        }
+        return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(eligible));
+    }
+
+    /** Turns a raw row into a wire entry, resolving the user's display fields. */
+    private LeaderboardRanker.EntryFactory entryFactory(Map<UUID, User> users) {
+        return (row, rating, provisional) -> {
+            User user = users.get(row.userId());
+            return new LeaderboardEntryDto(
+                    0, // rank assigned by the ranker after sorting
                     user.getId(),
                     user.getDisplayName(),
                     avatarUrls.resolve(user.getPhotoUrl()),
                     user.getAvatarId(),
                     user.getAvatarColor(),
-                    gamesPlayed,
-                    wins,
-                    gamesPlayed - wins,
-                    pointsFor,
-                    pointsAgainst,
-                    winRate,
-                    0, // streaks are all-time only and not shown on the board
-                    0));
-        }
-
-        // Same canonical order as MemberStatsRepository.findLeaderboard:
-        // win rate desc, then point differential desc, then wins desc, then userId asc.
-        entries.sort(Comparator
-                .comparing(LeaderboardEntryDto::winRate).reversed()
-                .thenComparing(Comparator.comparingInt(
-                        (LeaderboardEntryDto e) -> e.pointsFor() - e.pointsAgainst()).reversed())
-                .thenComparing(Comparator.comparingInt(LeaderboardEntryDto::wins).reversed())
-                .thenComparing(LeaderboardEntryDto::userId));
-
-        List<LeaderboardEntryDto> ranked = new ArrayList<>(entries.size());
-        int rank = 1;
-        for (LeaderboardEntryDto e : entries) {
-            ranked.add(withRank(e, rank++));
-        }
-        return ranked;
-    }
-
-    private static LeaderboardEntryDto withRank(LeaderboardEntryDto e, int rank) {
-        return new LeaderboardEntryDto(
-                rank, e.userId(), e.displayName(), e.photoUrl(), e.avatarId(), e.avatarColor(),
-                e.gamesPlayed(), e.wins(), e.losses(), e.pointsFor(), e.pointsAgainst(),
-                e.winRate(), e.currentStreak(), e.bestStreak());
+                    row.gamesPlayed(),
+                    row.wins(),
+                    row.gamesPlayed() - row.wins(),
+                    row.pointsFor(),
+                    row.pointsAgainst(),
+                    LeaderboardRanker.winRate(row.wins(), row.gamesPlayed()),
+                    row.currentStreak(),
+                    row.bestStreak(),
+                    rating,
+                    provisional);
+        };
     }
 
     @Transactional(readOnly = true)

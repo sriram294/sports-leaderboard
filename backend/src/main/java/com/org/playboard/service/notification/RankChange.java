@@ -30,8 +30,13 @@ public record RankChange(UUID userId, Integer previousRank, int currentRank) {
      * rank are omitted — a "you stayed put" push carries no news and is pure volume.
      *
      * <p>Both lists must come from the same ranking routine
-     * ({@code StatsQueryService.rankedStandings}); comparing across the all-time and
-     * windowed paths can manufacture a change that didn't happen.
+     * ({@code StatsQueryService.rankedStandings}) <b>and share a pinned
+     * {@code minGamesToRank}</b>; otherwise a shift in the group's median can reshuffle the
+     * ranked set and manufacture changes for players who didn't play.
+     *
+     * <p>Provisional players are skipped on both sides — they aren't on the board yet, so
+     * they get no push, and a player crossing the threshold this session simply has no
+     * previous rank, which reads as {@link #isFirstTimeRanked()} rather than a huge climb.
      *
      * <p>A player present in {@code before} but absent from {@code after} produces
      * nothing: cumulative standings only grow, so that means they left the group.
@@ -39,11 +44,16 @@ public record RankChange(UUID userId, Integer previousRank, int currentRank) {
     public static List<RankChange> between(List<LeaderboardEntryDto> before, List<LeaderboardEntryDto> after) {
         Map<UUID, Integer> previousRanks = new HashMap<>();
         for (LeaderboardEntryDto entry : before) {
-            previousRanks.put(entry.userId(), entry.rank());
+            if (!entry.provisional()) {
+                previousRanks.put(entry.userId(), entry.rank());
+            }
         }
 
         List<RankChange> changes = new ArrayList<>();
         for (LeaderboardEntryDto entry : after) {
+            if (entry.provisional()) {
+                continue;
+            }
             Integer previous = previousRanks.get(entry.userId());
             if (previous == null || previous.intValue() != entry.rank()) {
                 changes.add(new RankChange(entry.userId(), previous, entry.rank()));

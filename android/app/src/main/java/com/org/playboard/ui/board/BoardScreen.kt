@@ -84,14 +84,14 @@ fun BoardScreen(
     val darkTheme = LocalPlayboardColors.current == DarkPlayboardColors
     BoardContent(
         uiState = uiState,
-        onSortColumnSelected = viewModel::onSortColumnSelected,
+        onCycleSortMetric = viewModel::onCycleSortMetric,
         onTimeRangeSelected = viewModel::onTimeRangeSelected,
         onRetry = viewModel::refresh,
         onPullRefresh = viewModel::onPullRefresh,
         onPlayerClick = onPlayerClick,
         onShare = {
             val group = uiState.selectedGroup ?: return@BoardContent
-            scope.launch { renderAndShareLeaderboard(context, group, uiState.rankings, darkTheme) }
+            scope.launch { renderAndShareLeaderboard(context, group, uiState.rankings, uiState.minGamesToRank, darkTheme) }
         },
     )
 }
@@ -100,7 +100,7 @@ fun BoardScreen(
 @Composable
 private fun BoardContent(
     uiState: BoardUiState,
-    onSortColumnSelected: (RankingSortColumn) -> Unit,
+    onCycleSortMetric: () -> Unit,
     onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
     onRetry: () -> Unit,
     onPullRefresh: () -> Unit,
@@ -153,8 +153,9 @@ private fun BoardContent(
                         item {
                             RankingsCard(
                                 rows = uiState.tableRows,
-                                sortColumn = uiState.sortColumn,
-                                onSortColumnSelected = onSortColumnSelected,
+                                minGamesToRank = uiState.minGamesToRank,
+                                metric = uiState.sortMetric,
+                                onMetricTap = onCycleSortMetric,
                                 onPlayerClick = onPlayerClick,
                             )
                         }
@@ -250,7 +251,7 @@ private fun TimeRangeSelector(
             modifier = Modifier.background(PlayboardTheme.colors.surface),
         ) {
             // Default (This Month) listed first; All Time last.
-            listOf(LeaderboardTimeRange.MONTH, LeaderboardTimeRange.WEEK, LeaderboardTimeRange.ALL_TIME).forEach { range ->
+            listOf(LeaderboardTimeRange.MONTH, LeaderboardTimeRange.ALL_TIME).forEach { range ->
                 DropdownMenuItem(
                     text = {
                         Text(
@@ -273,7 +274,6 @@ private fun TimeRangeSelector(
 private val LeaderboardTimeRange.label: String
     get() = when (this) {
         LeaderboardTimeRange.MONTH -> "This Month"
-        LeaderboardTimeRange.WEEK -> "This Week"
         LeaderboardTimeRange.ALL_TIME -> "All Time"
     }
 
@@ -388,7 +388,9 @@ private fun PodiumSlot(
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "${entry.winRatePercent}% win rate",
+            // The rating, not the win rate — the podium is ordered by rating, and two
+            // players can share a rounded win% while sitting in a definite order.
+            text = if (entry.rating != null) "${entry.ratingLabel} rating" else "${entry.winRatePercent}% win rate",
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
             color = if (isChampion) color else PlayboardTheme.colors.textMuted,
             fontWeight = if (isChampion) FontWeight.SemiBold else FontWeight.Medium,
@@ -397,19 +399,12 @@ private fun PodiumSlot(
     }
 }
 
-// Fixed numeric column widths so the header row and data rows line up.
-private val GpColumnWidth = 32.dp
-private val WinsColumnWidth = 26.dp
-private val LossesColumnWidth = 26.dp
-// Wider than the PF column it replaced: values carry a sign ("+135", "-104").
-private val PointsDiffColumnWidth = 46.dp
-private val WinRateColumnWidth = 56.dp
-
 @Composable
 private fun RankingsCard(
     rows: List<PlayerRanking>,
-    sortColumn: RankingSortColumn,
-    onSortColumnSelected: (RankingSortColumn) -> Unit,
+    minGamesToRank: Int,
+    metric: RankingSortMetric,
+    onMetricTap: () -> Unit,
     onPlayerClick: (String) -> Unit,
 ) {
     // The hairline edge is what makes the card read as sitting *above* the ambient glow;
@@ -423,143 +418,25 @@ private fun RankingsCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
-            RankingsHeaderRow(sortColumn = sortColumn, onSortColumnSelected = onSortColumnSelected)
+            LeaderboardHeaderRow(metric = metric, onMetricTap = onMetricTap)
+            var previousWasRanked = true
             rows.forEach { row ->
-                HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.12f))
-                RankingRow(entry = row, onPlayerClick = onPlayerClick)
+                // A slightly stronger rule marks the ranked/provisional boundary, so the
+                // block below reads as a separate group rather than more of the table.
+                val boundary = previousWasRanked && row.provisional
+                HorizontalDivider(
+                    color = PlayboardTheme.colors.textMuted.copy(alpha = if (boundary) 0.28f else 0.12f),
+                )
+                LeaderboardRow(
+                    entry = row,
+                    minGamesToRank = minGamesToRank,
+                    metric = metric,
+                    onClick = { onPlayerClick(row.userId) },
+                )
+                previousWasRanked = !row.provisional
             }
         }
     }
-}
-
-@Composable
-private fun RankingsHeaderRow(
-    sortColumn: RankingSortColumn,
-    onSortColumnSelected: (RankingSortColumn) -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-        HeaderLabel(text = "#", modifier = Modifier.width(24.dp))
-        HeaderLabel(text = "PLAYER", modifier = Modifier.weight(1f))
-        SortableHeaderLabel("GP", RankingSortColumn.GAMES_PLAYED, sortColumn, onSortColumnSelected, GpColumnWidth)
-        SortableHeaderLabel("W", RankingSortColumn.WINS, sortColumn, onSortColumnSelected, WinsColumnWidth)
-        SortableHeaderLabel("L", RankingSortColumn.LOSSES, sortColumn, onSortColumnSelected, LossesColumnWidth)
-        SortableHeaderLabel("DIFF", RankingSortColumn.POINTS_DIFF, sortColumn, onSortColumnSelected, PointsDiffColumnWidth)
-        SortableHeaderLabel("WIN%", RankingSortColumn.WIN_RATE, sortColumn, onSortColumnSelected, WinRateColumnWidth)
-    }
-}
-
-@Composable
-private fun HeaderLabel(text: String, modifier: Modifier = Modifier, color: Color = PlayboardTheme.colors.textMuted) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-        color = color,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun SortableHeaderLabel(
-    text: String,
-    column: RankingSortColumn,
-    activeColumn: RankingSortColumn,
-    onSortColumnSelected: (RankingSortColumn) -> Unit,
-    width: Dp,
-) {
-    val isActive = column == activeColumn
-    Box(
-        contentAlignment = Alignment.CenterEnd,
-        modifier = Modifier
-            .width(width)
-            .clip(RoundedCornerShape(4.dp))
-            .clickable { onSortColumnSelected(column) },
-    ) {
-        HeaderLabel(
-            text = if (isActive) "$text ▾" else text,
-            color = if (isActive) PlayboardTheme.colors.textPrimary else PlayboardTheme.colors.textMuted,
-        )
-    }
-}
-
-@Composable
-private fun RankingRow(entry: PlayerRanking, onPlayerClick: (String) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onPlayerClick(entry.userId) }
-            .padding(vertical = 10.dp),
-    ) {
-        Text(
-            text = entry.rank.toString(),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = rankColor(entry.rank),
-            modifier = Modifier.width(24.dp),
-        )
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            PlayerAvatar(
-                displayName = entry.displayName,
-                photoUrl = entry.photoUrl,
-                avatarId = entry.avatarId,
-                avatarColorHex = entry.avatarColor,
-                size = 32.dp,
-            )
-            Text(
-                text = entry.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = PlayboardTheme.colors.textPrimary,
-                maxLines = 1,
-                modifier = Modifier.padding(start = 10.dp),
-            )
-        }
-        StatCell(text = entry.gamesPlayed.toString(), color = PlayboardTheme.colors.textPrimary, width = GpColumnWidth)
-        StatCell(text = entry.wins.toString(), color = PlayboardTheme.colors.statWin, width = WinsColumnWidth)
-        StatCell(text = entry.losses.toString(), color = PlayboardTheme.colors.statLoss, width = LossesColumnWidth)
-        StatCell(text = entry.pointsDiffLabel, color = pointsDiffColor(entry.pointsDiff), width = PointsDiffColumnWidth)
-        StatCell(
-            text = "${entry.winRatePercent}%",
-            color = winRateColor(entry.winRatePercent),
-            width = WinRateColumnWidth,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun StatCell(text: String, color: Color, width: Dp, fontWeight: FontWeight = FontWeight.Medium) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-        fontWeight = fontWeight,
-        color = color,
-        textAlign = TextAlign.End,
-        modifier = Modifier.width(width),
-    )
-}
-
-@Composable
-private fun rankColor(rank: Int): Color = when (rank) {
-    1 -> PlayboardTheme.colors.brand
-    2 -> PlayboardTheme.colors.textPrimary
-    3 -> PlayboardTheme.colors.winRateMid
-    else -> PlayboardTheme.colors.textMuted
-}
-
-@Composable
-private fun winRateColor(percent: Int): Color = when {
-    percent >= 50 -> PlayboardTheme.colors.brand
-    percent >= 25 -> PlayboardTheme.colors.winRateMid
-    else -> PlayboardTheme.colors.winRateLow
-}
-
-// Matches the W/L columns: outscoring opponents reads green, being outscored red.
-@Composable
-private fun pointsDiffColor(diff: Int): Color = when {
-    diff > 0 -> PlayboardTheme.colors.statWin
-    diff < 0 -> PlayboardTheme.colors.statLoss
-    else -> PlayboardTheme.colors.textMuted
 }
 
 @Composable
@@ -604,7 +481,6 @@ private fun NoGroupsState() {
 @Composable
 private fun NoMatchesBlock(range: LeaderboardTimeRange) {
     val message = when (range) {
-        LeaderboardTimeRange.WEEK -> "No matches this week yet.\nRecord one to rank this week."
         LeaderboardTimeRange.MONTH -> "No matches this month yet.\nRecord one to rank this month."
         LeaderboardTimeRange.ALL_TIME -> "No matches recorded yet.\nRankings appear after the first match."
     }
@@ -627,19 +503,24 @@ private val previewGroups = listOf(
     Group(id = "g1", name = "Saturday Smashers", avatarColor = "#C7EA2B", memberCount = 6, matchCount = 10, myRole = "owner"),
 )
 
+// Covers the three cases most likely to break the two-line layout and that no test can
+// catch (there are no Compose UI tests): a name long enough to need ellipsis, two ratings
+// that round to the same displayed value, and a provisional block.
 private val previewRankings = listOf(
-    PlayerRanking(1, "u1", "Priya", null, null, "#FF3D8A", 6, 6, 0, 252, 180, 1.0),
-    PlayerRanking(2, "u2", "Dev", null, null, "#3DB4FF", 6, 5, 1, 245, 205, 0.83),
-    PlayerRanking(3, "u3", "Raj", null, null, "#9ADE28", 8, 4, 4, 315, 310, 0.5),
-    PlayerRanking(4, "u4", "Marcus", null, null, "#FF8A3D", 7, 2, 5, 265, 290, 0.29),
-    PlayerRanking(5, "u5", "Kiran", null, null, "#EAC72B", 7, 2, 5, 263, 295, 0.29),
-    PlayerRanking(6, "u6", "Sam", null, null, "#8A6CFF", 6, 1, 5, 226, 270, 0.17),
+    PlayerRanking(1, "u1", "Priya", null, null, "#FF3D8A", 37, 22, 15, 800, 724, 0.59, rating = 43.5),
+    PlayerRanking(2, "u2", "Bartholomew Fitzgerald-Smythe", null, null, "#3DB4FF", 41, 24, 17, 800, 803, 0.59, rating = 43.4),
+    PlayerRanking(3, "u3", "Raj", null, null, "#9ADE28", 50, 27, 23, 900, 796, 0.54, rating = 40.4),
+    PlayerRanking(4, "u4", "Marcus", null, null, "#FF8A3D", 30, 13, 17, 600, 619, 0.43, rating = 27.4),
+    PlayerRanking(5, "u5", "Kiran", null, null, "#EAC72B", 26, 9, 17, 500, 573, 0.35, rating = 19.4),
+    PlayerRanking(6, "u6", "mugu", null, null, "#8A6CFF", 7, 6, 1, 150, 120, 0.86, rating = 48.7, provisional = true),
+    PlayerRanking(7, "u7", "Sam", null, null, "#C026D3", 3, 1, 2, 60, 70, 0.33, rating = 6.7, provisional = true),
 )
 
 private val previewState = BoardUiState(
     isLoading = false,
     selectedGroup = previewGroups.first(),
     rankings = previewRankings,
+    minGamesToRank = 10,
     recentForm = listOf(true, true, false, true, false),
 )
 
@@ -650,7 +531,7 @@ private fun BoardContentPreview() {
         PlayboardBackground {
             BoardContent(
                 uiState = previewState,
-                onSortColumnSelected = {},
+                onCycleSortMetric = {},
                 onTimeRangeSelected = {},
                 onRetry = {},
                 onPullRefresh = {},

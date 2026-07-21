@@ -193,39 +193,56 @@ GROUP_MEMBER_EXISTS` if they're already an active member.
 ## Leaderboard & Player Stats
 
 ### `GET /groups/{groupId}/leaderboard`
-Server-sorted by win rate desc, then points difference (`pointsFor` −
+Server-sorted by `rating` desc, then points difference (`pointsFor` −
 `pointsAgainst`) desc, then wins desc, with a final user-id key so fully tied
 rows keep a stable order across requests. `rank` is the position in that list
 (1-based, no shared ranks); members with zero matches are omitted. The Board
-screen's podium is just the first 3 entries of this same list — no separate
-endpoint, so podium and table never disagree.
+screen's podium is the first 3 **non-provisional** entries of this same list —
+no separate endpoint, so podium and table never disagree.
 
-Note the `member_stats` index covers `(group_id, win_rate desc, wins desc)`
-only, so the difference key is sorted in memory — negligible at group sizes.
+Ordering is computed in Java for both the all-time and windowed paths, so they
+cannot drift apart; there is deliberately no `ORDER BY` in the query.
 ```json
 { "rankings": [
   { "rank": 1, "userId": "uuid", "displayName": "Priya", "photoUrl": null,
     "avatarColor": "#FF3D8A", "gamesPlayed": 6, "wins": 6, "losses": 0,
     "pointsFor": 252, "pointsAgainst": 180, "winRate": 1.0,
-    "currentStreak": 6, "bestStreak": 6 }
-] }
+    "currentStreak": 6, "bestStreak": 6, "rating": 54.1, "provisional": false }
+], "minGamesToRank": 3 }
 ```
 `pointsAgainst` was added alongside the difference tiebreak; `pointsFor` is
 retained (rather than replaced by a computed difference) so clients built
 against the earlier shape keep deserializing.
 
+**`rating`** is the Wilson score lower bound on the win rate, scaled to 0–100
+with one decimal — a confidence-adjusted win rate, so a small sample scores
+below a long record at the same raw percentage. Sorting uses the unrounded
+value.
+
+**`minGamesToRank`** is a group-level scalar, `max(1, min(10, ceil(median(games
+played) / 2)))` over players with at least one game. Players below it have
+`provisional: true`: they are listed **after** every ranked player and are
+excluded from the podium, but they still carry a continuing `rank` (N+1, N+2, …)
+rather than a sentinel, so clients that predate the flag still render a sanely
+numbered list. Clients derive "N more to rank" as
+`minGamesToRank - gamesPlayed`.
+
 **Optional time window (`?from=…&to=…`).** Supply both `from` and `to` as
 ISO-8601 instants to scope the ranking to the half-open interval `[from, to)`
-by `match.playedAt` — this backs the Board's "This Week" / "This Month" toggle.
-The client computes the calendar boundaries in device-local time (month =
-current calendar month; week = current calendar week starting Monday) and sends
-the resulting UTC instants, so members in different zones split boundaries by
-their own midnight. Omit both params for the all-time ranking (the default and
+by `match.playedAt` — this backs the Board's "This Month" toggle. The client
+computes the calendar boundaries in device-local time (month = current calendar
+month) and sends the resulting UTC instants, so members in different zones split
+boundaries by their own midnight. There is no weekly window: `rating` is computed
+over the selected window, and one or two sessions is too few games for it to
+separate anyone. Omit both params for the all-time ranking (the default and
 the original behavior). Windowed responses use the identical shape, ordering,
 guest-exclusion, and zero-matches-omitted rules as all-time; the only difference
 is `currentStreak`/`bestStreak` are `0` (streaks are all-time-only and the board
 doesn't render them). All-time reads the materialized `member_stats` snapshot;
-windowed aggregates raw matches on demand.
+windowed aggregates raw matches on demand. A window covering all of history is
+otherwise identical to the all-time response, including every `rating` — pinned
+by an integration test, because the end-of-session rank-change notification
+diffs two of these responses and any divergence would invent rank changes.
 
 ### `GET /groups/{groupId}/members/{userId}/stats`
 Backs both the Profile tab (own stats) and tapping a player from the

@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
+import com.org.playboard.ui.board.LeaderboardHeaderRow
+import com.org.playboard.ui.board.LeaderboardRow
+import com.org.playboard.ui.board.RankingSortMetric
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.playboardGlow
 import com.org.playboard.ui.components.avatarColor
@@ -52,11 +55,14 @@ import java.time.format.DateTimeFormatter
 fun LeaderboardShareCard(
     group: Group,
     rankings: List<PlayerRanking>,
+    minGamesToRank: Int,
     modifier: Modifier = Modifier,
     date: LocalDate = LocalDate.now(),
 ) {
-    val podium = rankings.take(3)
+    // Ranked players only, on both the podium and the table — a provisional player
+    // shouldn't be crowned in an image that outlives the moment.
     val rows = topRankings(rankings)
+    val podium = rows.take(3)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -89,7 +95,7 @@ fun LeaderboardShareCard(
         SharePodium(podium = podium)
 
         Spacer(modifier = Modifier.height(24.dp))
-        ShareRankingsCard(rows = rows)
+        ShareRankingsCard(rows = rows, minGamesToRank = minGamesToRank)
     }
 }
 
@@ -190,7 +196,7 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "${entry.winRatePercent}% win rate",
+            text = if (entry.rating != null) "${entry.ratingLabel} rating" else "${entry.winRatePercent}% win rate",
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
             color = if (isChampion) color else PlayboardTheme.colors.textMuted,
             fontWeight = if (isChampion) FontWeight.SemiBold else FontWeight.Medium,
@@ -199,120 +205,29 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
     }
 }
 
-// Fixed numeric column widths so the header row and data rows line up. Kept compact so
-// the flexible PLAYER column keeps enough room for full names.
-private val GpColumnWidth = 32.dp
-private val WinsColumnWidth = 26.dp
-private val LossesColumnWidth = 26.dp
-// Wider than the PF column it replaced: values carry a sign ("+135", "-104").
-private val PointsDiffColumnWidth = 46.dp
-private val WinRateColumnWidth = 52.dp
-
 @Composable
-private fun ShareRankingsCard(rows: List<PlayerRanking>) {
+private fun ShareRankingsCard(rows: List<PlayerRanking>, minGamesToRank: Int) {
+    // Same table as the Board, via the shared component — these were two hand-maintained
+    // copies that had already drifted (WIN% 52dp here vs 56dp there, and a rank header
+    // 6dp wider than its own cells).
     Surface(shape = RoundedCornerShape(20.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                ShareHeaderLabel("#", Modifier.width(28.dp))
-                ShareHeaderLabel("PLAYER", Modifier.weight(1f))
-                ShareHeaderLabel("GP", Modifier.width(GpColumnWidth), TextAlign.End)
-                ShareHeaderLabel("W", Modifier.width(WinsColumnWidth), TextAlign.End)
-                ShareHeaderLabel("L", Modifier.width(LossesColumnWidth), TextAlign.End)
-                ShareHeaderLabel("DIFF", Modifier.width(PointsDiffColumnWidth), TextAlign.End)
-                ShareHeaderLabel("WIN%", Modifier.width(WinRateColumnWidth), TextAlign.End)
-            }
+            // Nothing is tappable in an exported image, so no caret and no ripple.
+            LeaderboardHeaderRow(metric = RankingSortMetric.RATING, onMetricTap = null)
             rows.forEach { row ->
                 HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.12f))
-                ShareRankingRow(entry = row)
+                LeaderboardRow(
+                    entry = row,
+                    minGamesToRank = minGamesToRank,
+                    metric = RankingSortMetric.RATING,
+                    // The offscreen renderer can't fetch network images.
+                    showPhoto = false,
+                )
             }
         }
     }
-}
-
-@Composable
-private fun ShareHeaderLabel(text: String, modifier: Modifier = Modifier, textAlign: TextAlign = TextAlign.Start) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-        color = PlayboardTheme.colors.textMuted,
-        textAlign = textAlign,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun ShareRankingRow(entry: PlayerRanking) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-    ) {
-        Text(
-            text = entry.rank.toString(),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = rankColor(entry.rank),
-            modifier = Modifier.width(22.dp),
-        )
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            PlayerAvatar(
-                displayName = entry.displayName,
-                photoUrl = null,
-                avatarColorHex = entry.avatarColor,
-                size = 32.dp,
-            )
-            Text(
-                text = entry.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = PlayboardTheme.colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 10.dp),
-            )
-        }
-        ShareStatCell(entry.gamesPlayed.toString(), PlayboardTheme.colors.textPrimary, GpColumnWidth)
-        ShareStatCell(entry.wins.toString(), PlayboardTheme.colors.statWin, WinsColumnWidth)
-        ShareStatCell(entry.losses.toString(), PlayboardTheme.colors.statLoss, LossesColumnWidth)
-        ShareStatCell(entry.pointsDiffLabel, pointsDiffColor(entry.pointsDiff), PointsDiffColumnWidth)
-        ShareStatCell("${entry.winRatePercent}%", winRateColor(entry.winRatePercent), WinRateColumnWidth, FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun ShareStatCell(text: String, color: Color, width: Dp, fontWeight: FontWeight = FontWeight.Medium) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-        fontWeight = fontWeight,
-        color = color,
-        textAlign = TextAlign.End,
-        modifier = Modifier.width(width),
-    )
-}
-
-@Composable
-private fun rankColor(rank: Int): Color = when (rank) {
-    1 -> PlayboardTheme.colors.brand
-    2 -> PlayboardTheme.colors.textPrimary
-    3 -> PlayboardTheme.colors.winRateMid
-    else -> PlayboardTheme.colors.textMuted
-}
-
-@Composable
-private fun winRateColor(percent: Int): Color = when {
-    percent >= 50 -> PlayboardTheme.colors.brand
-    percent >= 25 -> PlayboardTheme.colors.winRateMid
-    else -> PlayboardTheme.colors.winRateLow
-}
-
-// Matches the W/L columns: outscoring opponents reads green, being outscored red.
-@Composable
-private fun pointsDiffColor(diff: Int): Color = when {
-    diff > 0 -> PlayboardTheme.colors.statWin
-    diff < 0 -> PlayboardTheme.colors.statLoss
-    else -> PlayboardTheme.colors.textMuted
 }
 
 private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
@@ -328,13 +243,16 @@ private val previewRankings = listOf(
     PlayerRanking(6, "u6", "Pari", null, null, "#8A6CFF", 6, 2, 4, 101, 112, 0.33),
 )
 
-@Preview(widthDp = 380, heightDp = 900, showBackground = true)
+// 460dp matches LeaderboardShareRenderer's real render width; the old 380 made the
+// preview a misleadingly narrow proxy.
+@Preview(widthDp = 460, heightDp = 900, showBackground = true)
 @Composable
 private fun LeaderboardShareCardPreview() {
     PlayboardTheme {
         LeaderboardShareCard(
             group = Group(id = "g1", name = "Old Monk Badminton", avatarColor = "#9ADE28", memberCount = 8, matchCount = 20, myRole = "owner"),
             rankings = previewRankings,
+            minGamesToRank = 3,
             date = LocalDate.of(2026, 7, 14),
         )
     }

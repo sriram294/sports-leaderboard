@@ -122,6 +122,8 @@ private fun entryDto(
     pointsFor: Int,
     winRate: Double,
     pointsAgainst: Int = 0,
+    rating: Double? = 40.0,
+    provisional: Boolean = false,
 ) = LeaderboardEntryDto(
     rank = rank,
     userId = "user-$name",
@@ -134,6 +136,8 @@ private fun entryDto(
     pointsFor = pointsFor,
     pointsAgainst = pointsAgainst,
     winRate = winRate,
+    rating = rating,
+    provisional = provisional,
 )
 
 /**
@@ -287,7 +291,7 @@ class BoardViewModelTest {
     }
 
     @Test
-    fun `table sorts by the selected column while podium keeps canonical order`() = runTest(testDispatcher) {
+    fun `table sorts by the selected metric while podium keeps canonical order`() = runTest(testDispatcher) {
         val api = FakePlayboardApi(
             groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
             leaderboardResult = {
@@ -308,7 +312,9 @@ class BoardViewModelTest {
         repo.refreshGroups()
         advanceUntilIdle()
 
-        viewModel.onSortColumnSelected(RankingSortColumn.POINTS_DIFF)
+        // RATING -> WIN_RATE -> GAMES -> POINTS_DIFF
+        repeat(3) { viewModel.onCycleSortMetric() }
+        assertEquals(RankingSortMetric.POINTS_DIFF, viewModel.uiState.value.sortMetric)
 
         val state = viewModel.uiState.value
         assertEquals(listOf("Dev", "Priya", "Raj"), state.tableRows.map { it.displayName })
@@ -352,7 +358,7 @@ class BoardViewModelTest {
     }
 
     @Test
-    fun `selecting This Week scopes the fetch to the week window`() = runTest(testDispatcher) {
+    fun `selecting All Time drops the window so the backend reads the snapshot`() = runTest(testDispatcher) {
         val api = FakePlayboardApi(
             groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
             leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
@@ -362,10 +368,32 @@ class BoardViewModelTest {
         repo.refreshGroups()
         advanceUntilIdle()
 
-        viewModel.onTimeRangeSelected(LeaderboardTimeRange.WEEK)
+        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
         advanceUntilIdle()
 
-        val (from, to) = LeaderboardTimeRange.WEEK.window()!!
+        assertNull(api.lastFrom)
+        assertNull(api.lastTo)
+    }
+
+    @Test
+    fun `selecting This Month scopes the fetch to the month window`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+        )
+        val repo = repo(api)
+        val viewModel = viewModel(repo, api)
+        repo.refreshGroups()
+        advanceUntilIdle()
+
+        // MONTH is the default, so selecting it directly would early-return without a
+        // fetch. Go via ALL_TIME so the switch back to MONTH is a real change.
+        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
+        advanceUntilIdle()
+        viewModel.onTimeRangeSelected(LeaderboardTimeRange.MONTH)
+        advanceUntilIdle()
+
+        val (from, to) = LeaderboardTimeRange.MONTH.window()!!
         assertNotNull(from)
         assertEquals(from, api.lastFrom)
         assertEquals(to, api.lastTo)
