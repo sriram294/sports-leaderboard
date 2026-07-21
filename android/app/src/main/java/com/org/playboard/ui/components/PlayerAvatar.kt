@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,7 +71,12 @@ fun PlayerAvatar(
         Text(
             text = displayName.take(1).uppercase(),
             color = color,
-            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = (size.value * 0.4).sp),
+            // Built from the theme style rather than a bare TextStyle so the initial keeps
+            // the app's UI face — a fresh TextStyle would drop back to the system default.
+            style = LocalTextStyle.current.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value * 0.4).sp,
+            ),
         )
         if (imageModel != null) {
             AsyncImage(
@@ -102,7 +107,10 @@ fun GroupAvatar(
         Text(
             text = name.take(1).uppercase(),
             color = DarkOnBrand,
-            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = (size.value * 0.45).sp),
+            style = LocalTextStyle.current.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value * 0.45).sp,
+            ),
         )
     }
 }
