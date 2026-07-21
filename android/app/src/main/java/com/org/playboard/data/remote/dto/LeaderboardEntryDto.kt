@@ -3,8 +3,8 @@ package com.org.playboard.data.remote.dto
 import kotlinx.serialization.Serializable
 
 /**
- * One row of `GET /groups/{groupId}/leaderboard` — server-sorted by win rate
- * desc, then points difference desc, then wins desc
+ * One row of `GET /groups/{groupId}/leaderboard` — server-sorted by rating desc,
+ * then points difference desc, then wins desc
  * (docs/backend/api-contracts.md § Leaderboard).
  */
 @Serializable
@@ -27,4 +27,11 @@ data class LeaderboardEntryDto(
     // Defaulted so a pre-streak backend's JSON still deserializes during rollout.
     val currentStreak: Int = 0,
     val bestStreak: Int = 0,
+    // Wilson score lower bound on the win rate, 0-100. Nullable rather than defaulted to
+    // 0.0 — unlike the fields above, 0.0 is a *legitimate* rating for a winless player, so
+    // a default would make "backend predates ratings" indistinguishable from "has never
+    // won". The UI falls back to showing win% while this is null.
+    val rating: Double? = null,
+    // Below the group's minGamesToRank: listed, but not ranked.
+    val provisional: Boolean = false,
 )

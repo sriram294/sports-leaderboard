@@ -108,8 +108,12 @@ class BoardViewModel @Inject constructor(
         }
     }
 
-    fun onSortColumnSelected(column: RankingSortColumn) {
-        _uiState.update { it.copy(sortColumn = column) }
+    /**
+     * Advance the table to the next sort metric. The header is one tappable control rather
+     * than a row of sortable columns — the two-line rows have no column headers to tap.
+     */
+    fun onCycleSortMetric() {
+        _uiState.update { it.copy(sortMetric = it.sortMetric.next()) }
     }
 
     /**
@@ -130,6 +134,11 @@ class BoardViewModel @Inject constructor(
 
     private suspend fun applySelection(group: Group?, loadState: GroupsLoadState) {
         if (group != null) {
+            // A different group is a different board, so the metric goes back to the
+            // default; within one group it persists across reloads.
+            if (_uiState.value.selectedGroup?.id != group.id) {
+                _uiState.update { it.copy(sortMetric = RankingSortMetric.RATING) }
+            }
             loadLeaderboard(group, showLoading = true)
             return
         }
@@ -149,13 +158,16 @@ class BoardViewModel @Inject constructor(
         // Scope the fetch to the selected calendar window (null,null => all-time).
         val (from, to) = _uiState.value.selectedTimeRange.window() ?: (null to null)
         leaderboardRepository.getLeaderboard(group.id, from, to)
-            .onSuccess { rankings ->
+            .onSuccess { leaderboard ->
+                // The chosen metric deliberately survives here. It used to reset on every
+                // fetch, so a pull-refresh, a time-range switch or simply recording a match
+                // silently threw away the user's choice.
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         selectedGroup = group,
-                        rankings = rankings,
-                        sortColumn = RankingSortColumn.WIN_RATE,
+                        rankings = leaderboard.rankings,
+                        minGamesToRank = leaderboard.minGamesToRank,
                     )
                 }
             }

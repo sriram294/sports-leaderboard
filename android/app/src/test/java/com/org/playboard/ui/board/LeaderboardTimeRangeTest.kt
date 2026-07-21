@@ -28,16 +28,13 @@ class LeaderboardTimeRangeTest {
     }
 
     @Test
-    fun `week starts on the Monday on or before today`() {
-        // 2026-07-15 is a Wednesday → back to Monday the 13th, through the next Monday.
-        val window = LeaderboardTimeRange.WEEK.window(today = LocalDate.of(2026, 7, 15), zone = utc)
-        assertEquals("2026-07-13T00:00:00Z" to "2026-07-20T00:00:00Z", window)
-    }
-
-    @Test
-    fun `week on a Monday uses that same Monday`() {
-        val window = LeaderboardTimeRange.WEEK.window(today = LocalDate.of(2026, 7, 13), zone = utc)
-        assertEquals("2026-07-13T00:00:00Z" to "2026-07-20T00:00:00Z", window)
+    fun `only month and all-time windows exist`() {
+        // A weekly window was removed with the rating change: one or two sessions is too
+        // few games for a confidence-adjusted rating to separate anyone.
+        assertEquals(
+            listOf(LeaderboardTimeRange.MONTH, LeaderboardTimeRange.ALL_TIME),
+            LeaderboardTimeRange.entries.toList(),
+        )
     }
 
     @Test
