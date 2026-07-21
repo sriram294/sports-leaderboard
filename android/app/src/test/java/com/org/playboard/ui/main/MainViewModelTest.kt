@@ -14,6 +14,7 @@ import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
@@ -55,6 +56,7 @@ private class FakePlayboardApi(
     override suspend fun registerDevice(request: RegisterDeviceRequestDto) = error("unused")
     override suspend fun unregisterDevice(request: UnregisterDeviceRequestDto) = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
+    override suspend fun getGroupTrophies(groupId: String, limit: Int): List<MonthlyTrophyDto> = emptyList()
     override suspend fun addMember(groupId: String, request: AddMemberRequestDto): MemberDto = error("unused")
     override suspend fun removeMember(groupId: String, userId: String) = error("unused")
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")

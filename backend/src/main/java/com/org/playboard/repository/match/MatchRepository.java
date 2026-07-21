@@ -83,4 +83,29 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
         order by m.playedAt asc
         """)
     List<Instant> findPlayedAtSince(@Param("groupId") UUID groupId, @Param("since") Instant since);
+
+    // --- Monthly trophies (MonthlyTrophyJob) ---
+
+    /**
+     * Every group that has ever played, with its first match — the point from which
+     * completed months are enumerated.
+     *
+     * <p>Unbounded by design, unlike {@link #findGroupIdsWithMatchesSince}: a group that
+     * stopped playing months ago may still have an unawarded month, and a "recent activity"
+     * filter would silently skip it forever. It is one grouped scan of an index-covered
+     * column, run a few times a day.
+     */
+    @Query("""
+        select m.group.id as groupId, min(m.playedAt) as firstPlayedAt from Match m
+        where m.deleted = false
+        group by m.group.id
+        """)
+    List<GroupFirstMatch> findGroupFirstMatches();
+
+    /** Projection for {@link #findGroupFirstMatches()}. */
+    interface GroupFirstMatch {
+        UUID getGroupId();
+
+        Instant getFirstPlayedAt();
+    }
 }

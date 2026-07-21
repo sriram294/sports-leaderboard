@@ -33,4 +33,14 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
     long countByGroupIdAndStatusAndRoleNot(UUID groupId, MemberStatus status, GroupRole role);
 
     List<GroupMember> findByGroupIdAndStatusAndRole(UUID groupId, MemberStatus status, GroupRole role);
+
+    /**
+     * Every membership row for a group, whatever its status.
+     *
+     * <p>Deliberately status-agnostic, unlike its neighbours: it resolves the identities
+     * behind historical records (monthly trophies), and a player who has since left the
+     * group still won the month they won. Filtering to ACTIVE here would make past winners
+     * vanish from the roll of honour the moment they leave.
+     */
+    List<GroupMember> findByGroupId(UUID groupId);
 }

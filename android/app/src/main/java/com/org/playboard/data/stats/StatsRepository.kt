@@ -12,7 +12,9 @@ import com.org.playboard.data.remote.dto.MatchPlayerDto
 import com.org.playboard.data.remote.dto.MatchSetDto
 import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
+import com.org.playboard.data.trophy.toMonthlyTrophyOrNull
 import com.org.playboard.di.AuthenticatedApi
 import java.time.Instant
 import java.time.LocalDate
@@ -66,6 +68,8 @@ private fun PlayerStatsDto.toStats() = PlayerStats(
     bestStreak = bestStreak,
     bestPartner = bestPartner?.toBestPartner(),
     recentMatches = recentMatches.map(MatchSummaryDto::toMatch),
+    // mapNotNull so a malformed trophy row costs its own badge, not the whole profile.
+    trophies = trophies.mapNotNull(MonthlyTrophyDto::toMonthlyTrophyOrNull),
 )
 
 private fun BestPartnerDto.toBestPartner() = BestPartner(

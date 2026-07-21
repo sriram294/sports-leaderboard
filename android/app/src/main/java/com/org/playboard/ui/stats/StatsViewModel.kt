@@ -7,6 +7,7 @@ import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.model.Group
+import com.org.playboard.data.trophy.TrophyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ class StatsViewModel @Inject constructor(
     private val groupRepository: GroupRepository,
     private val leaderboardRepository: LeaderboardRepository,
     private val matchRepository: MatchRepository,
+    private val trophyRepository: TrophyRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StatsUiState())
@@ -89,6 +91,7 @@ class StatsViewModel @Inject constructor(
                 bestPartnership = null,
                 recentForm = emptyList(),
                 biggestWin = null,
+                monthlyWinners = emptyList(),
             )
         }
     }
@@ -105,6 +108,10 @@ class StatsViewModel @Inject constructor(
             _uiState.update { s -> s.copy(isLoading = false, hasLoadFailed = s.records == null) }
             return
         }.matches
+        // Trophies are decoration on a page whose substance is the sections above, so a
+        // failure here degrades to an absent card rather than blanking the whole screen —
+        // the same treatment Profile gives its attendance calendar.
+        val monthlyWinners = trophyRepository.getGroupTrophies(group.id).getOrDefault(emptyList())
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -115,6 +122,7 @@ class StatsViewModel @Inject constructor(
                 bestPartnership = computeBestPartnership(matches),
                 recentForm = computeRecentForm(matches, rankings),
                 biggestWin = computeBiggestWin(matches),
+                monthlyWinners = monthlyWinners,
             )
         }
     }

@@ -26,6 +26,7 @@ import com.org.playboard.data.remote.dto.MatchSetDto
 import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerAttendanceDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -48,6 +49,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
 import org.junit.After
+import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -101,6 +103,7 @@ private open class FakePlayboardApi(
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("unused")
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
+    override suspend fun getGroupTrophies(groupId: String, limit: Int): List<MonthlyTrophyDto> = emptyList()
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun removeMember(groupId: String, userId: String) = error("unused")
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
@@ -130,7 +133,12 @@ private fun groupDto() = GroupDto(
 
 private fun player(id: String, name: String) = MatchPlayerDto(id, name, "#FF3D8A", null)
 
-private fun statsDto(userId: String = "u1", displayName: String = "Raj", withPartner: Boolean = true) = PlayerStatsDto(
+private fun statsDto(
+    userId: String = "u1",
+    displayName: String = "Raj",
+    withPartner: Boolean = true,
+    trophies: List<MonthlyTrophyDto> = emptyList(),
+) = PlayerStatsDto(
     userId = userId,
     displayName = displayName,
     photoUrl = null,
@@ -155,6 +163,7 @@ private fun statsDto(userId: String = "u1", displayName: String = "Raj", withPar
             sets = listOf(MatchSetDto(1, 21, 12), MatchSetDto(2, 21, 17)),
         ),
     ),
+    trophies = trophies,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -323,6 +332,29 @@ class ProfileViewModelTest {
             setOf(today.withDayOfMonth(1), today.minusMonths(2).withDayOfMonth(2)),
             state.attendanceDays,
         )
+    }
+
+    @Test
+    fun `trophies arrive with the stats payload`() = runTest(testDispatcher) {
+        // Trophies ride along on the stats response rather than a second call, so there is
+        // nothing extra to await — they must be present as soon as stats are.
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            stats = mapOf(
+                "u1" to statsDto(
+                    trophies = listOf(
+                        MonthlyTrophyDto("2026-07", "u1", "Raj", null, null, "#9ADE28", 61.2, 18, 12),
+                    ),
+                ),
+            ),
+        )
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        val trophies = viewModel.uiState.value.stats?.trophies.orEmpty()
+        assertEquals(1, trophies.size)
+        assertEquals(YearMonth.of(2026, 7), trophies[0].month)
+        assertEquals("JUL '26", trophies[0].shortMonthLabel)
     }
 
     @Test

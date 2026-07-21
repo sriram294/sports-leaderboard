@@ -48,6 +48,7 @@ public class StatsQueryService {
     private final MatchParticipantRepository matchParticipantRepository;
     private final MatchService matchService;
     private final AvatarUrlResolver avatarUrls;
+    private final MonthlyTrophyService monthlyTrophyService;
 
     public StatsQueryService(
             GroupMembershipGuard membershipGuard,
@@ -55,13 +56,15 @@ public class StatsQueryService {
             MemberStatsRepository memberStatsRepository,
             MatchParticipantRepository matchParticipantRepository,
             MatchService matchService,
-            AvatarUrlResolver avatarUrls) {
+            AvatarUrlResolver avatarUrls,
+            MonthlyTrophyService monthlyTrophyService) {
         this.membershipGuard = membershipGuard;
         this.groupMemberRepository = groupMemberRepository;
         this.memberStatsRepository = memberStatsRepository;
         this.matchParticipantRepository = matchParticipantRepository;
         this.matchService = matchService;
         this.avatarUrls = avatarUrls;
+        this.monthlyTrophyService = monthlyTrophyService;
     }
 
     @Transactional(readOnly = true)
@@ -221,7 +224,8 @@ public class StatsQueryService {
                 stats.getCurrentStreak(),
                 stats.getBestStreak(),
                 bestPartner,
-                recentMatches);
+                recentMatches,
+                monthlyTrophyService.forPlayer(groupId, user));
     }
 
     /**

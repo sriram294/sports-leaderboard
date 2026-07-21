@@ -10,6 +10,7 @@ import com.org.playboard.data.remote.dto.GroupDto
 import com.org.playboard.data.remote.dto.GroupsResponseDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UpdateRoleRequestDto
 import com.org.playboard.data.remote.dto.UpdateSessionRequestDto
@@ -187,6 +188,7 @@ private open class FakeApi(
     override suspend fun getGroups(): GroupsResponseDto = GroupsResponseDto(groups.toList())
     override suspend fun getMembers(groupId: String): MembersResponseDto =
         MembersResponseDto(members[groupId].orEmpty().toList(), guests[groupId].orEmpty().toList())
+    override suspend fun getGroupTrophies(groupId: String, limit: Int): List<MonthlyTrophyDto> = emptyList()
     override suspend fun removeMember(groupId: String, userId: String) {
         members[groupId]?.removeAll { it.userId == userId }
     }

@@ -26,6 +26,8 @@ data class PlayerStatsDto(
     val bestPartner: BestPartnerDto? = null,
     /** MatchSummaryDto, newest first, capped at 5 server-side. */
     val recentMatches: List<MatchSummaryDto> = emptyList(),
+    /** Months this player topped the group, newest first. Empty on a pre-trophy backend. */
+    val trophies: List<MonthlyTrophyDto> = emptyList(),
 )
 
 @Serializable

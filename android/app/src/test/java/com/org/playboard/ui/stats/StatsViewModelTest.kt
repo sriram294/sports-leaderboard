@@ -3,6 +3,7 @@ package com.org.playboard.ui.stats
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.trophy.TrophyRepository
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
@@ -19,6 +20,7 @@ import com.org.playboard.data.remote.dto.MatchSetDto
 import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
@@ -33,6 +35,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.time.YearMonth
 import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -46,6 +49,7 @@ private class FakePlayboardApi(
     var groupsResult: suspend () -> GroupsResponseDto = { GroupsResponseDto(emptyList()) },
     var leaderboardResult: suspend (String) -> LeaderboardResponseDto = { LeaderboardResponseDto(emptyList()) },
     var matchesResult: suspend (String) -> MatchListResponseDto = { MatchListResponseDto(emptyList(), null) },
+    var trophiesResult: suspend (String) -> List<MonthlyTrophyDto> = { emptyList() },
 ) : PlayboardApi {
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
@@ -60,6 +64,7 @@ private class FakePlayboardApi(
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("unused")
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("unused")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("unused")
+    override suspend fun getGroupTrophies(groupId: String, limit: Int): List<MonthlyTrophyDto> = trophiesResult(groupId)
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun removeMember(groupId: String, userId: String) = error("unused")
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
@@ -123,7 +128,12 @@ class StatsViewModelTest {
     private fun viewModel(api: FakePlayboardApi): Pair<StatsViewModel, com.org.playboard.data.group.GroupRepository> {
         val json = Json { ignoreUnknownKeys = true }
         val groups = testGroupRepository(api, json)
-        val vm = StatsViewModel(groups, LeaderboardRepository(api), MatchRepository(api, groups, json))
+        val vm = StatsViewModel(
+            groups,
+            LeaderboardRepository(api),
+            MatchRepository(api, groups, json),
+            TrophyRepository(api),
+        )
         return vm to groups
     }
 
@@ -203,5 +213,71 @@ class StatsViewModelTest {
 
         assertFalse(vm.uiState.value.isLoading)
         assertTrue(leaderboardCalls > callsAfterInitialLoad)
+    }
+
+    @Test
+    fun `monthly winners load onto the stats state`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto(matchCount = 12))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entry(1, "priya", 6, 6, 252, 1.0))) },
+            matchesResult = { MatchListResponseDto(emptyList(), null) },
+            trophiesResult = {
+                listOf(
+                    MonthlyTrophyDto("2026-07", "priya", "Priya", null, null, "#7ED321", 62.5, 18, 13),
+                    MonthlyTrophyDto("2026-06", "raj", "Raj", null, null, "#4A90D9", 55.0, 20, 12),
+                )
+            },
+        )
+        val (vm, groups) = viewModel(api)
+        groups.refreshGroups()
+        advanceUntilIdle()
+
+        val winners = vm.uiState.value.monthlyWinners
+        assertEquals(2, winners.size)
+        assertEquals(YearMonth.of(2026, 7), winners[0].month)
+        assertEquals("Priya", winners[0].displayName)
+        assertEquals("JUL '26", winners[0].shortMonthLabel)
+    }
+
+    @Test
+    fun `a trophy failure leaves the rest of the stats rendered`() = runTest(testDispatcher) {
+        // Trophies are decoration; the sections above them are the point of the screen, so a
+        // trophy outage must cost the card and nothing else.
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto(matchCount = 12))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entry(1, "priya", 6, 6, 252, 1.0))) },
+            matchesResult = { MatchListResponseDto(emptyList(), null) },
+            trophiesResult = { error("trophies down") },
+        )
+        val (vm, groups) = viewModel(api)
+        groups.refreshGroups()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertFalse(state.hasLoadFailed)
+        assertEquals(12, state.records?.totalMatches)
+        assertTrue(state.monthlyWinners.isEmpty())
+    }
+
+    @Test
+    fun `an unparseable trophy month drops only that row`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto(matchCount = 12))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entry(1, "priya", 6, 6, 252, 1.0))) },
+            matchesResult = { MatchListResponseDto(emptyList(), null) },
+            trophiesResult = {
+                listOf(
+                    MonthlyTrophyDto("not-a-month", "raj", "Raj", null, null, "#4A90D9"),
+                    MonthlyTrophyDto("2026-07", "priya", "Priya", null, null, "#7ED321"),
+                )
+            },
+        )
+        val (vm, groups) = viewModel(api)
+        groups.refreshGroups()
+        advanceUntilIdle()
+
+        val winners = vm.uiState.value.monthlyWinners
+        assertEquals(1, winners.size)
+        assertEquals("Priya", winners[0].displayName)
     }
 }
