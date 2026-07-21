@@ -123,6 +123,7 @@ class AddMatchViewModel @Inject constructor(
                         winnerOverride = null,
                         submitError = null,
                         playerPickerTeam = null,
+                        editingPlayedAt = null,
                     )
                 }
                 return@launch
@@ -141,6 +142,8 @@ class AddMatchViewModel @Inject constructor(
                             winnerOverride = detail.winningTeamNo,
                             submitError = null,
                             playerPickerTeam = null,
+                            // Kept so the edit sends the original date back unchanged.
+                            editingPlayedAt = detail.playedAt,
                         )
                     }
                 }
@@ -213,10 +216,14 @@ class AddMatchViewModel @Inject constructor(
         if (!state.canRecord) return
         val sets = state.parsedSets.filterNotNull()
         val editingId = state.editingMatchId
+        val editingPlayedAt = state.editingPlayedAt
+        // An edit must round-trip the original played time — the update endpoint takes
+        // played_at at face value, so submitting without it would re-date the match to now.
+        if (editingId != null && editingPlayedAt == null) return
         _uiState.update { it.copy(isSubmitting = true, submitError = null) }
         viewModelScope.launch {
-            val result = if (editingId != null) {
-                matchRepository.editMatch(groupId, editingId, state.team1, state.team2, sets, winner)
+            val result = if (editingId != null && editingPlayedAt != null) {
+                matchRepository.editMatch(groupId, editingId, state.team1, state.team2, sets, winner, editingPlayedAt)
             } else {
                 matchRepository.recordMatch(groupId, state.team1, state.team2, sets, winner)
             }
@@ -240,6 +247,7 @@ class AddMatchViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 editingMatchId = null,
+                editingPlayedAt = null,
                 team1 = emptyList(),
                 team2 = emptyList(),
                 sets = listOf(SetScoreInput()),

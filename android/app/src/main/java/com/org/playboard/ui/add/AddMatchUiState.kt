@@ -2,6 +2,7 @@ package com.org.playboard.ui.add
 
 import com.org.playboard.data.model.Member
 import com.org.playboard.data.model.UserSession
+import java.time.Instant
 
 /** A single set's raw score inputs — kept as strings so partial entry is representable. */
 data class SetScoreInput(val team1: String = "", val team2: String = "")
@@ -28,6 +29,12 @@ data class AddMatchUiState(
     val playerPickerTeam: Int? = null,
     /** Id of the match being edited; `null` = recording a new match (create mode). */
     val editingMatchId: String? = null,
+    /**
+     * The edited match's original played time, held so it can be sent back unchanged.
+     * The update endpoint overwrites `played_at` with whatever it receives, so losing
+     * this would re-date the match to when it was edited. `null` in create mode.
+     */
+    val editingPlayedAt: Instant? = null,
 ) {
     val isEditing: Boolean get() = editingMatchId != null
 
