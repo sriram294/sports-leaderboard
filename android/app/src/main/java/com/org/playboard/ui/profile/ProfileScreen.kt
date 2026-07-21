@@ -76,6 +76,7 @@ import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -759,6 +760,32 @@ private val previewStats = PlayerStats(
             sets = listOf(MatchSet(1, 21, 12), MatchSet(2, 21, 17)),
         ),
     ),
+    // Two months, deliberately spanning a year boundary so the preview shows that the
+    // badges stay distinguishable ("DEC '25" vs "JUL '26") rather than repeating a name.
+    trophies = listOf(
+        MonthlyTrophy(
+            month = YearMonth.of(2026, 7),
+            userId = "u1",
+            displayName = "Raj",
+            photoUrl = null,
+            avatarId = null,
+            avatarColor = "#9ADE28",
+            rating = 61.2,
+            gamesPlayed = 18,
+            wins = 12,
+        ),
+        MonthlyTrophy(
+            month = YearMonth.of(2025, 12),
+            userId = "u1",
+            displayName = "Raj",
+            photoUrl = null,
+            avatarId = null,
+            avatarColor = "#9ADE28",
+            rating = 58.4,
+            gamesPlayed = 14,
+            wins = 9,
+        ),
+    ),
 )
 
 private val previewAttendanceMonths = heatmapMonths(LocalDate.of(2026, 7, 19))
@@ -769,7 +796,7 @@ private val previewAttendanceDays: Set<LocalDate> = setOf(
     LocalDate.of(2026, 7, 3), LocalDate.of(2026, 7, 12), LocalDate.of(2026, 7, 13),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1100)
+@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1250)
 @Composable
 private fun ProfileContentPreview() {
     PlayboardTheme {
@@ -789,7 +816,7 @@ private fun ProfileContentPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1100)
+@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1250)
 @Composable
 private fun ViewedPlayerProfilePreview() {
     PlayboardTheme {

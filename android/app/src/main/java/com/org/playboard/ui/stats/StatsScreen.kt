@@ -466,9 +466,46 @@ private val previewState = StatsUiState(
         ),
         margin = 29,
     ),
+    // Different winners across months, and a deliberate gap at May — a month nobody
+    // eligible played is absent from the payload rather than rendered as a blank row.
+    monthlyWinners = listOf(
+        MonthlyTrophy(
+            month = java.time.YearMonth.of(2026, 7),
+            userId = "u1",
+            displayName = "Priya",
+            photoUrl = null,
+            avatarId = null,
+            avatarColor = "#FF3D8A",
+            rating = 64.8,
+            gamesPlayed = 20,
+            wins = 15,
+        ),
+        MonthlyTrophy(
+            month = java.time.YearMonth.of(2026, 6),
+            userId = "u3",
+            displayName = "Raj",
+            photoUrl = null,
+            avatarId = null,
+            avatarColor = "#9ADE28",
+            rating = 57.1,
+            gamesPlayed = 18,
+            wins = 11,
+        ),
+        MonthlyTrophy(
+            month = java.time.YearMonth.of(2026, 4),
+            userId = "u2",
+            displayName = "Dev",
+            photoUrl = null,
+            avatarId = null,
+            avatarColor = "#3DB4FF",
+            rating = 55.3,
+            gamesPlayed = 16,
+            wins = 10,
+        ),
+    ),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 900)
+@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1050)
 @Composable
 private fun StatsContentPreview() {
     PlayboardTheme {
