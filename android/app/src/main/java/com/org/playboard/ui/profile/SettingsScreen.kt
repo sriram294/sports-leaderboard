@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,7 +28,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.res.painterResource
 import com.org.playboard.BuildConfig
+import com.org.playboard.R
 import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.update.AppUpdateViewModel
@@ -200,7 +204,14 @@ private fun BackRowForSettings(onBack: () -> Unit) {
             .padding(vertical = 10.dp),
     ) {
         TextButton(onClick = onBack) {
-            Text("←  Profile", color = PlayboardTheme.colors.brand)
+            Icon(
+                painter = painterResource(R.drawable.ic_back_arrow),
+                contentDescription = null, // "Profile" alongside already labels the button
+                tint = PlayboardTheme.colors.brand,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Profile", color = PlayboardTheme.colors.brand)
         }
     }
 }

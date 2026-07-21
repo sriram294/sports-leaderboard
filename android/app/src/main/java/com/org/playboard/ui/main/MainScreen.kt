@@ -363,10 +363,11 @@ private fun AddTabItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 .clip(CircleShape)
                 .background(brand),
         ) {
-            Text(
-                text = "+",
-                color = PlayboardTheme.colors.onBrand,
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 32.sp, lineHeight = 32.sp),
+            Icon(
+                painter = painterResource(R.drawable.ic_create),
+                contentDescription = null, // the "ADD" label below names the action
+                tint = PlayboardTheme.colors.onBrand,
+                modifier = Modifier.size(30.dp),
             )
         }
         Text(
