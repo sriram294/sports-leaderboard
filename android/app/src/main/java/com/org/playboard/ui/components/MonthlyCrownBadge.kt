@@ -36,11 +36,7 @@ fun MonthlyCrownBadge(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier,
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_crown),
-            contentDescription = null, // the month label beside it already names the award
-            modifier = Modifier.size(crownSize),
-        )
+        MonthlyCrownIcon(crownSize = crownSize)
         Text(
             text = monthLabel,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
@@ -48,6 +44,24 @@ fun MonthlyCrownBadge(
             color = PlayboardTheme.colors.textMuted,
         )
     }
+}
+
+/**
+ * The crown on its own, for callers that position it themselves — the stats roll of honour
+ * tilts it over the corner of the winner's avatar rather than stacking it above a label.
+ *
+ * Untinted for the same reason as [MonthlyCrownBadge].
+ */
+@Composable
+fun MonthlyCrownIcon(
+    modifier: Modifier = Modifier,
+    crownSize: Dp = CROWN_SIZE,
+) {
+    Image(
+        painter = painterResource(R.drawable.ic_crown),
+        contentDescription = null, // the month label accompanying it already names the award
+        modifier = modifier.size(crownSize),
+    )
 }
 
 /**

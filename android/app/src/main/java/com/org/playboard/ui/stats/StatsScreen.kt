@@ -1,6 +1,7 @@
 package com.org.playboard.ui.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,8 +29,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,7 +44,7 @@ import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.MonthlyTrophy
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.FormPill
-import com.org.playboard.ui.components.MonthlyCrownBadge
+import com.org.playboard.ui.components.MonthlyCrownIcon
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
@@ -194,47 +198,72 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
 private fun MonthlyWinnersCard(winners: List<MonthlyTrophy>) {
     InsightCard {
         SectionLabel("MONTHLY WINNERS")
-        Spacer(Modifier.height(12.dp))
-        winners.forEachIndexed { index, winner ->
-            if (index > 0) Spacer(Modifier.height(10.dp))
-            MonthlyWinnerRow(winner)
+        Spacer(Modifier.height(14.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+        ) {
+            winners.forEach { winner -> MonthlyWinnerTile(winner) }
         }
     }
 }
 
+/**
+ * One winner: their avatar wearing the crown, name and month beneath.
+ *
+ * The crown sits inside the tile's bounds rather than hanging off the avatar, so the row can
+ * scroll without the first and last crowns being sheared off at the card's padding.
+ */
 @Composable
-private fun MonthlyWinnerRow(winner: MonthlyTrophy) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        MonthlyCrownBadge(monthLabel = winner.shortMonthLabel, modifier = Modifier.width(64.dp))
-        PlayerAvatar(
-            displayName = winner.displayName,
-            photoUrl = winner.photoUrl,
-            avatarId = winner.avatarId,
-            avatarColorHex = winner.avatarColor,
-            size = 30.dp,
-        )
+private fun MonthlyWinnerTile(winner: MonthlyTrophy) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(WINNER_TILE_WIDTH),
+    ) {
+        Box {
+            PlayerAvatar(
+                displayName = winner.displayName,
+                photoUrl = winner.photoUrl,
+                avatarId = winner.avatarId,
+                avatarColorHex = winner.avatarColor,
+                size = WINNER_AVATAR_SIZE,
+                // Leaves the top-right corner clear for the crown to overlap into.
+                modifier = Modifier.padding(top = 8.dp, end = 8.dp),
+            )
+            MonthlyCrownIcon(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .rotate(20f),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         Text(
             text = winner.displayName,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
             fontWeight = FontWeight.SemiBold,
             color = PlayboardTheme.colors.textPrimary,
             maxLines = 1,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 10.dp),
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
         )
-        // Rating is null on rows awarded by a backend that predated the snapshot columns —
-        // show nothing rather than a misleading zero.
-        winner.rating?.let { rating ->
-            Text(
-                text = "%.1f".format(rating),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                fontWeight = FontWeight.Bold,
-                color = PlayboardTheme.colors.brand,
-            )
-        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = winner.shortMonthLabel,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            fontWeight = FontWeight.SemiBold,
+            color = PlayboardTheme.colors.textMuted,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
     }
 }
+
+private val WINNER_AVATAR_SIZE = 60.dp
+
+/** Avatar plus the crown's corner offset, with room either side for a rotated crown to bleed. */
+private val WINNER_TILE_WIDTH = 76.dp
 
 // ---- Best partnership ----------------------------------------------------------
 
@@ -505,7 +534,7 @@ private val previewState = StatsUiState(
     ),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1050)
+@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 980)
 @Composable
 private fun StatsContentPreview() {
     PlayboardTheme {
