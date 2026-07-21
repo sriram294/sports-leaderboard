@@ -15,6 +15,7 @@ import com.org.playboard.data.remote.dto.JoinGroupRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
@@ -45,6 +46,7 @@ private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRe
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         error("not used in this test")
     override suspend fun getMembers(groupId: String): MembersResponseDto = error("not used in this test")
+    override suspend fun getGroupTrophies(groupId: String, limit: Int): List<MonthlyTrophyDto> = error("not used in this test")
     override suspend fun addMember(groupId: String, request: com.org.playboard.data.remote.dto.AddMemberRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("not used in this test")
     override suspend fun removeMember(groupId: String, userId: String) = error("unused")
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")

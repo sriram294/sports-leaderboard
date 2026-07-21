@@ -2,6 +2,7 @@ package com.org.playboard.ui.stats
 
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchPlayer
+import com.org.playboard.data.model.MonthlyTrophy
 import com.org.playboard.data.model.PlayerRanking
 
 /**
@@ -26,6 +27,12 @@ data class StatsUiState(
     val bestPartnership: BestPartnership? = null,
     val recentForm: List<PlayerForm> = emptyList(),
     val biggestWin: BiggestWin? = null,
+    /**
+     * Who topped each completed month, newest first (last 6). Unlike the other sections
+     * this is served, not computed — a crown is awarded once when the month closes and is
+     * never recomputed, so it can't be derived from the current leaderboard.
+     */
+    val monthlyWinners: List<MonthlyTrophy> = emptyList(),
 )
 
 /** All-time group records, derived from the leaderboard + `Group.matchCount`. */

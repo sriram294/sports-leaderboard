@@ -37,8 +37,10 @@ import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
+import com.org.playboard.data.model.MonthlyTrophy
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.FormPill
+import com.org.playboard.ui.components.MonthlyCrownBadge
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
@@ -84,6 +86,9 @@ private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh
                 ) {
                     item { Spacer(Modifier.height(4.dp)) }
                     state.records?.let { item { RecordsCard(records = it) } }
+                    if (state.monthlyWinners.isNotEmpty()) {
+                        item { MonthlyWinnersCard(winners = state.monthlyWinners) }
+                    }
                     state.bestPartnership?.let { item { BestPartnershipCard(partnership = it) } }
                     if (state.recentForm.isNotEmpty()) {
                         item { RecentFormCard(form = state.recentForm) }
@@ -173,6 +178,61 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
             fontWeight = FontWeight.Bold,
             color = PlayboardTheme.colors.brand,
         )
+    }
+}
+
+// ---- Monthly winners -----------------------------------------------------------
+
+/**
+ * The group's roll of honour: who topped each completed month, newest first.
+ *
+ * Sits directly under RECORDS because it is the same kind of thing — a standing achievement
+ * rather than a live figure. Months nobody qualified for are absent from the payload, so the
+ * list can skip a month; that gap is honest and needs no placeholder.
+ */
+@Composable
+private fun MonthlyWinnersCard(winners: List<MonthlyTrophy>) {
+    InsightCard {
+        SectionLabel("MONTHLY WINNERS")
+        Spacer(Modifier.height(12.dp))
+        winners.forEachIndexed { index, winner ->
+            if (index > 0) Spacer(Modifier.height(10.dp))
+            MonthlyWinnerRow(winner)
+        }
+    }
+}
+
+@Composable
+private fun MonthlyWinnerRow(winner: MonthlyTrophy) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        MonthlyCrownBadge(monthLabel = winner.shortMonthLabel, modifier = Modifier.width(64.dp))
+        PlayerAvatar(
+            displayName = winner.displayName,
+            photoUrl = winner.photoUrl,
+            avatarId = winner.avatarId,
+            avatarColorHex = winner.avatarColor,
+            size = 30.dp,
+        )
+        Text(
+            text = winner.displayName,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+            fontWeight = FontWeight.SemiBold,
+            color = PlayboardTheme.colors.textPrimary,
+            maxLines = 1,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 10.dp),
+        )
+        // Rating is null on rows awarded by a backend that predated the snapshot columns —
+        // show nothing rather than a misleading zero.
+        winner.rating?.let { rating ->
+            Text(
+                text = "%.1f".format(rating),
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
+                fontWeight = FontWeight.Bold,
+                color = PlayboardTheme.colors.brand,
+            )
+        }
     }
 }
 

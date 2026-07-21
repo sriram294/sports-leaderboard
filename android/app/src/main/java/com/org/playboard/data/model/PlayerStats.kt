@@ -21,6 +21,8 @@ data class PlayerStats(
     val bestPartner: BestPartner?,
     /** Last matches involving this player, newest first (≤5). */
     val recentMatches: List<Match>,
+    /** Months this player topped the group's leaderboard, newest first. */
+    val trophies: List<MonthlyTrophy> = emptyList(),
 ) {
     /** Win rate as a whole percentage for display (e.g. `0.5` → `50`). */
     val winRatePercent: Int get() = (winRate * 100).toInt()

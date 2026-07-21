@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,7 +67,9 @@ import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
+import com.org.playboard.data.model.MonthlyTrophy
 import com.org.playboard.data.model.PlayerStats
+import com.org.playboard.ui.components.MonthlyCrownBadge
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.components.PlayboardBackground
@@ -269,6 +273,9 @@ private fun StatsList(
         item { StatTilesGrid(stats = stats) }
         if (state.attendanceMonths.isNotEmpty()) {
             item { AttendanceCalendar(months = state.attendanceMonths, activeDays = state.attendanceDays) }
+        }
+        if (stats.trophies.isNotEmpty()) {
+            item { TrophyShelf(trophies = stats.trophies) }
         }
         stats.bestPartner?.let { partner ->
             item { BestPartnerCard(partner = partner) }
@@ -543,6 +550,36 @@ private fun StatTile(
         }
     }
 }
+
+/**
+ * The months this player has topped the group, newest first.
+ *
+ * A horizontal strip rather than a wrapping grid: the list grows by one a month and would
+ * otherwise push the rest of the profile down forever. Spacing follows the attendance
+ * calendar's month blocks directly above it, so the two read as one rhythm.
+ */
+@Composable
+private fun TrophyShelf(trophies: List<MonthlyTrophy>) {
+    Column {
+        SectionLabel("MONTHS WON")
+        Surface(shape = RoundedCornerShape(16.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(TROPHY_GAP),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                trophies.forEach { trophy ->
+                    MonthlyCrownBadge(monthLabel = trophy.shortMonthLabel)
+                }
+            }
+        }
+    }
+}
+
+/** Matches AttendanceCalendar's MONTH_GAP so the two strips share a rhythm. */
+private val TROPHY_GAP = 12.dp
 
 @Composable
 private fun BestPartnerCard(partner: BestPartner) {

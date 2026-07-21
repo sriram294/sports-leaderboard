@@ -56,6 +56,16 @@ playboard:
     session-scan-interval: ${PLAYBOARD_SESSION_SCAN_INTERVAL:PT15M}
     session-scan-initial-delay: ${PLAYBOARD_SESSION_SCAN_INITIAL_DELAY:PT2M}
     session-lookback: ${PLAYBOARD_SESSION_LOOKBACK:PT24H}
+  trophies:
+    # Monthly leaderboard crown (MonthlyTrophyJob). The job sweeps for *completed* months
+    # that have no verdict yet, rather than firing on the 1st: this service sleeps on
+    # Railway, so a month-boundary trigger would fire into a sleeping container and be lost.
+    # A long interval is fine — the answer only changes once a month.
+    scan-interval: ${PLAYBOARD_TROPHY_SCAN_INTERVAL:PT6H}
+    scan-initial-delay: ${PLAYBOARD_TROPHY_SCAN_INITIAL_DELAY:PT3M}
+    # Defines where a month starts and ends. Nothing in the schema stores a per-group
+    # timezone, so the job owns the choice; the group plays in India, which has no DST.
+    zone: ${PLAYBOARD_TROPHY_ZONE:Asia/Kolkata}
   update:
     debug:
       version-code: ${PLAYBOARD_UPDATE_DEBUG_VERSION_CODE:}

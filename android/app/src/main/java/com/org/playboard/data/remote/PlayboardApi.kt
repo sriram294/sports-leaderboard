@@ -13,6 +13,7 @@ import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
+import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerAttendanceDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -101,6 +102,16 @@ interface PlayboardApi {
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
     ): LeaderboardResponseDto
+
+    /**
+     * The group's monthly winners, newest first. Months that closed with nobody eligible
+     * are omitted server-side, so an empty list means "no month has been won yet".
+     */
+    @GET("api/v1/groups/{groupId}/trophies")
+    suspend fun getGroupTrophies(
+        @Path("groupId") groupId: String,
+        @Query("limit") limit: Int,
+    ): List<MonthlyTrophyDto>
 
     @GET("api/v1/groups/{groupId}/members")
     suspend fun getMembers(@Path("groupId") groupId: String): MembersResponseDto
