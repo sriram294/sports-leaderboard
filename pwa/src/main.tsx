@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './app/App';
+import { initTheme } from './theme';
 import './theme.css';
+
+// Reflect the stored theme onto <html> before first paint.
+initTheme();
 
 // Web analog of Android's `dataRevision`: match/group mutations invalidate these
 // queries so Board, Matches, Profile, and Stats reload in lockstep (wired up per
