@@ -276,56 +276,208 @@ h3 {
     text-transform: none;
 }
 
+/* ==================== Board ==================== */
+
+/* Extra bottom clearance so the last rows scroll clear of the pinned form bar. */
+.board.has-form {
+    padding-bottom: 88px;
+}
+
+.board-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.board-head-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.board-head .eyebrow {
+    margin-bottom: 0;
+}
+
+.board-share {
+    color: var(--muted);
+}
+
+.board-empty {
+    color: var(--muted);
+    text-align: center;
+    padding: 56px 24px;
+    white-space: pre-line;
+}
+
+/* Muted calendar-window selector (TimeRangeSelector.kt). */
+.range-selector {
+    position: relative;
+}
+
+.range-trigger {
+    background: none;
+    border: 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.range-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 6;
+    min-width: 128px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.range-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    color: var(--text);
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.range-menu button.selected {
+    color: var(--brand);
+    font-weight: 700;
+}
+
+/* Podium — #2 · #1(center, larger, crowned) · #3, bottom-aligned. */
 .podium {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 10px;
-    min-height: 190px;
-    margin: -4px 0 25px;
+    gap: 6px;
+    margin-bottom: 22px;
 }
 
-.podium-player {
+.podium-slot {
+    flex: 1 1 0;
+    min-width: 0;
     border: 0;
-    color: #fff;
     background: none;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Reserve the crown overhang on every slot so avatars still bottom-align. */
+    padding: 22px 2px 6px;
+    border-radius: 16px;
+}
+
+.podium-slot.champion {
+    flex-grow: 1.2;
+}
+
+.podium-slot.empty {
+    pointer-events: none;
+}
+
+.podium-avatar {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    /* Room for the rank badge that dips below the avatar. */
+    padding-bottom: 12px;
+}
+
+/* Soft radial glow in the player's color, behind the avatar. */
+.podium-avatar::before {
+    content: '';
+    position: absolute;
+    inset: -8px 0 4px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--ring) 18%, transparent), transparent);
+}
+
+.podium-slot.champion .podium-avatar::before {
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--ring) 35%, transparent), transparent);
+}
+
+.podium-avatar .avatar {
+    position: relative;
+    border: 2px solid var(--ring);
+}
+
+.podium-slot.champion .podium-avatar .avatar {
+    border-width: 3px;
+}
+
+/* Numbered rank badge tucked at the avatar's bottom edge. */
+.podium-badge {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ring);
+    color: var(--on-brand);
+    font-size: 11px;
+    font-weight: 800;
     display: flex;
     align-items: center;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 92px;
+    justify-content: center;
+    border: 2px solid var(--bg);
 }
 
-.podium-player.p1 {
-    order: 2;
-}
-
-.podium-player.p2 {
-    order: 1;
-}
-
-.podium-player.p3 {
-    order: 3;
-}
-
-.podium-player strong {
+.podium-slot.champion .podium-badge {
+    width: 28px;
+    height: 28px;
     font-size: 13px;
 }
 
-.podium-player small {
-    color: var(--muted);
-    font-size: 10px;
+/* Crown sitting on the champion's head: base overlaps the avatar's top edge, peak rises into
+   the reserved overhang. z-index lifts it above the (position:relative) avatar, which is later
+   in the DOM and would otherwise paint over the crown's base. */
+.podium-crown {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+    pointer-events: none;
 }
 
-.medal {
-    color: var(--lime);
-    font-size: 18px;
-    height: 24px;
+.podium-name {
+    margin-top: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.p2 .medal,
-.p3 .medal {
+.podium-metric {
+    margin-top: 2px;
     color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.podium-slot.champion .podium-metric {
+    font-weight: 600;
 }
 
 .avatar {
@@ -368,25 +520,66 @@ h3 {
     border: 3px solid #242424;
 }
 
-.sorts {
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 10px;
-    margin-bottom: 3px;
+/* RANKINGS card (LeaderboardTable.kt). */
+.rankings {
+    padding: 16px;
+    border-radius: 20px;
 }
 
-.sorts button {
-    border: 0;
+.rankings-title {
     color: var(--muted);
-    background: none;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+.rankings-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
     font-size: 10px;
     font-weight: 800;
-    padding: 4px;
+    letter-spacing: 1px;
+    padding-bottom: 8px;
 }
 
-.sorts button.selected {
-    color: var(--lime);
+.rankings-header .col-metric {
+    background: none;
+    border: 0;
+    color: var(--text);
+    font: inherit;
+    letter-spacing: 1px;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+/* Shared columns across header + rows so they line up. */
+.col-rank {
+    width: 24px;
+    flex: 0 0 24px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.col-player {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.col-metric {
+    width: 62px;
+    flex: 0 0 62px;
+    text-align: right;
+}
+
+.col-metric.value {
+    font-size: 15px;
+    font-weight: 800;
 }
 
 .ranking-row {
@@ -394,40 +587,82 @@ h3 {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 0;
-    color: #fff;
+    padding: 8px 0;
     background: none;
     border: 0;
-    border-bottom: 1px solid #222;
+    border-top: 1px solid color-mix(in srgb, var(--muted) 12%, transparent);
     text-align: left;
+    color: var(--text);
 }
 
-.ranking-row:last-child {
-    border: 0;
+/* Stronger rule marks the ranked → provisional boundary. */
+.ranking-row.boundary {
+    border-top-color: color-mix(in srgb, var(--muted) 28%, transparent);
 }
 
-.rank {
-    width: 18px;
+.ranking-name {
+    font-size: 15px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ranking-row.provisional .ranking-name {
     color: var(--muted);
-    font-size: 12px;
 }
 
-.player-name {
-    flex: 1;
+.ranking-sub {
+    color: var(--muted);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Pinned "YOUR FORM" bar — floats above the bottom nav over the scrolling board. */
+.form-bar-wrap {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    z-index: 3;
+    width: min(560px, 100%);
+    padding: 12px 20px;
+    /* Scrim so rows fade out under the bar rather than being hard-cut. */
+    background: linear-gradient(to top, var(--bg) 55%, transparent);
+    pointer-events: none;
+}
+
+.form-bar {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--muted) 16%, transparent);
+}
+
+.form-bar-label {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-bar-label .eyebrow {
+    margin-bottom: 2px;
+}
+
+.form-bar-sub {
+    color: var(--muted);
     font-size: 13px;
-    font-weight: 650;
 }
 
-.player-name small {
-    color: var(--lime);
-    font-size: 8px;
-    margin-left: 6px;
-}
-
-.row-stat {
-    font-weight: 800;
-    color: var(--lime);
-    font-size: 13px;
+.form-bar-pills {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
 }
 
 .bottom-nav {

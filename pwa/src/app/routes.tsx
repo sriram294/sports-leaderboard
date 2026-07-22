@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { leaderboardKey, matchesKey, useLeaderboard, useMatches } from '../queries';
+import { formKey, leaderboardKey, matchesKey, useForm, useLeaderboard, useMatches } from '../queries';
+import type { TimeRange } from '../domain';
 import { shareLeaderboard } from '../share';
 import { Loading, ErrorState } from '../components';
 import { Icon } from '../icons';
@@ -28,16 +30,26 @@ export function BoardRoute() {
   const { activeGroup } = useGroups();
   const { user } = useSession();
   const navigate = useNavigate();
-  const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id);
+  // The window persists across group switches (mirrors Android's selectedTimeRange).
+  const [range, setRange] = useState<TimeRange>('month');
+  const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id, range);
+  // The form bar is secondary: it loads independently and never gates the board.
+  const form = useForm(activeGroup?.id, user?.id);
   if (!activeGroup) return <NoGroup />;
+  // Only the very first load spins; range switches keep the previous table (keepPreviousData).
   if (isLoading) return <Loading />;
   if (error) return <ErrorState message={errorMessage(error)} retry={() => refetch()} />;
   const rankings = data?.rankings ?? [];
   return (
     <BoardScreen
       rankings={rankings}
+      minGamesToRank={data?.minGamesToRank ?? 1}
+      groupId={activeGroup.id}
       user={user!}
-      onPlayer={ranking => navigate(`/player/${ranking.userId}`)}
+      range={range}
+      onRangeChange={setRange}
+      recentForm={form.data ?? []}
+      onPlayer={userId => navigate(`/player/${userId}`)}
       onShare={() => shareLeaderboard(activeGroup, rankings).catch(() => undefined)}
     />
   );
@@ -70,9 +82,11 @@ export function AddRoute() {
       group={activeGroup}
       user={user!}
       onDone={() => {
-        // Match mutation invalidates Board + Matches (and Stats, which reads them).
+        // Match mutation invalidates Board + Matches (and Stats, which reads them), plus
+        // the signed-in user's form bar. Prefix keys match every windowed leaderboard variant.
         queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
         queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
+        queryClient.invalidateQueries({ queryKey: formKey(activeGroup.id, user?.id) });
         navigate('/board');
       }}
     />
