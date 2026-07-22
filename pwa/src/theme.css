@@ -3,7 +3,7 @@
 @font-face { font-family: 'Manrope'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/manrope-medium.ttf') format('truetype'); }
 @font-face { font-family: 'Manrope'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/manrope-semibold.ttf') format('truetype'); }
 @font-face { font-family: 'Manrope'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/manrope-bold.ttf') format('truetype'); }
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 800; font-display: swap; src: url('./assets/fonts/manrope-extrabold.ttf') format('truetype'); }
+@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/manrope-extrabold.ttf') format('truetype'); }
 @font-face { font-family: 'Paytone One'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/paytone-one.ttf') format('truetype'); }
 
 /* ==================== Design tokens (ported from ui/theme/Color.kt) ==================== */
@@ -143,7 +143,7 @@ header {
     align-items: center;
     gap: 8px;
     color: var(--lime);
-    font-weight: 700;
+    font-weight: 400;
     font-size: 14px;
 }
 
@@ -152,7 +152,7 @@ header {
     border: 0;
     color: #fff;
     background: transparent;
-    font-weight: 700;
+    font-weight: 400;
     outline: 0;
     max-width: 220px;
 }
@@ -225,7 +225,7 @@ h3 {
 .eyebrow {
     color: var(--muted);
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 400;
     letter-spacing: 1.5px;
     margin-bottom: 8px;
 }
@@ -264,7 +264,7 @@ h3 {
     color: var(--muted);
     font-size: 10px;
     letter-spacing: 1px;
-    font-weight: 800;
+    font-weight: 400;
     margin-bottom: 15px;
 }
 
@@ -321,7 +321,7 @@ h3 {
     border: 0;
     color: var(--muted);
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 400;
     letter-spacing: 0.5px;
     padding: 2px 4px;
     border-radius: 4px;
@@ -430,7 +430,7 @@ h3 {
     background: var(--ring);
     color: var(--on-brand);
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 400;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -488,7 +488,7 @@ h3 {
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
+    font-weight: 400;
     overflow: hidden;
 }
 
@@ -529,7 +529,7 @@ h3 {
 .rankings-title {
     color: var(--muted);
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 400;
     letter-spacing: 1px;
     margin-bottom: 12px;
 }
@@ -540,7 +540,7 @@ h3 {
     gap: 10px;
     color: var(--muted);
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 400;
     letter-spacing: 1px;
     padding-bottom: 8px;
 }
@@ -579,7 +579,7 @@ h3 {
 
 .col-metric.value {
     font-size: 15px;
-    font-weight: 800;
+    font-weight: 400;
 }
 
 .ranking-row {
@@ -739,7 +739,7 @@ h3 {
     padding: 14px 18px;
     background: var(--lime);
     color: #101010;
-    font-weight: 800;
+    font-weight: 400;
     transition: filter .2s;
 }
 
@@ -1091,7 +1091,7 @@ h3 {
     width: 100%;
     color: var(--muted);
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 400;
     letter-spacing: 1px;
 }
 
@@ -1114,7 +1114,7 @@ h3 {
     text-align: center;
     color: #555;
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 400;
     margin: -1px 0;
 }
 
@@ -1255,7 +1255,7 @@ h3 {
 
 .lime {
     color: var(--lime);
-    font-weight: 800;
+    font-weight: 400;
 }
 
 .back {
@@ -1472,7 +1472,7 @@ h3 {
     height: 22px;
     border-radius: 50%;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 400;
     color: #fff;
     flex: 0 0 auto;
 }
@@ -1501,7 +1501,7 @@ h3 {
     justify-content: center;
     border-radius: 10px;
     color: #0a0a0a;
-    font-weight: 800;
+    font-weight: 400;
     font-size: 14px;
     flex: 0 0 auto;
 }
@@ -1528,7 +1528,7 @@ h3 {
 }
 
 .gs-name {
-    font-weight: 800;
+    font-weight: 400;
     font-size: 16px;
 }
 
