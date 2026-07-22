@@ -28,6 +28,8 @@ server:
   port: ${PORT:8080}
 
 playboard:
+  # Comma-separated browser origins, for example:
+  # https://playboardapp.vercel.app,http://localhost:5173
   web-origin: ${WEB_ORIGIN:http://localhost:5173}
   auth:
     # Web-application OAuth Client ID — must match the `serverClientId`
