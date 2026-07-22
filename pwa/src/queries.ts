@@ -47,6 +47,20 @@ export const useMatchesInfinite = (groupId?: string, mine = false) =>
 export const useMembers = (groupId?: string) =>
   useQuery({ queryKey: ['members', groupId], queryFn: () => api.members(groupId!), enabled: !!groupId });
 
+export const statsKey = (groupId?: string, userId?: string) => ['stats', groupId, userId] as const;
+
+/** A player's full profile stats (hero, tiles, best partner, recent matches, trophies). */
+export const usePlayerStats = (groupId?: string, userId?: string) =>
+  useQuery({ queryKey: statsKey(groupId, userId), queryFn: () => api.stats(groupId!, userId!), enabled: !!groupId && !!userId });
+
+/** The player's attendance days over a `[from, to)` window, for the activity heatmap. */
+export const useAttendance = (groupId?: string, userId?: string, from?: string, to?: string) =>
+  useQuery({
+    queryKey: ['attendance', groupId, userId, from, to],
+    queryFn: () => api.attendance(groupId!, userId!, from!, to!),
+    enabled: !!groupId && !!userId && !!from && !!to,
+  });
+
 /** Full detail (teams, per-set scores, audit log) for one expanded match card. */
 export const useMatchDetail = (groupId?: string, matchId?: string) =>
   useQuery({

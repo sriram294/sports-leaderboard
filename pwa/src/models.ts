@@ -1,5 +1,5 @@
 export type Tab = 'board' | 'matches' | 'add' | 'stats' | 'profile';
-export type User = { id: string; displayName: string; email: string; photoUrl?: string | null; avatarColor: string };
+export type User = { id: string; displayName: string; email: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string };
 export type Group = { id: string; name: string; avatarColor: string; sportCode: string; memberCount: number; matchCount: number; myRole: 'owner' | 'admin' | 'member' };
 
 /**
@@ -47,8 +47,31 @@ export type MatchEvent = { userId: string; displayName: string; action: string; 
 export type MatchDetail = Match & { recordedBy: { userId: string; displayName: string }; recordedAt: string; events: MatchEvent[] };
 /** `GET /groups/{id}/matches` (MatchListResponse) — a cursor-paginated page. */
 export type MatchListResponse = { matches: Match[]; nextCursor?: string };
-/** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — only the fields Board reads. */
-export type PlayerStats = { userId: string; displayName: string; recentMatches: Match[] };
+/** The viewed player's best doubles partner (BestPartnerDto). */
+export type BestPartner = { userId: string; displayName: string; avatarId?: string | null; photoUrl?: string | null; avatarColor: string; gamesTogether: number; winsTogether: number; winRate: number };
+/** A month the player topped the group leaderboard (MonthlyTrophyDto). */
+export type MonthlyTrophy = { month: string; userId: string; displayName: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string; rating: number; gamesPlayed: number; wins: number };
+/** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — the full player-stats payload. */
+export type PlayerStats = {
+  userId: string;
+  displayName: string;
+  avatarColor: string;
+  avatarId?: string | null;
+  photoUrl?: string | null;
+  wins: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  winRate: number;
+  currentStreak: number;
+  bestStreak: number;
+  matchesPlayed: number;
+  bestPartner?: BestPartner | null;
+  recentMatches: Match[];
+  trophies: MonthlyTrophy[];
+};
+/** `GET /groups/{id}/members/{userId}/attendance?from&to` (PlayerAttendanceDto). */
+export type PlayerAttendance = { playedAt: string[] };
 
 export type MemberRole = 'owner' | 'admin' | 'member' | 'guest';
 /** A group member (MemberDto). Guests have `role: "guest"` and are interchangeable fillers. */

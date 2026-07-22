@@ -1,11 +1,12 @@
-import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, MembersResponse, PlayerStats, RecordMatchRequest, Session, User } from './models';
+import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, MembersResponse, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
 let session: Session | null = JSON.parse(localStorage.getItem('playboard.session') || 'null');
 export const auth = { get: () => session, set: (s: Session | null) => { session = s; s ? localStorage.setItem('playboard.session', JSON.stringify(s)) : localStorage.removeItem('playboard.session'); } };
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
-  const headers = new Headers(init.headers); headers.set('Content-Type', 'application/json');
+  // Let the browser set multipart boundaries; only JSON bodies get an explicit content type.
+  const headers = new Headers(init.headers); if (!(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   if (session?.accessToken) headers.set('Authorization', `Bearer ${session.accessToken}`);
   const response = await fetch(`${API}${path}`, { ...init, headers });
   if (response.status === 401 && retry && session?.refreshToken) {
@@ -43,7 +44,12 @@ export const api = {
   editMatch: (groupId: string, matchId: string, body: RecordMatchRequest) => request<Match>(`/groups/${groupId}/matches/${matchId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteMatch: (groupId: string, matchId: string) => request<void>(`/groups/${groupId}/matches/${matchId}`, { method: 'DELETE' }),
   me: () => request<User>('/users/me'),
+  renameUser: (displayName: string) => request<User>('/users/me', { method: 'PATCH', body: JSON.stringify({ displayName }) }),
+  selectAvatar: (avatarId: string) => request<User>('/users/me/avatar', { method: 'PATCH', body: JSON.stringify({ avatarId }) }),
+  uploadPhoto: (file: File) => { const form = new FormData(); form.append('file', file); return request<User>('/users/me/photo', { method: 'POST', body: form }); },
   stats: (groupId: string, userId: string) => request<PlayerStats>(`/groups/${groupId}/members/${userId}/stats`),
+  attendance: (groupId: string, userId: string, from: string, to: string) =>
+    request<PlayerAttendance>(`/groups/${groupId}/members/${userId}/attendance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   createGroup: (body: unknown) => request<Group>('/groups', { method: 'POST', body: JSON.stringify(body) }),
   joinGroup: (body: unknown) => request<Group>('/groups/join', { method: 'POST', body: JSON.stringify(body) }),
   renameGroup: (id: string, body: unknown) => request<Group>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(body) })

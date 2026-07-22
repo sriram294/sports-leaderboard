@@ -15,6 +15,8 @@ type SessionValue = {
   user?: User;
   /** Persist tokens after a successful Google exchange and move to `authed`. */
   login: (tokens: AuthTokens) => void;
+  /** Reflect a profile edit (rename / avatar / photo) into state + the stored session. */
+  updateUser: (user: User) => void;
   /** Revoke the refresh token (best-effort) and clear local state. */
   signOut: () => void;
 };
@@ -55,6 +57,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('authed');
   };
 
+  const updateUser = (next: User) => {
+    setUser(next);
+    const current = auth.get();
+    if (current) auth.set({ ...current, user: next });
+  };
+
   const signOut = () => {
     api.logout().catch(() => undefined);
     auth.set(null);
@@ -62,7 +70,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('anon');
   };
 
-  return <SessionContext.Provider value={{ status, user, login, signOut }}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{ status, user, login, updateUser, signOut }}>{children}</SessionContext.Provider>;
 }
 
 export function useSession(): SessionValue {

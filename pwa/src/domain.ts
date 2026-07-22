@@ -1,4 +1,4 @@
-import type { Match, MatchTeam, Member, PlayerRef, Ranking, RecordMatchRequest } from './models';
+import type { Match, MatchSet, MatchTeam, Member, PlayerRef, Ranking, RecordMatchRequest } from './models';
 
 export type SortKey = 'rank' | 'gamesPlayed' | 'wins' | 'losses' | 'pointsFor' | 'winRate';
 export function sortRankings(rows: Ranking[], key: SortKey): Ranking[] { if (key === 'rank') return rows; return [...rows].sort((a, b) => (b[key] as number) - (a[key] as number) || a.rank - b.rank); }
@@ -175,6 +175,88 @@ export function buildRecordRequest(team1: string[], team2: string[], sets: SetIn
     sets: sets.map(parseSet).filter((p): p is [number, number] => p != null)
       .map(([team1Score, team2Score], index) => ({ setNo: index + 1, team1Score, team2Score })),
     winningTeamNo,
+  };
+}
+
+/* ==================== Profile (ported from ProfileUiState.kt / AttendanceCalendar.kt) ==================== */
+
+/** Win rate 0–1 → whole-percent integer (e.g. 0.826 → 83). */
+export const percent = (rate: number) => Math.round(rate * 100);
+/** Signed streak for the tile: negative = loss streak, positive = win streak (e.g. `-2`, `+4`). */
+export const streakLabel = (streak: number) => (streak > 0 ? `+${streak}` : `${streak}`);
+
+/** A calendar month, 1-indexed, for the attendance heatmap. */
+export type HeatMonth = { year: number; month: number };
+/** Monday-first weekday initials for the heatmap Y axis. */
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** The [count] calendar months ending with [today]'s month, oldest first. */
+export function heatmapMonths(today: Date = new Date(), count = 3): HeatMonth[] {
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth() - (count - 1 - i), 1);
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  });
+}
+
+/** Short month label, e.g. `Jul`. */
+export const monthShortLabel = ({ year, month }: HeatMonth) =>
+  new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: 'short' });
+
+/** Local `YYYY-MM-DD` key for a date. */
+export function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
+}
+
+/**
+ * A month's cells laid out **Monday-first**: leading `null` blanks for the weekday the 1st
+ * falls on, then each day's `YYYY-MM-DD` key, padded with trailing `null`s to whole weeks.
+ * Chunk into 7s for Mon..Sun week-columns.
+ */
+export function monthCells({ year, month }: HeatMonth): (string | null)[] {
+  const first = new Date(year, month - 1, 1);
+  const leadingBlanks = (first.getDay() + 6) % 7; // JS: Sun=0 → 6, Mon=1 → 0 … Sat=6 → 5
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cells: (string | null)[] = Array(leadingBlanks).fill(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(dayKey(new Date(year, month - 1, day)));
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+/** Split a month's cells into Mon..Sun week-columns. */
+export function weekColumns(month: HeatMonth): (string | null)[][] {
+  const cells = monthCells(month);
+  return Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
+}
+
+/** The `[from, to)` window covering [months] as ISO instants (local first-of-month boundaries). */
+export function heatmapWindow(months: HeatMonth[]): { from: string; to: string } {
+  const first = months[0];
+  const last = months[months.length - 1];
+  return {
+    from: new Date(first.year, first.month - 1, 1).toISOString(),
+    to: new Date(last.year, last.month, 1).toISOString(),
+  };
+}
+
+/** The set of local day-keys a player was in a match, from an attendance payload. */
+export const attendanceDays = (playedAt: string[]): Set<string> => new Set(playedAt.map(iso => dayKey(new Date(iso))));
+
+/** One "Recent Matches" row, framed from the viewed player's perspective (with vs against). */
+export type RecentMatchRow = { matchId: string; playedAt: string; isWin: boolean; partnerNames: string; opponentNames: string; sets: MatchSet[] };
+
+/** Build a [RecentMatchRow] from a match, relative to `userId`. */
+export function recentMatchRow(match: Match, userId: string): RecentMatchRow {
+  const myTeam = match.teams.find(team => team.players.some(p => p.userId === userId));
+  const opponents = match.teams.find(team => team.teamNo !== myTeam?.teamNo);
+  const partners = (myTeam?.players ?? []).filter(p => p.userId !== userId);
+  const names = (players: PlayerRef[]) => players.map(p => p.displayName).join(' & ');
+  return {
+    matchId: match.id,
+    playedAt: match.playedAt,
+    isWin: isWinForMatch(match, userId) === true,
+    partnerNames: names(partners),
+    opponentNames: names(opponents?.players ?? []),
+    sets: match.sets,
   };
 }
 

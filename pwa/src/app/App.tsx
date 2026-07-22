@@ -7,6 +7,7 @@ import { AppLayout } from './AppLayout';
 import {
   AddRoute,
   BoardRoute,
+  GroupsRoute,
   MatchesRoute,
   PlayerRoute,
   ProfileRoute,
@@ -31,6 +32,7 @@ export function App() {
           <Route path="stats" element={<StatsRoute />} />
           <Route path="profile" element={<ProfileRoute />} />
           <Route path="player/:userId" element={<PlayerRoute />} />
+          <Route path="groups" element={<GroupsRoute />} />
           <Route path="settings" element={<SettingsRoute />} />
           <Route path="*" element={<Navigate to="/board" replace />} />
         </Route>

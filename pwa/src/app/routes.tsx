@@ -3,9 +3,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { formKey, leaderboardKey, matchesKey, useForm, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers } from '../queries';
-import { matchTeam, winningTeamNo, type TimeRange } from '../domain';
-import type { RecordMatchRequest } from '../models';
+import { formKey, leaderboardKey, matchesKey, statsKey, useAttendance, useForm, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats } from '../queries';
+import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, winningTeamNo, type TimeRange } from '../domain';
+import type { RecordMatchRequest, User } from '../models';
 import { api } from '../data';
 import type { AddMatchPrefill } from '../features/add-match/AddMatchScreen';
 import { shareLeaderboard } from '../share';
@@ -16,7 +16,6 @@ import { MatchHistoryScreen } from '../features/matches/MatchHistoryScreen';
 import { AddMatchScreen } from '../features/add-match/AddMatchScreen';
 import { StatsScreen } from '../features/stats/StatsScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
-import { PlayerScreen } from '../features/profile/PlayerScreen';
 
 function NoGroup() {
   return (
@@ -158,14 +157,43 @@ export function StatsRoute() {
   return <StatsScreen rankings={data?.rankings ?? []} />;
 }
 
+/** Shared attendance-heatmap loader: the last 3 months + the player's active days. */
+function useProfileAttendance(groupId?: string, userId?: string) {
+  const months = heatmapMonths();
+  const { from, to } = heatmapWindow(months);
+  const attendance = useAttendance(groupId, userId, from, to);
+  return { months, activeDays: attendanceDays(attendance.data?.playedAt ?? []) };
+}
+
 export function ProfileRoute() {
-  const { user, signOut } = useSession();
+  const { activeGroup } = useGroups();
+  const { user, updateUser } = useSession();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const stats = usePlayerStats(activeGroup?.id, user?.id);
+  const attendance = useProfileAttendance(activeGroup?.id, user?.id);
+  if (!activeGroup) return <NoGroup />;
+  if (stats.isLoading) return <Loading />;
+  if (stats.error || !stats.data) return <ErrorState message={errorMessage(stats.error)} retry={() => stats.refetch()} />;
+
+  // A profile edit updates the session (immediate identity reflection) and refreshes the
+  // stats query so the persisted avatar/name lands everywhere.
+  const applyEdit = (next: User) => {
+    updateUser(next);
+    queryClient.invalidateQueries({ queryKey: statsKey(activeGroup.id, user?.id) });
+    queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
+  };
   return (
     <ProfileScreen
-      user={user!}
-      onSignOut={signOut}
-      onGroupsChanged={() => queryClient.invalidateQueries({ queryKey: ['groups'] })}
+      stats={stats.data}
+      isOwn
+      identity={{ displayName: user!.displayName, photoUrl: user!.photoUrl, avatarId: user!.avatarId, avatarColor: user!.avatarColor }}
+      attendance={attendance}
+      onRename={async name => applyEdit(await api.renameUser(name))}
+      onSelectAvatar={async avatarId => applyEdit(await api.selectAvatar(avatarId))}
+      onUploadPhoto={async file => applyEdit(await api.uploadPhoto(file))}
+      onOpenSettings={() => navigate('/settings')}
+      onOpenGroups={() => navigate('/groups')}
     />
   );
 }
@@ -173,22 +201,89 @@ export function ProfileRoute() {
 export function PlayerRoute() {
   const { userId } = useParams();
   const { activeGroup } = useGroups();
+  const { user } = useSession();
   const navigate = useNavigate();
-  const { data, isLoading } = useLeaderboard(activeGroup?.id);
-  if (isLoading) return <Loading />;
-  const ranking = data?.rankings.find(row => row.userId === userId);
-  if (!ranking) return <ErrorState message="Player not found." retry={() => navigate('/board')} />;
-  return <PlayerScreen ranking={ranking} onBack={() => navigate('/board')} />;
+  const stats = usePlayerStats(activeGroup?.id, userId);
+  const attendance = useProfileAttendance(activeGroup?.id, userId);
+  // Viewing your own row from the Board just shows your (editable) profile.
+  if (userId && user && userId === user.id) return <ProfileRoute />;
+  if (stats.isLoading) return <Loading />;
+  if (stats.error || !stats.data) return <ErrorState message="Player not found." retry={() => navigate('/board')} />;
+  return (
+    <ProfileScreen
+      stats={stats.data}
+      isOwn={false}
+      identity={{ displayName: stats.data.displayName, photoUrl: stats.data.photoUrl, avatarId: stats.data.avatarId, avatarColor: stats.data.avatarColor }}
+      attendance={attendance}
+      onBack={() => navigate('/board')}
+    />
+  );
 }
 
-/** Placeholder — the full Settings screen lands in its own slice. */
+/**
+ * Groups stub — the manage-groups destination (Profile's people icon). Full management
+ * (rename, invite, members, roles, session window) lands in the Groups slice; for now it
+ * keeps create/join reachable.
+ */
+export function GroupsRoute() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage('');
+    try {
+      if (mode === 'create') { if (!name.trim()) throw new Error('Enter a group name.'); await api.createGroup({ name: name.trim(), sportCode: 'badminton_doubles' }); setName(''); setMessage('Group created.'); }
+      else { if (!code.trim()) throw new Error('Enter an invite code.'); await api.joinGroup({ code: code.trim().toUpperCase() }); setCode(''); setMessage('You joined the group.'); }
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : 'Could not update groups.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <button className="back" onClick={() => navigate(-1)}><Icon name="back" size={16} /> Back</button>
+      <h2>Groups</h2>
+      <div className="segmented">
+        <button className={mode === 'create' ? 'selected' : ''} onClick={() => setMode('create')}>Create group</button>
+        <button className={mode === 'join' ? 'selected' : ''} onClick={() => setMode('join')}>Join group</button>
+      </div>
+      <form className="group-form" onSubmit={submit}>
+        <input
+          aria-label={mode === 'create' ? 'Group name' : 'Invite code'}
+          placeholder={mode === 'create' ? 'Saturday Smashers' : 'Invite code'}
+          value={mode === 'create' ? name : code}
+          onChange={event => (mode === 'create' ? setName(event.target.value) : setCode(event.target.value))}
+        />
+        {message && <p className={message.endsWith('.') && !message.includes('Could') ? 'success' : 'form-error'}>{message}</p>}
+        <button className="record-button" type="submit" disabled={busy}>{busy ? 'Saving…' : mode === 'create' ? 'Create group' : 'Join group'}</button>
+      </form>
+    </>
+  );
+}
+
+/** Settings stub — account + sign-out; the full appearance/updates screen lands in its slice. */
 export function SettingsRoute() {
   const navigate = useNavigate();
+  const { user, signOut } = useSession();
   return (
     <>
       <button className="back" onClick={() => navigate(-1)}><Icon name="back" size={16} /> Back</button>
       <h2>Settings</h2>
-      <p className="muted">Account, appearance, and sign-out arrive in the Settings slice.</p>
+      <p className="section-label">ACCOUNT</p>
+      <div className="card setting-account">
+        <span>Signed in with Google</span>
+        <span className="muted">{user?.email}</span>
+      </div>
+      <button className="outline-action delete" onClick={signOut}>Sign out</button>
+      <p className="muted settings-note">Appearance and updates arrive in the Settings slice.</p>
     </>
   );
 }
