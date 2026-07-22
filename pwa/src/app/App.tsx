@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { api, auth } from '../data';
-import type { Group, Match, Ranking, Session, Tab, User } from '../models';
+import { api } from '../data';
+import type { Group, Match, Ranking, Tab, User } from '../models';
 import { shareLeaderboard } from '../share';
+import { useSession } from '../session';
 import { AddMatchScreen } from '../features/add-match/AddMatchScreen';
 import { BoardScreen } from '../features/board/BoardScreen';
 import { LoginScreen } from '../features/auth/LoginScreen';
+import { Splash } from '../features/auth/Splash';
 import { MatchHistoryScreen } from '../features/matches/MatchHistoryScreen';
 import { PlayerScreen } from '../features/profile/PlayerScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
@@ -28,10 +30,11 @@ const demoRankings: Ranking[] = [
 ];
 
 export function App() {
-  const [session, setSession] = useState(auth.get());
+  const { status, user: sessionUser, signOut } = useSession();
+  const authed = status === 'authed';
   const [groups, setGroups] = useState<Group[]>([]);
   const [group, setGroup] = useState<Group>();
-  const [user, setUser] = useState<User>(session?.user || demoUser);
+  const [user, setUser] = useState<User>(sessionUser || demoUser);
   const [tab, setTab] = useState<Tab>('board');
   const [rankings, setRankings] = useState<Ranking[]>(demoRankings);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -43,7 +46,7 @@ export function App() {
   const activeGroup = group || activeGroups[0];
 
   useEffect(() => {
-    if (!session) return;
+    if (!authed) return;
     api.groups()
       .then(result => {
         setGroups(result.groups);
@@ -52,10 +55,10 @@ export function App() {
       })
       .then(setUser)
       .catch(() => undefined);
-  }, [session]);
+  }, [authed]);
 
   const loadGroupData = async () => {
-    if (!activeGroup || !session) return;
+    if (!activeGroup || !authed) return;
     setLoading(true);
     setError('');
     try {
@@ -71,7 +74,7 @@ export function App() {
     }
   };
 
-  useEffect(() => { loadGroupData(); }, [activeGroup?.id, session]);
+  useEffect(() => { loadGroupData(); }, [activeGroup?.id, authed]);
 
   const refreshGroups = () => {
     api.groups().then(result => {
@@ -80,19 +83,13 @@ export function App() {
     }).catch(() => setError('Could not refresh groups.'));
   };
 
-  const login = (nextSession: Session) => {
-    auth.set(nextSession);
-    setSession(nextSession);
-    setUser(nextSession.user || demoUser);
-  };
-
-  const signOut = () => { auth.set(null); setSession(null); };
   const navigate = (nextTab: Tab) => { setTab(nextTab); setPlayer(undefined); };
   const selectGroup = (nextGroup: Group) => { setGroup(nextGroup); setPlayer(undefined); };
   const share = () => shareLeaderboard(activeGroup, rankings)
     .catch(cause => setError(cause instanceof Error ? cause.message : 'Sharing failed.'));
 
-  if (!session) return <LoginScreen onLogin={login} />;
+  if (status === 'loading') return <Splash />;
+  if (status !== 'authed') return <LoginScreen />;
 
   return (
     <AppShell user={user} groups={activeGroups} group={activeGroup} tab={tab}
