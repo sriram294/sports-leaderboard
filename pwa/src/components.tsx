@@ -38,6 +38,15 @@ export function Avatar({ person, size = 'md', ring = false }: { person: AvatarPe
   );
 }
 
+/** Group mark — filled rounded-square with the group's initial (GroupAvatar.kt). */
+export function GroupAvatar({ group, size = 36 }: { group: { name: string; avatarColor: string }; size?: number }) {
+  return (
+    <span className="group-avatar" style={{ background: group.avatarColor, width: size, height: size }}>
+      {group.name.trim()[0]?.toUpperCase() || '?'}
+    </span>
+  );
+}
+
 /** Playboard wordmark — racket logo as the "P" + "layboard" in Paytone One. */
 export function Wordmark({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
   return (

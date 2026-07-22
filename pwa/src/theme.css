@@ -182,8 +182,15 @@ header {
 }
 
 .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 24px;
-    color: var(--lime);
+    color: var(--brand);
+}
+
+.icon-button.gear {
+    color: var(--muted);
 }
 
 h1,
@@ -440,24 +447,38 @@ h3 {
 }
 
 .nav-item {
+    position: relative;
     background: none;
     border: 0;
-    color: #777;
+    color: var(--muted);
+    text-decoration: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    font-size: 10px;
     min-width: 54px;
 }
 
-.nav-item span {
-    font-size: 21px;
-    line-height: 20px;
+.nav-item .nav-label {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 700;
 }
 
 .nav-item.active {
-    color: var(--lime);
+    color: var(--brand);
+}
+
+.nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--brand);
 }
 
 .add-button {
@@ -465,12 +486,14 @@ h3 {
     height: 52px;
     border-radius: 50%;
     border: 5px solid var(--bg);
-    background: var(--lime);
-    color: #101010;
-    font-size: 30px;
-    line-height: 1;
+    background: var(--brand);
+    color: var(--on-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
     margin-top: -27px;
-    box-shadow: 0 4px 18px #000;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
 .button {
@@ -1014,4 +1037,104 @@ h3 {
     background: var(--surface-2);
     color: var(--text);
     border: 1px solid var(--line);
+}
+
+/* ==================== App shell & group switcher (Slice 3) ==================== */
+
+/* Group mark — filled rounded-square with the group's initial. */
+.group-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #0a0a0a;
+    font-weight: 800;
+    font-size: 14px;
+    flex: 0 0 auto;
+}
+
+.group-switcher-wrap {
+    padding: 14px 20px 0;
+}
+
+.group-switcher {
+    position: relative;
+}
+
+.group-switcher-pill {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 11px 16px;
+    color: var(--text);
+    text-align: left;
+}
+
+.gs-name {
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.gs-caret {
+    color: var(--muted);
+    margin-left: 2px;
+}
+
+.gs-count {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.group-switcher-pill.empty {
+    color: var(--muted);
+    justify-content: center;
+}
+
+.group-switcher-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 6;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.group-switcher-panel .eyebrow {
+    margin-bottom: 8px;
+}
+
+.gs-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: 0;
+    color: var(--text);
+    padding: 10px 6px;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.gs-row.active {
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.gs-row-name {
+    flex: 1;
+    font-weight: 650;
+    font-size: 14px;
+}
+
+.gs-row small {
+    color: var(--muted);
 }
