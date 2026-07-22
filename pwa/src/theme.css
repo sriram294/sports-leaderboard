@@ -800,47 +800,266 @@ h3 {
     word-break: break-all;
 }
 
-.match-summary {
-    width: 100%;
-    border: 0;
-    color: #fff;
-    background: none;
-    display: grid;
-    grid-template-columns: 50px 1fr auto 18px;
-    gap: 10px;
-    text-align: left;
+/* ==================== Matches ==================== */
+
+.matches-filter {
+    display: flex;
     align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
 }
 
-.date {
-    color: var(--lime);
-    font-size: 11px;
-    font-weight: 800;
-}
-
-.match-teams {
+.matches-count {
+    flex: 1;
+    color: var(--muted);
     font-size: 13px;
 }
 
-.score {
-    font-weight: 800;
+.mine-pill {
+    background: none;
+    border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+}
+
+.mine-pill.active {
+    color: var(--brand);
+    font-weight: 600;
+    border-color: color-mix(in srgb, var(--brand) 80%, transparent);
+    background: color-mix(in srgb, var(--brand) 15%, transparent);
+}
+
+.matches-empty {
+    color: var(--muted);
+    text-align: center;
+    padding: 56px 24px;
+}
+
+.date-section {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.date-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    padding: 12px 4px 2px;
+    text-align: left;
+}
+
+.caret {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.match-card {
+    background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--muted) 10%, transparent);
+    border-radius: 16px;
+    margin-bottom: 5px;
+}
+
+.match-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: 0;
+    color: var(--text);
+    text-align: left;
+    padding: 14px;
+    gap: 4px;
+}
+
+.team-block {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.team-block.end {
+    align-items: flex-end;
+}
+
+.team-avatars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.winner-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--brand);
+    color: var(--on-brand);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.team-names {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.team-block.end .team-names {
+    text-align: right;
+}
+
+.team-names.winner {
+    color: var(--brand);
+}
+
+.match-score {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 .match-detail {
-    border-top: 1px solid var(--line);
-    margin-top: 16px;
-    padding-top: 16px;
+    padding: 0 14px 14px;
+    border-top: 1px solid color-mix(in srgb, var(--muted) 15%, transparent);
+    margin: 0 14px 14px;
+    padding-top: 12px;
 }
 
-.set-scores {
+.detail-label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin: 0 0 6px;
+}
+
+.detail-label.history {
+    margin-top: 12px;
+}
+
+.detail-line {
+    font-size: 14px;
+    margin: 0 0 2px;
+}
+
+.detail-winner {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--brand);
+    margin: 4px 0 0;
+}
+
+.detail-history {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 2px 0;
+}
+
+.detail-actions {
     display: flex;
-    gap: 10px;
-    color: var(--lime);
-    font-weight: 800;
+    gap: 12px;
+    margin-top: 14px;
 }
 
-.match-detail .button {
+.outline-action {
+    background: none;
+    border: 1px solid;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.outline-action.edit {
+    color: var(--brand);
+    border-color: color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+.outline-action.delete {
+    color: var(--stat-loss);
+    border-color: color-mix(in srgb, var(--stat-loss) 60%, transparent);
+}
+
+.load-older {
+    width: 100%;
     margin-top: 8px;
+    background: none;
+    border: 1px solid color-mix(in srgb, var(--brand) 60%, transparent);
+    border-radius: 12px;
+    color: var(--brand);
+    font-weight: 600;
+    padding: 14px;
+}
+
+/* Delete-confirm dialog. */
+.confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.confirm-dialog {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+    max-width: 340px;
+    width: 100%;
+}
+
+.confirm-dialog h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.confirm-cancel,
+.confirm-delete {
+    background: none;
+    border: 0;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.confirm-cancel {
+    color: var(--muted);
+}
+
+.confirm-delete {
+    color: var(--stat-loss);
 }
 
 .form {

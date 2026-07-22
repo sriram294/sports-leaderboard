@@ -1,4 +1,4 @@
-import type { MatchSummary, Ranking } from './models';
+import type { Match, MatchTeam, PlayerRef, Ranking } from './models';
 
 export type SortKey = 'rank' | 'gamesPlayed' | 'wins' | 'losses' | 'pointsFor' | 'winRate';
 export function sortRankings(rows: Ranking[], key: SortKey): Ranking[] { if (key === 'rank') return rows; return [...rows].sort((a, b) => (b[key] as number) - (a[key] as number) || a.rank - b.rank); }
@@ -114,12 +114,66 @@ export function rangeWindow(range: TimeRange, now: Date = new Date()): { from: s
 /* ==================== Form bar ==================== */
 
 /** Whether a match was a win for `userId`; `null` if they didn't play in it (`Match.isWinFor`). */
-export function isWinForMatch(match: MatchSummary, userId: string): boolean | null {
+export function isWinForMatch(match: Match, userId: string): boolean | null {
   const team = match.teams.find(t => t.players.some(p => p.userId === userId));
   return team ? team.isWinner : null;
 }
 
 /** The signed-in user's most recent results in a group, newest first, `true` = win (≤5). */
-export function recentForm(matches: MatchSummary[], userId: string): boolean[] {
+export function recentForm(matches: Match[], userId: string): boolean[] {
   return matches.map(m => isWinForMatch(m, userId)).filter((r): r is boolean => r !== null).slice(0, 5);
+}
+
+/* ==================== Matches log (ported from MatchesScreen.kt / MatchesUiState.kt) ==================== */
+
+/** A team's players joined by " & " (full display names; guests read "Guest 1"). */
+export const teamName = (team?: MatchTeam) => (team?.players ?? []).map(p => p.displayName).join(' & ');
+/** The team with the given number. */
+export const matchTeam = (match: Match, teamNo: number) => match.teams.find(t => t.teamNo === teamNo);
+/** The winning team's number, or `null` (shouldn't happen for a valid match). */
+export const winningTeamNo = (match: Match): number | null => match.teams.find(t => t.isWinner)?.teamNo ?? null;
+/** Whether a player ref is a guest filler (no wire flag — inferred from the "Guest N" name). */
+export const isGuestRef = (p: PlayerRef) => /^guest(\s|$)/i.test(p.displayName.trim());
+
+/** Matches under one calendar day, newest day first / newest match first within it. */
+export type MatchDateSection = { date: string; label: string; matches: Match[] };
+
+/** `DD MMM` for a local `Date`, e.g. `22 Jul` — day-first regardless of locale, matching
+ *  Android's `DateTimeFormatter.ofPattern("dd MMM")`. */
+export const dateLabel = (date: Date) =>
+  `${`${date.getDate()}`.padStart(2, '0')} ${date.toLocaleDateString(undefined, { month: 'short' })}`;
+/** `DD MMM · HH:MM` for an ISO instant in local time (audit-log timestamps). */
+export const timeLabel = (iso: string) => {
+  const d = new Date(iso);
+  return `${dateLabel(d)} · ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+};
+/** Human label for an audit action. */
+export const actionLabel = (action: string) => {
+  switch (action.toLowerCase()) {
+    case 'created': return 'Recorded this match';
+    case 'edited':
+    case 'updated': return 'Edited this match';
+    default: return action;
+  }
+};
+
+/**
+ * Group a newest-first match list into per-day sections (keyed by local calendar day),
+ * preserving order. `YYYY-MM-DD` keys are stable for expand/collapse tracking.
+ */
+export function groupMatchesByDate(matches: Match[]): MatchDateSection[] {
+  const sections: MatchDateSection[] = [];
+  const index = new Map<string, MatchDateSection>();
+  for (const match of matches) {
+    const d = new Date(match.playedAt);
+    const key = `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`;
+    let section = index.get(key);
+    if (!section) {
+      section = { date: key, label: dateLabel(d), matches: [] };
+      index.set(key, section);
+      sections.push(section);
+    }
+    section.matches.push(match);
+  }
+  return sections;
 }

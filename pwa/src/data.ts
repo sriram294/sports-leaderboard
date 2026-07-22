@@ -1,4 +1,4 @@
-import type { Group, LeaderboardResponse, Match, PlayerStats, Session, User } from './models';
+import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, PlayerStats, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
@@ -30,8 +30,14 @@ export const api = {
     const suffix = query.toString();
     return request<LeaderboardResponse>(`/groups/${id}/leaderboard${suffix ? `?${suffix}` : ''}`);
   },
-  matches: (id: string, cursor?: string) => request<{ matches: Match[]; nextCursor?: string }>(`/groups/${id}/matches${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`),
-  match: (groupId: string, matchId: string) => request<Match>(`/groups/${groupId}/matches/${matchId}`),
+  matches: (id: string, cursor?: string, mine = false) => {
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    if (mine) query.set('mine', 'true');
+    const suffix = query.toString();
+    return request<MatchListResponse>(`/groups/${id}/matches${suffix ? `?${suffix}` : ''}`);
+  },
+  matchDetail: (groupId: string, matchId: string) => request<MatchDetail>(`/groups/${groupId}/matches/${matchId}`),
   createMatch: (id: string, body: unknown) => request<Match>(`/groups/${id}/matches`, { method: 'POST', body: JSON.stringify(body) }),
   deleteMatch: (groupId: string, matchId: string) => request<void>(`/groups/${groupId}/matches/${matchId}`, { method: 'DELETE' }),
   me: () => request<User>('/users/me'),
