@@ -37,6 +37,7 @@ import com.org.playboard.ui.board.LeaderboardHeaderRow
 import com.org.playboard.ui.board.LeaderboardRow
 import com.org.playboard.ui.board.RankingSortMetric
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.PodiumCrownIcon
 import com.org.playboard.ui.components.playboardGlow
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.theme.PlayboardTheme
@@ -134,9 +135,9 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
         // Crown floats above the champion; runners-up reserve the same height so all three
         // avatars still bottom-align into a clean podium tier.
         if (isChampion) {
-            Text(text = "👑", fontSize = 22.sp)
+            PodiumCrownIcon()
         } else {
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
         Spacer(modifier = Modifier.height(4.dp))
         Box(contentAlignment = Alignment.BottomCenter) {

@@ -63,6 +63,7 @@ import com.org.playboard.R
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.PodiumCrownIcon
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.share.renderAndShareLeaderboard
 import com.org.playboard.ui.theme.DarkPlayboardColors
@@ -321,9 +322,9 @@ private fun PodiumSlot(
         // Crown floats above the champion; runners-up reserve the same height so all three
         // avatars still bottom-align into a clean podium tier.
         if (isChampion) {
-            Text(text = "👑", fontSize = 22.sp)
+            PodiumCrownIcon()
         } else {
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(28.dp))
         }
         Spacer(modifier = Modifier.height(4.dp))
         // Avatar with a soft radial glow behind it, a color ring around it, and the rank
