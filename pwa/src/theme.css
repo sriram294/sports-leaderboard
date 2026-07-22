@@ -1449,8 +1449,6 @@ h3 {
 .wordmark-racket {
     height: 1em;
     width: auto;
-    /* The racket art already reads as a "P"; nudge the text to close the gap. */
-    margin-right: -0.06em;
 }
 
 .wordmark-text {
