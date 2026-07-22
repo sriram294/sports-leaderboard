@@ -16,7 +16,12 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
   if (!response.ok) { let body: { detail?: string; code?: string } = {}; try { body = await response.json(); } catch {} throw new ApiError(response.status, body.code || 'REQUEST_FAILED', body.detail || 'Something went wrong'); }
   return response.status === 204 ? undefined as T : response.json();
 }
+/** Raw token payload returned by /auth/google and /auth/refresh. */
+export type AuthTokens = { accessToken: string; refreshToken: string; expiresIn: number; user: User };
+
 export const api = {
+  googleSignIn: (idToken: string) => request<AuthTokens>('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
+  logout: () => request<void>('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: session?.refreshToken }) }),
   groups: () => request<{ groups: Group[] }>('/groups'),
   leaderboard: (id: string) => request<{ rankings: Ranking[] }>(`/groups/${id}/leaderboard`),
   matches: (id: string, cursor?: string) => request<{ matches: Match[]; nextCursor?: string }>(`/groups/${id}/matches${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`),
