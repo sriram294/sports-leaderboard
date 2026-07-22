@@ -1,8 +1,8 @@
 /* ==================== Fonts (self-hosted, matches Android) ==================== */
 @font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/manrope-regular.ttf') format('truetype'); }
 @font-face { font-family: 'Manrope'; font-style: normal; font-weight: 500; font-display: swap; src: url('./assets/fonts/manrope-medium.ttf') format('truetype'); }
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 600; font-display: swap; src: url('./assets/fonts/manrope-semibold.ttf') format('truetype'); }
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 700; font-display: swap; src: url('./assets/fonts/manrope-bold.ttf') format('truetype'); }
+@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/manrope-semibold.ttf') format('truetype'); }
+@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/manrope-bold.ttf') format('truetype'); }
 @font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/manrope-extrabold.ttf') format('truetype'); }
 @font-face { font-family: 'Paytone One'; font-style: normal; font-weight: 400; font-display: swap; src: url('./assets/fonts/paytone-one.ttf') format('truetype'); }
 
@@ -354,7 +354,7 @@ h3 {
 
 .range-menu button.selected {
     color: var(--brand);
-    font-weight: 700;
+    font-weight: 400;
 }
 
 /* Podium — #2 · #1(center, larger, crowned) · #3, bottom-aligned. */
@@ -461,7 +461,7 @@ h3 {
 .podium-name {
     margin-top: 8px;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 400;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -477,7 +477,7 @@ h3 {
 }
 
 .podium-slot.champion .podium-metric {
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .avatar {
@@ -560,7 +560,7 @@ h3 {
     width: 24px;
     flex: 0 0 24px;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .col-player {
@@ -602,7 +602,7 @@ h3 {
 
 .ranking-name {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 400;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -698,7 +698,7 @@ h3 {
 .nav-item .nav-label {
     font-size: 10px;
     line-height: 1;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .nav-item.active {
@@ -762,7 +762,7 @@ h3 {
     border: 0;
     color: var(--lime);
     background: none;
-    font-weight: 700;
+    font-weight: 400;
     font-size: 12px;
 }
 
@@ -827,7 +827,7 @@ h3 {
 
 .mine-pill.active {
     color: var(--brand);
-    font-weight: 600;
+    font-weight: 400;
     border-color: color-mix(in srgb, var(--brand) 80%, transparent);
     background: color-mix(in srgb, var(--brand) 15%, transparent);
 }
@@ -853,7 +853,7 @@ h3 {
     border: 0;
     color: var(--muted);
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 400;
     letter-spacing: 0.3px;
     padding: 12px 4px 2px;
     text-align: left;
@@ -912,12 +912,12 @@ h3 {
     background: var(--brand);
     color: var(--on-brand);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .team-names {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text);
 }
 
@@ -936,7 +936,7 @@ h3 {
     align-items: center;
     padding: 0 10px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .match-detail {
@@ -949,7 +949,7 @@ h3 {
 .detail-label {
     color: var(--muted);
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 400;
     letter-spacing: 0.5px;
     margin: 0 0 6px;
 }
@@ -965,7 +965,7 @@ h3 {
 
 .detail-winner {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--brand);
     margin: 4px 0 0;
 }
@@ -987,7 +987,7 @@ h3 {
     border: 1px solid;
     border-radius: 12px;
     padding: 10px 20px;
-    font-weight: 600;
+    font-weight: 400;
     font-size: 14px;
 }
 
@@ -1008,7 +1008,7 @@ h3 {
     border: 1px solid color-mix(in srgb, var(--brand) 60%, transparent);
     border-radius: 12px;
     color: var(--brand);
-    font-weight: 600;
+    font-weight: 400;
     padding: 14px;
 }
 
@@ -1049,7 +1049,7 @@ h3 {
 .confirm-delete {
     background: none;
     border: 0;
-    font-weight: 600;
+    font-weight: 400;
     font-size: 14px;
     padding: 8px 12px;
     border-radius: 8px;
@@ -1073,76 +1073,260 @@ h3 {
     margin-top: 8px;
 }
 
-.team-box {
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 14px;
+/* ==================== Add / Edit match ==================== */
+
+.recording-as {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 22px;
+}
+
+.add-match .eyebrow {
+    margin-bottom: 16px;
+}
+
+.score-eyebrow {
+    margin-top: 28px;
+}
+
+/* Build teams: two columns with a VS in the middle. */
+.build-teams {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 
-.team-box.winner {
-    border-color: #648c20;
+.team-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
 }
 
-.team-label {
-    width: 100%;
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 400;
-    letter-spacing: 1px;
+.team-title {
+    font-size: 17px;
+    font-weight: 700;
 }
 
-.team-label b {
-    color: var(--lime);
-    float: right;
+.team-slots {
+    display: flex;
+    gap: 12px;
 }
 
-.add-player {
-    margin-left: auto;
+.slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     background: none;
-    border: 1px dashed #555;
+    border: 0;
+    padding: 0;
+    width: 60px;
+}
+
+.slot.empty {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--muted) 45%, transparent);
     color: var(--muted);
-    border-radius: 8px;
-    padding: 7px 10px;
-    font-size: 12px;
+    align-items: center;
+    justify-content: center;
 }
 
-.versus {
-    text-align: center;
-    color: #555;
-    font-size: 10px;
-    font-weight: 400;
-    margin: -1px 0;
+.slot-name {
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.score-inputs {
+.vs {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    align-self: center;
+    /* Sit level with the avatar row, above the name labels. */
+    margin-top: 18px;
+}
+
+.set-row {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 9px 0;
+    margin-bottom: 12px;
 }
 
-.score-inputs span {
-    width: 40px;
-    color: var(--muted);
-    font-size: 12px;
+.set-label {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 600;
 }
 
-.score-inputs input {
-    width: 65px;
-    background: var(--surface-2);
-    color: #fff;
+.score-input {
+    width: 78px;
+    height: 64px;
+    background: transparent;
+    color: var(--text);
     border: 1px solid var(--line);
-    padding: 9px;
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: center;
+    font-size: 22px;
+    font-weight: 600;
 }
 
-.score-inputs b {
+.score-input:focus {
+    outline: none;
+    border-color: var(--brand);
+}
+
+.score-dash {
     color: var(--muted);
+}
+
+.remove-set {
+    background: none;
+    border: 0;
+    color: var(--muted);
+    display: inline-flex;
+    padding: 4px;
+}
+
+.add-set {
+    background: none;
+    border: 0;
+    color: var(--brand);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 4px 0;
+    margin-bottom: 28px;
+}
+
+.who-won {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.winner-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 12px;
+    color: var(--text);
+}
+
+.winner-card strong {
+    font-size: 17px;
+}
+
+.winner-card span {
+    color: var(--muted);
+    font-size: 13px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.winner-card.selected {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.record-button {
+    width: 100%;
+    padding: 18px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--brand);
+    color: var(--on-brand);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.record-button:disabled {
+    background: color-mix(in srgb, var(--brand) 30%, var(--surface));
+    color: color-mix(in srgb, var(--on-brand) 45%, transparent);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+/* Player picker bottom sheet. */
+.sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.sheet {
+    width: min(560px, 100%);
+    background: var(--surface);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border: 1px solid var(--line);
+    padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.sheet-empty {
+    text-align: center;
+    padding: 24px;
+}
+
+.sheet-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.sheet-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: 0;
+    color: var(--text);
+    text-align: left;
+    padding: 10px 4px;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 10%, transparent);
+}
+
+.sheet-name {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.guest-tag {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+    border-radius: 6px;
+    padding: 2px 6px;
 }
 
 .segmented {
@@ -1321,7 +1505,7 @@ h3 {
 .login-tagline em {
     color: var(--brand);
     font-style: normal;
-    font-weight: 700;
+    font-weight: 400;
 }
 
 .login-action {
@@ -1338,7 +1522,7 @@ h3 {
     border-radius: 999px;
     background: #fff;
     color: #1a1a1a;
-    font-weight: 700;
+    font-weight: 400;
     font-size: 16px;
     display: inline-flex;
     align-items: center;

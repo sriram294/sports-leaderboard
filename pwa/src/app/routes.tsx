@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { formKey, leaderboardKey, matchesKey, useForm, useLeaderboard, useMatchesInfinite } from '../queries';
-import type { TimeRange } from '../domain';
+import { formKey, leaderboardKey, matchesKey, useForm, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers } from '../queries';
+import { matchTeam, winningTeamNo, type TimeRange } from '../domain';
+import type { RecordMatchRequest } from '../models';
 import { api } from '../data';
+import type { AddMatchPrefill } from '../features/add-match/AddMatchScreen';
 import { shareLeaderboard } from '../share';
 import { Loading, ErrorState } from '../components';
 import { Icon } from '../icons';
@@ -100,19 +102,49 @@ export function AddRoute() {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  // The Matches "Edit" button routes here with the match id in navigation state.
+  const location = useLocation();
+  const editMatchId = (location.state as { editMatchId?: string } | null)?.editMatchId;
+  const members = useMembers(activeGroup?.id);
+  const detail = useMatchDetail(activeGroup?.id, editMatchId);
+
   if (!activeGroup) return <NoGroup />;
+  if (members.isLoading || (editMatchId && detail.isLoading)) return <Loading />;
+  if (members.error) return <ErrorState message={errorMessage(members.error)} retry={() => members.refetch()} />;
+
+  const roster = [...(members.data?.members ?? []), ...(members.data?.guests ?? [])];
+  const editing = editMatchId && detail.data ? detail.data : undefined;
+  const prefill: AddMatchPrefill | undefined = editing
+    ? {
+        team1: (matchTeam(editing, 1)?.players ?? []).map(player => player.userId),
+        team2: (matchTeam(editing, 2)?.players ?? []).map(player => player.userId),
+        sets: [...editing.sets].sort((a, b) => a.setNo - b.setNo).map(set => ({ team1: `${set.team1Score}`, team2: `${set.team2Score}` })),
+        winner: winningTeamNo(editing) ?? undefined,
+      }
+    : undefined;
+  const playedAt = editing ? editing.playedAt : new Date().toISOString();
+
+  const onSubmit = async (body: RecordMatchRequest) => {
+    if (editMatchId) await api.editMatch(activeGroup.id, editMatchId, body);
+    else await api.createMatch(activeGroup.id, body);
+    // A recorded/edited match changes Board + Matches (+ Stats, which read them) + the form bar.
+    queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
+    queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
+    queryClient.invalidateQueries({ queryKey: formKey(activeGroup.id, user?.id) });
+    if (editMatchId) queryClient.invalidateQueries({ queryKey: ['matchDetail', activeGroup.id, editMatchId] });
+    navigate(editMatchId ? '/matches' : '/board');
+  };
+
   return (
     <AddMatchScreen
-      group={activeGroup}
+      // Remount when switching between create and a specific edit so form state re-seeds.
+      key={editMatchId ?? 'new'}
       user={user!}
-      onDone={() => {
-        // Match mutation invalidates Board + Matches (and Stats, which reads them), plus
-        // the signed-in user's form bar. Prefix keys match every windowed leaderboard variant.
-        queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
-        queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
-        queryClient.invalidateQueries({ queryKey: formKey(activeGroup.id, user?.id) });
-        navigate('/board');
-      }}
+      roster={roster}
+      isEditing={!!editMatchId}
+      playedAt={playedAt}
+      prefill={prefill}
+      onSubmit={onSubmit}
     />
   );
 }

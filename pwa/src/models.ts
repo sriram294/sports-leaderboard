@@ -50,4 +50,18 @@ export type MatchListResponse = { matches: Match[]; nextCursor?: string };
 /** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — only the fields Board reads. */
 export type PlayerStats = { userId: string; displayName: string; recentMatches: Match[] };
 
+export type MemberRole = 'owner' | 'admin' | 'member' | 'guest';
+/** A group member (MemberDto). Guests have `role: "guest"` and are interchangeable fillers. */
+export type Member = { userId: string; displayName: string; avatarColor: string; avatarId?: string | null; photoUrl?: string | null; role: MemberRole };
+/** `GET /groups/{id}/members` (MembersResponse) — real members and guest fillers, separately. */
+export type MembersResponse = { members: Member[]; guests: Member[] };
+
+/** Body for `POST /groups/{id}/matches` and `PATCH .../matches/{matchId}` (RecordMatchRequest). */
+export type RecordMatchRequest = {
+  playedAt: string;
+  teams: { teamNo: number; playerIds: string[] }[];
+  sets: MatchSet[];
+  winningTeamNo: number;
+};
+
 export type Session = { accessToken: string; refreshToken: string; expiresAt: number; user: User };

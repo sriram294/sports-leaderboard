@@ -43,6 +43,10 @@ export const useMatchesInfinite = (groupId?: string, mine = false) =>
     placeholderData: keepPreviousData,
   });
 
+/** The group roster (real members + guest fillers) for the Add-match player picker. */
+export const useMembers = (groupId?: string) =>
+  useQuery({ queryKey: ['members', groupId], queryFn: () => api.members(groupId!), enabled: !!groupId });
+
 /** Full detail (teams, per-set scores, audit log) for one expanded match card. */
 export const useMatchDetail = (groupId?: string, matchId?: string) =>
   useQuery({

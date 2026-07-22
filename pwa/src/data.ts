@@ -1,4 +1,4 @@
-import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, PlayerStats, Session, User } from './models';
+import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, MembersResponse, PlayerStats, RecordMatchRequest, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
@@ -38,7 +38,9 @@ export const api = {
     return request<MatchListResponse>(`/groups/${id}/matches${suffix ? `?${suffix}` : ''}`);
   },
   matchDetail: (groupId: string, matchId: string) => request<MatchDetail>(`/groups/${groupId}/matches/${matchId}`),
-  createMatch: (id: string, body: unknown) => request<Match>(`/groups/${id}/matches`, { method: 'POST', body: JSON.stringify(body) }),
+  members: (groupId: string) => request<MembersResponse>(`/groups/${groupId}/members`),
+  createMatch: (id: string, body: RecordMatchRequest) => request<Match>(`/groups/${id}/matches`, { method: 'POST', body: JSON.stringify(body) }),
+  editMatch: (groupId: string, matchId: string, body: RecordMatchRequest) => request<Match>(`/groups/${groupId}/matches/${matchId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteMatch: (groupId: string, matchId: string) => request<void>(`/groups/${groupId}/matches/${matchId}`, { method: 'DELETE' }),
   me: () => request<User>('/users/me'),
   stats: (groupId: string, userId: string) => request<PlayerStats>(`/groups/${groupId}/members/${userId}/stats`),

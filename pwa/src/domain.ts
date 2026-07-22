@@ -1,4 +1,4 @@
-import type { Match, MatchTeam, PlayerRef, Ranking } from './models';
+import type { Match, MatchTeam, Member, PlayerRef, Ranking, RecordMatchRequest } from './models';
 
 export type SortKey = 'rank' | 'gamesPlayed' | 'wins' | 'losses' | 'pointsFor' | 'winRate';
 export function sortRankings(rows: Ranking[], key: SortKey): Ranking[] { if (key === 'rank') return rows; return [...rows].sort((a, b) => (b[key] as number) - (a[key] as number) || a.rank - b.rank); }
@@ -122,6 +122,60 @@ export function isWinForMatch(match: Match, userId: string): boolean | null {
 /** The signed-in user's most recent results in a group, newest first, `true` = win (≤5). */
 export function recentForm(matches: Match[], userId: string): boolean[] {
   return matches.map(m => isWinForMatch(m, userId)).filter((r): r is boolean => r !== null).slice(0, 5);
+}
+
+/* ==================== Add / Edit match (ported from AddMatchUiState.kt) ==================== */
+
+/** Doubles: 2 players per team. Only sport is badminton_doubles. */
+export const TEAM_SIZE = 2;
+
+/** One set's raw score inputs — kept as strings so partial entry is representable. */
+export type SetInput = { team1: string; team2: string };
+
+/** A set parsed to `[team1, team2]`, or `null` if either side is blank/non-integer/negative. */
+export function parseSet(set: SetInput): [number, number] | null {
+  const a = Number(set.team1), b = Number(set.team2);
+  if (set.team1 === '' || set.team2 === '' || !Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) return null;
+  return [a, b];
+}
+
+/** Every set fully entered with two non-negative integers and no tie. */
+export const setsValid = (sets: SetInput[]) =>
+  sets.length > 0 && sets.every(set => { const p = parseSet(set); return p != null && p[0] !== p[1]; });
+
+/** Winner implied by sets won, or `null` if undetermined / tied on set count. */
+export function autoWinner(sets: SetInput[]): 1 | 2 | null {
+  if (!setsValid(sets)) return null;
+  const pairs = sets.map(parseSet).filter((p): p is [number, number] => p != null);
+  const t1 = pairs.filter(([a, b]) => a > b).length;
+  const t2 = pairs.filter(([a, b]) => b > a).length;
+  return t1 > t2 ? 1 : t2 > t1 ? 2 : null;
+}
+
+/**
+ * Roster members not yet assigned — the picker's choices. The group's interchangeable guest
+ * fillers collapse to a **single** "Guest" entry (the first still-unassigned guest): picking it
+ * consumes one guest id, so the entry stays until all guests are used, then disappears.
+ */
+export function availablePlayers(roster: Member[], assignedIds: Set<string>): Member[] {
+  const free = roster.filter(m => !assignedIds.has(m.userId));
+  const guests = free.filter(m => m.role === 'guest');
+  const reals = free.filter(m => m.role !== 'guest');
+  return guests.length > 0 ? [...reals, guests[0]] : reals;
+}
+
+/** Guests are shown generically as "Guest"; their internal Guest 1/2/3 numbering is hidden. */
+export const memberSlotLabel = (member: Member) => (member.role === 'guest' ? 'Guest' : member.displayName);
+
+/** Assemble the create/edit request body (setNo is re-indexed from the entered order). */
+export function buildRecordRequest(team1: string[], team2: string[], sets: SetInput[], winningTeamNo: number, playedAt: string): RecordMatchRequest {
+  return {
+    playedAt,
+    teams: [{ teamNo: 1, playerIds: team1 }, { teamNo: 2, playerIds: team2 }],
+    sets: sets.map(parseSet).filter((p): p is [number, number] => p != null)
+      .map(([team1Score, team2Score], index) => ({ setNo: index + 1, team1Score, team2Score })),
+    winningTeamNo,
+  };
 }
 
 /* ==================== Matches log (ported from MatchesScreen.kt / MatchesUiState.kt) ==================== */
