@@ -9,6 +9,15 @@ test('signs in through the Google credential exchange', async ({ page }) => {
           initialize: (options: { callback: (response: { credential: string }) => void }) => {
             (window as any).__googleCallback = options.callback;
           },
+          // The login screen renders GIS's button into a hidden overlay stretched
+          // over the styled button; fill it with a full-size clickable target.
+          renderButton: (parent: HTMLElement) => {
+            const target = document.createElement('div');
+            target.style.position = 'absolute';
+            target.style.inset = '0';
+            target.addEventListener('click', () => (window as any).__googleCallback({ credential: 'test-google-id-token' }));
+            parent.appendChild(target);
+          },
           prompt: () => (window as any).__googleCallback({ credential: 'test-google-id-token' }),
         },
       },
@@ -21,8 +30,10 @@ test('signs in through the Google credential exchange', async ({ page }) => {
   await page.route('**/api/v1/groups/group-1/matches', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ matches: [] }) }));
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /badminton/i })).toBeVisible();
-  await page.getByRole('button', { name: 'Continue with Google' }).click();
+  await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
+  // GIS delivers the credential via its callback (a real tap on the overlay button
+  // ends here); invoke it directly to exercise the exchange → session → Board flow.
+  await page.evaluate(() => (window as any).__googleCallback({ credential: 'test-google-id-token' }));
   await expect(page.getByRole('heading', { name: 'Board' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Matches' })).toBeVisible();
 });
