@@ -1,0 +1,9 @@
+import type { ReactNode } from 'react';
+import { initials } from './domain';
+import type { Group, User } from './models';
+export function Avatar({ person, size = 'md' }: { person: Pick<User, 'displayName' | 'photoUrl' | 'avatarColor'>; size?: 'sm'|'md'|'lg' }) { return person.photoUrl ? <img className={`avatar ${size}`} src={person.photoUrl} alt="" /> : <span className={`avatar ${size}`} style={{ background: person.avatarColor }}>{initials(person.displayName)}</span>; }
+export function Button({ children, onClick, variant = 'primary', type = 'button', disabled = false }: { children: ReactNode; onClick?: () => void; variant?: 'primary'|'ghost'|'danger'; type?: 'button'|'submit'; disabled?: boolean }) { return <button type={type} className={`button ${variant}`} onClick={onClick} disabled={disabled}>{children}</button>; }
+export function Card({ children, className = '' }: { children: ReactNode; className?: string }) { return <section className={`card ${className}`}>{children}</section>; }
+export function Loading() { return <div className="loading" aria-label="Loading"><span /><span /><span /></div>; }
+export function ErrorState({ message, retry }: { message: string; retry?: () => void }) { return <div className="empty error"><strong>Couldn’t load this</strong><p>{message}</p>{retry && <Button variant="ghost" onClick={retry}>Try again</Button>}</div>; }
+export function GroupPicker({ groups, active, onChange }: { groups: Group[]; active?: Group; onChange: (g: Group) => void }) { return <label className="group-picker"><span className="group-dot" style={{ background: active?.avatarColor }} /> <select value={active?.id || ''} onChange={e => { const g = groups.find(x => x.id === e.target.value); if (g) onChange(g); }}>{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select><span>⌄</span></label>; }
