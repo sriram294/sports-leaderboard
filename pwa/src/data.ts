@@ -1,4 +1,4 @@
-import type { Group, Match, Ranking, Session, User } from './models';
+import type { Group, LeaderboardResponse, Match, PlayerStats, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
@@ -23,13 +23,19 @@ export const api = {
   googleSignIn: (idToken: string) => request<AuthTokens>('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: session?.refreshToken }) }),
   groups: () => request<{ groups: Group[] }>('/groups'),
-  leaderboard: (id: string) => request<{ rankings: Ranking[] }>(`/groups/${id}/leaderboard`),
+  leaderboard: (id: string, from?: string, to?: string) => {
+    const query = new URLSearchParams();
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    const suffix = query.toString();
+    return request<LeaderboardResponse>(`/groups/${id}/leaderboard${suffix ? `?${suffix}` : ''}`);
+  },
   matches: (id: string, cursor?: string) => request<{ matches: Match[]; nextCursor?: string }>(`/groups/${id}/matches${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`),
   match: (groupId: string, matchId: string) => request<Match>(`/groups/${groupId}/matches/${matchId}`),
   createMatch: (id: string, body: unknown) => request<Match>(`/groups/${id}/matches`, { method: 'POST', body: JSON.stringify(body) }),
   deleteMatch: (groupId: string, matchId: string) => request<void>(`/groups/${groupId}/matches/${matchId}`, { method: 'DELETE' }),
   me: () => request<User>('/users/me'),
-  stats: (groupId: string, userId: string) => request<Record<string, unknown>>(`/groups/${groupId}/members/${userId}/stats`),
+  stats: (groupId: string, userId: string) => request<PlayerStats>(`/groups/${groupId}/members/${userId}/stats`),
   createGroup: (body: unknown) => request<Group>('/groups', { method: 'POST', body: JSON.stringify(body) }),
   joinGroup: (body: unknown) => request<Group>('/groups/join', { method: 'POST', body: JSON.stringify(body) }),
   renameGroup: (id: string, body: unknown) => request<Group>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(body) })

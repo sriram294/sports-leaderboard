@@ -17,12 +17,17 @@ export type AvatarPerson = {
  * initials circle is always drawn as the base, so a missing/broken image still
  * shows a graceful fallback.
  */
-export function Avatar({ person, size = 'md', ring = false }: { person: AvatarPerson; size?: 'sm' | 'md' | 'lg'; ring?: boolean }) {
+export function Avatar({ person, size = 'md', ring = false }: { person: AvatarPerson; size?: 'sm' | 'md' | 'lg' | number; ring?: boolean }) {
   const src = person.photoUrl || (person.avatarId ? `/avatars/${person.avatarId}.png` : undefined);
+  const px = typeof size === 'number';
   return (
     <span
-      className={`avatar ${size}`}
-      style={{ background: person.avatarColor, ...(ring ? { boxShadow: `0 0 0 2px ${person.avatarColor}` } : {}) }}
+      className={px ? 'avatar' : `avatar ${size}`}
+      style={{
+        background: person.avatarColor,
+        ...(px ? { width: size, height: size, fontSize: Math.round(size * 0.34) } : {}),
+        ...(ring ? { boxShadow: `0 0 0 2px ${person.avatarColor}` } : {}),
+      }}
     >
       {initials(person.displayName)}
       {src && (

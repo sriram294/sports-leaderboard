@@ -38,7 +38,8 @@ test('signs in through the Google credential exchange', async ({ page }) => {
   // ends here); invoke it directly to exercise the exchange → session → Board flow.
   await page.evaluate(() => (window as any).__googleCallback({ credential: 'test-google-id-token' }));
 
-  await expect(page.getByRole('heading', { name: 'Board' })).toBeVisible();
+  // The Board's "TOP PLAYERS" header confirms we reached the leaderboard screen.
+  await expect(page.getByText('TOP PLAYERS')).toBeVisible();
   // Bottom-nav destinations are router links in the shell.
   await expect(page.getByRole('link', { name: 'Matches' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Board' })).toBeVisible();
