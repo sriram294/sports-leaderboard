@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { formKey, leaderboardKey, matchesKey, statsKey, useAttendance, useForm, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats } from '../queries';
+import { formKey, leaderboardKey, matchesKey, statsKey, useAttendance, useForm, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
 import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, winningTeamNo, type TimeRange } from '../domain';
 import type { RecordMatchRequest, User } from '../models';
 import { api } from '../data';
@@ -150,11 +150,22 @@ export function AddRoute() {
 
 export function StatsRoute() {
   const { activeGroup } = useGroups();
-  const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id);
+  const leaderboard = useLeaderboard(activeGroup?.id);
+  // Records are all-time (leaderboard + matchCount); the derived sections use the recent
+  // window — the first page of matches — mirroring Android's getMatches() first page.
+  const matches = useMatchesInfinite(activeGroup?.id);
+  const trophies = useTrophies(activeGroup?.id);
   if (!activeGroup) return <NoGroup />;
-  if (isLoading) return <Loading />;
-  if (error) return <ErrorState message={errorMessage(error)} retry={() => refetch()} />;
-  return <StatsScreen rankings={data?.rankings ?? []} />;
+  if (leaderboard.isLoading || matches.isLoading) return <Loading />;
+  if (leaderboard.error) return <ErrorState message={errorMessage(leaderboard.error)} retry={() => leaderboard.refetch()} />;
+  return (
+    <StatsScreen
+      rankings={leaderboard.data?.rankings ?? []}
+      matchCount={activeGroup.matchCount}
+      matches={matches.data?.pages[0]?.matches ?? []}
+      trophies={trophies.data ?? []}
+    />
+  );
 }
 
 /** Shared attendance-heatmap loader: the last 3 months + the player's active days. */

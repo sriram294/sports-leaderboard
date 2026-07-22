@@ -1,4 +1,4 @@
-import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, MembersResponse, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
+import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, MembersResponse, MonthlyTrophy, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
@@ -50,6 +50,7 @@ export const api = {
   stats: (groupId: string, userId: string) => request<PlayerStats>(`/groups/${groupId}/members/${userId}/stats`),
   attendance: (groupId: string, userId: string, from: string, to: string) =>
     request<PlayerAttendance>(`/groups/${groupId}/members/${userId}/attendance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  trophies: (groupId: string) => request<MonthlyTrophy[]>(`/groups/${groupId}/trophies`),
   createGroup: (body: unknown) => request<Group>('/groups', { method: 'POST', body: JSON.stringify(body) }),
   joinGroup: (body: unknown) => request<Group>('/groups/join', { method: 'POST', body: JSON.stringify(body) }),
   renameGroup: (id: string, body: unknown) => request<Group>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(body) })

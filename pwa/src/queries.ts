@@ -47,6 +47,10 @@ export const useMatchesInfinite = (groupId?: string, mine = false) =>
 export const useMembers = (groupId?: string) =>
   useQuery({ queryKey: ['members', groupId], queryFn: () => api.members(groupId!), enabled: !!groupId });
 
+/** Group monthly-winner trophies (Stats "MONTHLY WINNERS"). Served, not derived. */
+export const useTrophies = (groupId?: string) =>
+  useQuery({ queryKey: ['trophies', groupId], queryFn: () => api.trophies(groupId!), enabled: !!groupId });
+
 export const statsKey = (groupId?: string, userId?: string) => ['stats', groupId, userId] as const;
 
 /** A player's full profile stats (hero, tiles, best partner, recent matches, trophies). */

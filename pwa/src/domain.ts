@@ -260,6 +260,125 @@ export function recentMatchRow(match: Match, userId: string): RecentMatchRow {
   };
 }
 
+/* ==================== Stats / Insights (ported from StatsComputations.kt) ==================== */
+
+/** Min games before a player can be the win-rate "Win leader" record. */
+export const MIN_LEADER_GAMES = 2;
+/** Min games together before a pair qualifies as the best partnership. */
+export const MIN_PARTNERSHIP_GAMES = 2;
+/** How many recent results a player's "form" shows. */
+export const FORM_WINDOW = 5;
+/** Min run before a streak is worth showing as a record. */
+export const MIN_STREAK = 2;
+
+export type Records = {
+  totalMatches: number;
+  winLeader?: Ranking;
+  mostPoints?: Ranking;
+  mostActive?: Ranking;
+  longestStreak?: Ranking;
+  currentStreak?: Ranking;
+};
+
+/** First element maximizing `by` (ties keep the earlier, higher-ranked entry), or undefined. */
+function firstMaxBy<T>(items: T[], by: (item: T) => number): T | undefined {
+  let best: T | undefined;
+  for (const item of items) if (best === undefined || by(item) > by(best)) best = item;
+  return best;
+}
+
+/**
+ * All-time [Records] from the server-sorted [rankings] and the group's [matchCount]. The win
+ * leader is the top entry with ≥ [MIN_LEADER_GAMES] games (so a lone 1-game 100% doesn't
+ * headline), else the top-ranked entry. Streaks show only from [MIN_STREAK] up.
+ */
+export function computeRecords(rankings: Ranking[], matchCount: number): Records {
+  const longest = firstMaxBy(rankings, r => r.bestStreak);
+  const hot = firstMaxBy(rankings, r => r.currentStreak);
+  return {
+    totalMatches: matchCount,
+    winLeader: rankings.find(r => r.gamesPlayed >= MIN_LEADER_GAMES) ?? rankings[0],
+    mostPoints: firstMaxBy(rankings, r => r.pointsFor),
+    mostActive: firstMaxBy(rankings, r => r.gamesPlayed),
+    longestStreak: longest && longest.bestStreak >= MIN_STREAK ? longest : undefined,
+    currentStreak: hot && hot.currentStreak >= MIN_STREAK ? hot : undefined,
+  };
+}
+
+export type BestPartnership = { player1: PlayerRef; player2: PlayerRef; gamesTogether: number; winsTogether: number; winRate: number };
+
+/**
+ * The teammate pair with the best win rate together across [matches] (min
+ * [MIN_PARTNERSHIP_GAMES] games, tie-broken by games). Pairs are keyed order-independently.
+ */
+export function computeBestPartnership(matches: Match[]): BestPartnership | null {
+  type Agg = { p1: PlayerRef; p2: PlayerRef; games: number; wins: number };
+  const byPair = new Map<string, Agg>();
+  for (const match of matches) {
+    for (const team of match.teams) {
+      const players = team.players;
+      for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+          const a = players[i], b = players[j];
+          const [first, second] = a.userId <= b.userId ? [a, b] : [b, a];
+          const key = `${first.userId}|${second.userId}`;
+          let agg = byPair.get(key);
+          if (!agg) { agg = { p1: first, p2: second, games: 0, wins: 0 }; byPair.set(key, agg); }
+          agg.games++;
+          if (team.isWinner) agg.wins++;
+        }
+      }
+    }
+  }
+  let best: (Agg & { winRate: number }) | null = null;
+  for (const agg of byPair.values()) {
+    if (agg.games < MIN_PARTNERSHIP_GAMES) continue;
+    const winRate = agg.wins / agg.games;
+    if (!best || winRate > best.winRate || (winRate === best.winRate && agg.games > best.games)) best = { ...agg, winRate };
+  }
+  return best ? { player1: best.p1, player2: best.p2, gamesTogether: best.games, winsTogether: best.wins, winRate: best.winRate } : null;
+}
+
+export type PlayerForm = { player: PlayerRef; results: boolean[] };
+
+/** Each ranked player's last [FORM_WINDOW] results, newest-first; players absent from the window are dropped. */
+export function computeRecentForm(matches: Match[], rankings: Ranking[]): PlayerForm[] {
+  const forms: PlayerForm[] = [];
+  for (const rank of rankings) {
+    const results = matches
+      .map(match => match.teams.find(team => team.players.some(p => p.userId === rank.userId))?.isWinner)
+      .filter((r): r is boolean => r === true || r === false)
+      .slice(0, FORM_WINDOW);
+    if (results.length > 0) {
+      forms.push({ player: { userId: rank.userId, displayName: rank.displayName, avatarColor: rank.avatarColor, avatarId: rank.avatarId, photoUrl: rank.photoUrl }, results });
+    }
+  }
+  return forms;
+}
+
+export type BiggestWin = { match: Match; margin: number };
+
+const pointsMargin = (match: Match) => Math.abs(
+  match.sets.reduce((sum, s) => sum + s.team1Score, 0) - match.sets.reduce((sum, s) => sum + s.team2Score, 0),
+);
+
+/** The recent match with the largest total-points margin (summed across sets). */
+export function computeBiggestWin(matches: Match[]): BiggestWin | null {
+  let best: BiggestWin | null = null;
+  for (const match of matches) {
+    const margin = pointsMargin(match);
+    if (margin > 0 && (!best || margin > best.margin)) best = { match, margin };
+  }
+  return best;
+}
+
+/** Badge label for a monthly-winner trophy month (`"2026-07"` → `"JUL '26"`). */
+export function monthlyTrophyLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  const short = new Date(year, (m || 1) - 1, 1).toLocaleDateString('en-US', { month: 'short' });
+  return `${short.toUpperCase()} '${`${year}`.slice(-2)}`;
+}
+
 /* ==================== Matches log (ported from MatchesScreen.kt / MatchesUiState.kt) ==================== */
 
 /** A team's players joined by " & " (full display names; guests read "Guest 1"). */
