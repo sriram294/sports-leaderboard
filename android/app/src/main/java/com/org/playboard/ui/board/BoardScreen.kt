@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -63,6 +64,7 @@ import com.org.playboard.R
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.PlayerAvatar
+import com.org.playboard.ui.components.PodiumCrownIcon
 import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.share.renderAndShareLeaderboard
 import com.org.playboard.ui.theme.DarkPlayboardColors
@@ -311,6 +313,11 @@ private fun PodiumSlot(
     val color = avatarColor(entry.avatarColor)
     val avatarSize: Dp = if (isChampion) 94.dp else 64.dp
     val badgeSize: Dp = if (isChampion) 28.dp else 22.dp
+    // The champion's crown sits on the avatar's head: its base overlaps the avatar's top edge
+    // and only its peak rises above, by [crownOverhang]. Every slot reserves that overhang so
+    // the three avatars still bottom-align into a clean podium tier.
+    val crownSize: Dp = 46.dp
+    val crownOverhang: Dp = 22.dp
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -318,14 +325,7 @@ private fun PodiumSlot(
             .clickable { onPlayerClick(entry.userId) }
             .padding(horizontal = 2.dp, vertical = 6.dp),
     ) {
-        // Crown floats above the champion; runners-up reserve the same height so all three
-        // avatars still bottom-align into a clean podium tier.
-        if (isChampion) {
-            Text(text = "👑", fontSize = 22.sp)
-        } else {
-            Spacer(modifier = Modifier.height(26.dp))
-        }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(crownOverhang))
         // Avatar with a soft radial glow behind it, a color ring around it, and the rank
         // badge overlapping its bottom edge.
         Box(contentAlignment = Alignment.BottomCenter) {
@@ -373,6 +373,15 @@ private fun PodiumSlot(
                     color = PlayboardTheme.colors.onBrand,
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
                     fontWeight = FontWeight.Bold,
+                )
+            }
+            // Crown straddling the avatar's top edge, its peak rising into the reserved overhang.
+            if (isChampion) {
+                PodiumCrownIcon(
+                    crownSize = crownSize,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = -crownOverhang),
                 )
             }
         }
