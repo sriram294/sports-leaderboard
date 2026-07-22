@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MatchSummary, Ranking } from './models';
+import type { Match, Ranking } from './models';
 import {
   isWinForMatch,
   metricColor,
@@ -118,7 +118,7 @@ describe('sort metric cycle', () => {
 });
 
 describe('form derivation', () => {
-  const match = (isWinnerForMe: boolean, includeMe = true): MatchSummary => ({
+  const match = (isWinnerForMe: boolean, includeMe = true): Match => ({
     id: Math.random().toString(), playedAt: '2026-07-20T00:00:00Z', sets: [],
     teams: [
       { teamNo: 1, isWinner: isWinnerForMe, players: includeMe ? [{ userId: 'me', displayName: 'Me', avatarColor: '#fff' }] : [{ userId: 'x', displayName: 'X', avatarColor: '#fff' }] },

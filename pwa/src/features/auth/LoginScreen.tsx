@@ -6,6 +6,40 @@ import { GoogleLogo } from '../../icons';
 
 type LoginError = { message: string; code?: string };
 
+type GoogleIdentityServices = {
+  accounts: {
+    id: {
+      initialize: (options: {
+        client_id: string;
+        use_fedcm_for_prompt: boolean;
+        callback: (response: { credential: string }) => void;
+      }) => void;
+      renderButton: (host: HTMLElement, options: Record<string, string | number>) => void;
+    };
+  };
+};
+
+/** Wait for GIS when its async script has not finished loading at first render. */
+function loadGoogleIdentityServices(): Promise<GoogleIdentityServices> {
+  const existing = (window as unknown as { google?: GoogleIdentityServices }).google;
+  if (existing) return Promise.resolve(existing);
+
+  const script = document.querySelector<HTMLScriptElement>(
+    'script[src="https://accounts.google.com/gsi/client"]',
+  );
+  if (!script) return Promise.reject(new Error('Google Identity Services script is missing.'));
+
+  return new Promise((resolve, reject) => {
+    const onLoad = () => {
+      const google = (window as unknown as { google?: GoogleIdentityServices }).google;
+      if (google) resolve(google);
+      else reject(new Error('Google Identity Services loaded without its API.'));
+    };
+    script.addEventListener('load', onLoad, { once: true });
+    script.addEventListener('error', () => reject(new Error('Google Identity Services did not load.')), { once: true });
+  });
+}
+
 /**
  * Login gate. Google Identity Services renders its real button into a hidden
  * overlay stretched over our styled button, so a tap triggers GIS (the reliable
@@ -20,32 +54,38 @@ export function LoginScreen() {
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const googleApi = (window as unknown as { google?: any }).google;
     if (!clientId) { setError({ message: 'Google sign-in is not configured yet.', code: 'NO_CLIENT_ID' }); return; }
-    if (!googleApi) { setError({ message: 'Google Identity Services did not load.', code: 'GIS_UNAVAILABLE' }); return; }
+    let cancelled = false;
 
-    googleApi.accounts.id.initialize({
-      client_id: clientId,
-      use_fedcm_for_prompt: true,
-      callback: async (response: { credential: string }) => {
-        setBusy(true); setError(null);
-        try {
-          const tokens = await api.googleSignIn(response.credential);
-          login(tokens);
-        } catch (cause) {
-          setError(cause instanceof ApiError
-            ? { message: 'Sign-in was rejected.', code: cause.code }
-            : { message: cause instanceof Error ? cause.message : 'Sign-in failed.' });
-        } finally { setBusy(false); }
-      },
+    loadGoogleIdentityServices().then((googleApi) => {
+      if (cancelled) return;
+      googleApi.accounts.id.initialize({
+        client_id: clientId,
+        use_fedcm_for_prompt: true,
+        callback: async (response: { credential: string }) => {
+          setBusy(true); setError(null);
+          try {
+            const tokens = await api.googleSignIn(response.credential);
+            login(tokens);
+          } catch (cause) {
+            setError(cause instanceof ApiError
+              ? { message: 'Sign-in was rejected.', code: cause.code }
+              : { message: cause instanceof Error ? cause.message : 'Sign-in failed.' });
+          } finally { setBusy(false); }
+        },
+      });
+
+      if (buttonHost.current) {
+        googleApi.accounts.id.renderButton(buttonHost.current, {
+          type: 'standard', theme: 'filled_black', size: 'large',
+          text: 'continue_with', shape: 'pill', width: 360, logo_alignment: 'center',
+        });
+      }
+    }).catch(() => {
+      if (!cancelled) setError({ message: 'Google Identity Services did not load.', code: 'GIS_UNAVAILABLE' });
     });
 
-    if (buttonHost.current) {
-      googleApi.accounts.id.renderButton(buttonHost.current, {
-        type: 'standard', theme: 'filled_black', size: 'large',
-        text: 'continue_with', shape: 'pill', width: 360, logo_alignment: 'center',
-      });
-    }
+    return () => { cancelled = true; };
   }, [login]);
 
   const copyCode = (code: string) => navigator.clipboard?.writeText(code).catch(() => undefined);
@@ -54,7 +94,6 @@ export function LoginScreen() {
     <main className="login">
       <div className="login-hero">
         <Wordmark size="lg" />
-        <p className="login-tagline">Badminton, <em>beautifully tracked.</em></p>
       </div>
 
       <div className="login-action">

@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
-import { initials } from './domain';
 import type { Group } from './models';
+
+/** Single first-letter initial, matching Android's `PlayerAvatar` (`displayName.take(1)`) —
+ *  which is why a guest ("Guest 1") shows "G", not "G1". */
+const avatarInitial = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 import racketLogo from './assets/brand/logo-racket.png';
 
 /** Anything renderable as an avatar: a user, ranking row, group member, or match player. */
@@ -29,7 +32,7 @@ export function Avatar({ person, size = 'md', ring = false }: { person: AvatarPe
         ...(ring ? { boxShadow: `0 0 0 2px ${person.avatarColor}` } : {}),
       }}
     >
-      {initials(person.displayName)}
+      {avatarInitial(person.displayName)}
       {src && (
         <img
           className="avatar-img"

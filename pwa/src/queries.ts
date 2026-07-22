@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api } from './data';
 import { rangeWindow, recentForm, type TimeRange } from './domain';
 
@@ -28,8 +28,28 @@ export const useLeaderboard = (groupId?: string, range: TimeRange = 'all') =>
     placeholderData: keepPreviousData,
   });
 
-export const useMatches = (groupId?: string) =>
-  useQuery({ queryKey: matchesKey(groupId), queryFn: () => api.matches(groupId!), enabled: !!groupId });
+/**
+ * Cursor-paginated match log (Android's `getMatches(cursor, mine)` loop). `mine` scopes to
+ * the signed-in user's matches; toggling it is a new query key, so it refetches from page 1.
+ * "Load older matches" calls `fetchNextPage`, following `nextCursor` until it's absent.
+ */
+export const useMatchesInfinite = (groupId?: string, mine = false) =>
+  useInfiniteQuery({
+    queryKey: [...matchesKey(groupId), mine],
+    queryFn: ({ pageParam }) => api.matches(groupId!, pageParam, mine),
+    enabled: !!groupId,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
+    placeholderData: keepPreviousData,
+  });
+
+/** Full detail (teams, per-set scores, audit log) for one expanded match card. */
+export const useMatchDetail = (groupId?: string, matchId?: string) =>
+  useQuery({
+    queryKey: ['matchDetail', groupId, matchId],
+    queryFn: () => api.matchDetail(groupId!, matchId!),
+    enabled: !!groupId && !!matchId,
+  });
 
 /**
  * The signed-in user's last-5 results for the Board form bar. Secondary to the

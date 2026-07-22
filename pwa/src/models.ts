@@ -34,14 +34,20 @@ export type Ranking = {
 /** `GET /groups/{id}/leaderboard` (LeaderboardResponse). */
 export type LeaderboardResponse = { rankings: Ranking[]; minGamesToRank: number };
 
+/** A player as referenced inside a match/team (PlayerRefDto). Guests are ordinary refs whose
+ * `displayName` is "Guest N"; there is no explicit guest flag on the wire. */
 export type PlayerRef = { userId: string; displayName: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string };
-/** A team inside a `MatchSummary` (from a player's `recentMatches`), used to derive form. */
-export type MatchSummaryTeam = { teamNo: number; isWinner: boolean; players: PlayerRef[] };
-/** Compact match shape returned inside `PlayerStats.recentMatches` (MatchSummaryDto). */
-export type MatchSummary = { id: string; playedAt: string; teams: MatchSummaryTeam[]; sets: { setNo: number; team1Score: number; team2Score: number }[] };
+export type MatchTeam = { teamNo: number; isWinner: boolean; players: PlayerRef[] };
+export type MatchSet = { setNo: number; team1Score: number; team2Score: number };
+/** A recorded doubles match (MatchSummaryDto) — the Matches log row and `recentMatches`. */
+export type Match = { id: string; playedAt: string; teams: MatchTeam[]; sets: MatchSet[] };
+/** One audit-log entry on a match (MatchEventDto). */
+export type MatchEvent = { userId: string; displayName: string; action: string; createdAt: string };
+/** Full match detail (MatchDetailDto): the summary plus who recorded it and the audit log. */
+export type MatchDetail = Match & { recordedBy: { userId: string; displayName: string }; recordedAt: string; events: MatchEvent[] };
+/** `GET /groups/{id}/matches` (MatchListResponse) — a cursor-paginated page. */
+export type MatchListResponse = { matches: Match[]; nextCursor?: string };
 /** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — only the fields Board reads. */
-export type PlayerStats = { userId: string; displayName: string; recentMatches: MatchSummary[] };
+export type PlayerStats = { userId: string; displayName: string; recentMatches: Match[] };
 
-export type Team = { teamNo: number; isWinner: boolean; players: Pick<User, 'id' | 'displayName' | 'photoUrl' | 'avatarColor'>[] };
-export type Match = { id: string; playedAt: string; teams: Team[]; sets: { setNo: number; team1Score: number; team2Score: number }[]; recordedBy?: Pick<User, 'id' | 'displayName'> };
 export type Session = { accessToken: string; refreshToken: string; expiresAt: number; user: User };

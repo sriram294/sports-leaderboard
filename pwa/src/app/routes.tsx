@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { formKey, leaderboardKey, matchesKey, useForm, useLeaderboard, useMatches } from '../queries';
+import { formKey, leaderboardKey, matchesKey, useForm, useLeaderboard, useMatchesInfinite } from '../queries';
 import type { TimeRange } from '../domain';
+import { api } from '../data';
 import { shareLeaderboard } from '../share';
 import { Loading, ErrorState } from '../components';
 import { Icon } from '../icons';
@@ -57,16 +58,39 @@ export function BoardRoute() {
 
 export function MatchesRoute() {
   const { activeGroup } = useGroups();
+  const { user } = useSession();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useMatches(activeGroup?.id);
+  const [mine, setMine] = useState(false);
+  const query = useMatchesInfinite(activeGroup?.id, mine);
   if (!activeGroup) return <NoGroup />;
-  if (isLoading) return <Loading />;
-  if (error) return <ErrorState message={errorMessage(error)} retry={() => refetch()} />;
+  // keepPreviousData keeps isLoading false after the first page, so a "My matches" toggle
+  // updates the list in place rather than blanking to a spinner.
+  if (query.isLoading) return <Loading />;
+  if (query.error) return <ErrorState message={errorMessage(query.error)} retry={() => query.refetch()} />;
+  const matches = query.data?.pages.flatMap(page => page.matches) ?? [];
+  const canModerate = activeGroup.myRole === 'owner' || activeGroup.myRole === 'admin';
+  const onDelete = async (matchId: string) => {
+    await api.deleteMatch(activeGroup.id, matchId);
+    // Deleting a match changes the leaderboard + the user's form, like recording one does.
+    queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
+    queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
+    queryClient.invalidateQueries({ queryKey: formKey(activeGroup.id, user?.id) });
+  };
   return (
     <MatchHistoryScreen
       group={activeGroup}
-      matches={data?.matches ?? []}
-      onReload={() => queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) })}
+      groupId={activeGroup.id}
+      matches={matches}
+      currentUserId={user?.id}
+      canModerate={canModerate}
+      mine={mine}
+      onToggleMine={() => setMine(value => !value)}
+      canLoadMore={query.hasNextPage}
+      isLoadingMore={query.isFetchingNextPage}
+      onLoadMore={() => query.fetchNextPage()}
+      onDelete={onDelete}
+      onEdit={matchId => navigate('/add', { state: { editMatchId: matchId } })}
     />
   );
 }
