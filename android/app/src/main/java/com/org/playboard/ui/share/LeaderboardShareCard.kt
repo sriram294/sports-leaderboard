@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -128,18 +129,16 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
     val color = avatarColor(entry.avatarColor)
     val avatarSize: Dp = if (isChampion) 94.dp else 64.dp
     val badgeSize: Dp = if (isChampion) 28.dp else 22.dp
+    // The champion's crown sits on the avatar's head: its base overlaps the avatar's top edge
+    // and only its peak rises above, by [crownOverhang]. Every slot reserves that overhang so
+    // the three avatars still bottom-align into a clean podium tier.
+    val crownSize: Dp = 46.dp
+    val crownOverhang: Dp = 22.dp
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.padding(horizontal = 2.dp),
     ) {
-        // Crown floats above the champion; runners-up reserve the same height so all three
-        // avatars still bottom-align into a clean podium tier.
-        if (isChampion) {
-            PodiumCrownIcon()
-        } else {
-            Spacer(modifier = Modifier.height(28.dp))
-        }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(crownOverhang))
         Box(contentAlignment = Alignment.BottomCenter) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -182,6 +181,15 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
                     color = PlayboardTheme.colors.onBrand,
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
                     fontWeight = FontWeight.Bold,
+                )
+            }
+            // Crown straddling the avatar's top edge, its peak rising into the reserved overhang.
+            if (isChampion) {
+                PodiumCrownIcon(
+                    crownSize = crownSize,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = -crownOverhang),
                 )
             }
         }

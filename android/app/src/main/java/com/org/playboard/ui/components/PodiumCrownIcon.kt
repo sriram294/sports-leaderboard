@@ -19,8 +19,10 @@ import com.org.playboard.R
  * gold reads as an award on both light and dark backgrounds, and tinting it to the brand
  * lime would flatten it into something that no longer looks like a prize.
  *
- * The source PNG is 256×256, comfortably above the ~112 px this occupies at [CROWN_SIZE] on
- * an xxxhdpi screen, so it always downsamples (crisp) rather than upsampling (soft).
+ * The caller sizes and positions it (the podium sits it on the champion's head, overlapping
+ * the avatar's top edge). The source PNG is 256×256, comfortably above the pixels it occupies
+ * at any podium size on an xxxhdpi screen, so it always downsamples (crisp) rather than
+ * upsampling (soft).
  */
 @Composable
 fun PodiumCrownIcon(
@@ -34,5 +36,4 @@ fun PodiumCrownIcon(
     )
 }
 
-/** Sized to sit within the 28.dp height the runner-up slots reserve, so the tiers stay aligned. */
-private val CROWN_SIZE = 28.dp
+private val CROWN_SIZE = 46.dp
