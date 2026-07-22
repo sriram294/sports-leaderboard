@@ -118,7 +118,7 @@ header {
     position: sticky;
     top: 0;
     z-index: 4;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    background: color-mix(in srgb, var(--bg) 30%, transparent);
     backdrop-filter: blur(16px);
     padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
     border-bottom: 1px solid var(--line);
@@ -448,7 +448,7 @@ h3 {
    in the DOM and would otherwise paint over the crown's base. */
 .podium-crown {
     position: absolute;
-    top: -20px;
+    top: -30px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
