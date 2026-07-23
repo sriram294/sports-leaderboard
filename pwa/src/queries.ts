@@ -43,9 +43,11 @@ export const useMatchesInfinite = (groupId?: string, mine = false) =>
     placeholderData: keepPreviousData,
   });
 
-/** The group roster (real members + guest fillers) for the Add-match player picker. */
+export const membersKey = (groupId?: string) => ['members', groupId] as const;
+
+/** The group roster (real members + guest fillers) for the Add-match player picker and management. */
 export const useMembers = (groupId?: string) =>
-  useQuery({ queryKey: ['members', groupId], queryFn: () => api.members(groupId!), enabled: !!groupId });
+  useQuery({ queryKey: membersKey(groupId), queryFn: () => api.members(groupId!), enabled: !!groupId });
 
 /** Group monthly-winner trophies (Stats "MONTHLY WINNERS"). Served, not derived. */
 export const useTrophies = (groupId?: string) =>

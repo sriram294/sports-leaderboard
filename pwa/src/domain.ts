@@ -1,4 +1,4 @@
-import type { Match, MatchSet, MatchTeam, Member, PlayerRef, Ranking, RecordMatchRequest } from './models';
+import type { Group, Match, MatchSet, MatchTeam, Member, PlayerRef, Ranking, RecordMatchRequest } from './models';
 
 export type SortKey = 'rank' | 'gamesPlayed' | 'wins' | 'losses' | 'pointsFor' | 'winRate';
 export function sortRankings(rows: Ranking[], key: SortKey): Ranking[] { if (key === 'rank') return rows; return [...rows].sort((a, b) => (b[key] as number) - (a[key] as number) || a.rank - b.rank); }
@@ -431,4 +431,67 @@ export function groupMatchesByDate(matches: Match[]): MatchDateSection[] {
     section.matches.push(match);
   }
   return sections;
+}
+
+// ─────────────────────────────── Groups & management (Group.kt / GroupManagementUiState.kt) ───
+
+/** The signed-in user owns this group — the only role that may change others' roles. */
+export const isGroupOwner = (group: Group) => group.myRole === 'owner';
+
+/** Owners and admins may create invites (backend gates `POST .../invites` the same way). */
+export const canInviteGroup = (group: Group) => group.myRole === 'owner' || group.myRole === 'admin';
+
+/** Owners and admins may manage a group — rename, add/remove members, session window. */
+export const canManageGroup = (group: Group) => group.myRole === 'owner' || group.myRole === 'admin';
+
+/** The viewer may change roles only in a group they own. */
+export const canChangeRoles = (group: Group) => isGroupOwner(group);
+
+/**
+ * Whether [member] can be removed by [currentUserId] in [group]: never the owner, guests, or
+ * self; an admin viewer can remove only plain members (an owner can remove admins too).
+ */
+export function canRemoveMember(group: Group, member: Member, currentUserId?: string): boolean {
+  if (member.userId === currentUserId || member.role === 'owner' || member.role === 'guest') return false;
+  return isGroupOwner(group) || member.role === 'member';
+}
+
+/** The role toggle label + target role for a member (owner-only action; guests/owner excluded upstream). */
+export const roleToggle = (member: Member): { label: string; next: 'admin' | 'member' } =>
+  member.role === 'admin' ? { label: 'Demote', next: 'member' } : { label: 'Make admin', next: 'admin' };
+
+/** A group's daily-window label, or `null` when either bound is unset. */
+export function sessionWindowLabel(group: Group): string | null {
+  if (!group.sessionStart || !group.sessionEnd) return null;
+  return `${group.sessionStart} – ${group.sessionEnd}`;
+}
+
+/** "HH:mm" → minutes since midnight, or `null` if unparseable. */
+export function parseHm(time: string | null | undefined): number | null {
+  if (!time) return null;
+  const [h, m] = time.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+/** A session window is valid when both times are given with start < end (matches `422 GROUP_SESSION_INVALID`). */
+export function sessionValid(start: string, end: string): boolean {
+  const s = parseHm(start);
+  const e = parseHm(end);
+  return s !== null && e !== null && s < e;
+}
+
+/** Maps a group action's stable error `code` to a user-facing message. */
+export function groupErrorMessage(code: string | undefined, fallback: string): string {
+  switch (code) {
+    case 'GROUP_INVITE_INVALID': return 'That invite code is wrong or expired.';
+    case 'GROUP_MEMBER_EXISTS': return 'They’re already a member of this group.';
+    case 'GROUP_ROLE_FORBIDDEN': return 'You don’t have permission to do that.';
+    case 'GROUP_ROLE_INVALID': return 'That role change isn’t allowed.';
+    case 'GROUP_OWNER_PROTECTED': return 'The owner can’t be removed.';
+    case 'GROUP_CANNOT_REMOVE_GUEST': return 'Guests can’t be removed here.';
+    case 'GROUP_CANNOT_REMOVE_SELF': return 'You can’t remove yourself.';
+    case 'GROUP_SESSION_INVALID': return 'Start must be before end.';
+    default: return fallback;
+  }
 }

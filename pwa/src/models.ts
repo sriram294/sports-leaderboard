@@ -1,6 +1,20 @@
 export type Tab = 'board' | 'matches' | 'add' | 'stats' | 'profile';
 export type User = { id: string; displayName: string; email: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string };
-export type Group = { id: string; name: string; avatarColor: string; sportCode: string; memberCount: number; matchCount: number; myRole: 'owner' | 'admin' | 'member' };
+export type Group = {
+  id: string;
+  name: string;
+  avatarColor: string;
+  sportCode: string;
+  memberCount: number;
+  matchCount: number;
+  myRole: 'owner' | 'admin' | 'member';
+  /** Daily session window ("HH:mm" local wall-clock), or `null`/absent when unset. */
+  sessionStart?: string | null;
+  sessionEnd?: string | null;
+};
+
+/** `{ code, expiresAt }` from `POST /groups/{id}/invites`. */
+export type InviteResponse = { code: string; expiresAt: string };
 
 /**
  * One leaderboard row (LeaderboardEntryDto / `data/model/PlayerRanking.kt`). `rank` is the

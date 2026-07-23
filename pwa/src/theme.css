@@ -1749,31 +1749,319 @@ h3 {
     margin-bottom: 8px;
 }
 
+.group-switcher-pill.accent {
+    color: var(--brand);
+    justify-content: center;
+    font-weight: 600;
+}
+
 .gs-row {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
+    background: none;
+    border-radius: 8px;
+}
+
+.gs-row.active {
+    background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.gs-row-select {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     background: none;
     border: 0;
     color: var(--text);
     padding: 10px 6px;
-    border-radius: 8px;
     text-align: left;
 }
 
-.gs-row.active {
-    background: color-mix(in srgb, var(--brand) 12%, transparent);
+.gs-row-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
 }
 
 .gs-row-name {
-    flex: 1;
     font-weight: 650;
     font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gs-row.active .gs-row-name {
+    color: var(--brand);
 }
 
 .gs-row small {
     color: var(--muted);
+    font-size: 12px;
+}
+
+.gs-edit {
+    background: none;
+    border: 0;
+    color: var(--brand);
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+}
+
+.gs-divider {
+    height: 1px;
+    background: color-mix(in srgb, var(--muted) 15%, transparent);
+    margin: 8px 6px;
+}
+
+.gs-action {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    padding: 10px 6px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.gs-action svg {
+    color: var(--brand);
+}
+
+/* ==================== Group management (/groups) ==================== */
+
+.group-manage-empty {
+    text-align: center;
+    color: var(--muted);
+    margin-top: 40px;
+    line-height: 1.6;
+}
+
+.manage-list,
+.member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.manage-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+    color: var(--text);
+    width: 100%;
+}
+
+.manage-row-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.manage-row-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.manage-row-body small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.manage-chevron {
+    color: var(--muted);
+    font-size: 20px;
+}
+
+.manage-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 4px 0 0;
+}
+
+.session-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.session-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.session-window {
+    font-weight: 600;
+}
+
+.session-window.unset {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.session-info small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.members-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.members-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.member-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.member-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+}
+
+.member-name {
+    font-weight: 600;
+}
+
+.role-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    border: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+    border-radius: 6px;
+    padding: 1px 6px;
+}
+
+.role-badge.strong {
+    color: var(--brand);
+    border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+}
+
+.pill-btn {
+    background: none;
+    border: 1px solid color-mix(in srgb, var(--brand) 55%, transparent);
+    color: var(--brand);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pill-btn.danger {
+    border-color: color-mix(in srgb, var(--stat-loss) 55%, transparent);
+    color: var(--stat-loss);
+}
+
+.pill-btn:disabled {
+    opacity: 0.4;
+}
+
+.link-retry {
+    background: none;
+    border: 0;
+    color: var(--brand);
+    padding: 12px 0;
+    font-size: 14px;
+}
+
+.manage-error {
+    margin-top: 12px;
+}
+
+/* Invite / session / confirm sheet bits */
+
+.invite-status {
+    text-align: center;
+    padding: 16px 0;
+}
+
+.invite-hint {
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.invite-code {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--brand);
+    letter-spacing: 3px;
+    text-align: center;
+    margin: 6px 0 16px;
+}
+
+.invite-actions,
+.session-sheet-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.session-sheet-actions {
+    justify-content: flex-end;
+    margin-top: 6px;
+}
+
+.session-sheet-actions .record-button {
+    width: auto;
+}
+
+.add-field {
+    margin-bottom: 10px;
+}
+
+.time-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.time-field span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.time-field input {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 15px;
+    color-scheme: dark;
+}
+
+.confirm-body {
+    margin-bottom: 16px;
+    line-height: 1.5;
 }
 
 /* ==================== Profile / player stats ==================== */

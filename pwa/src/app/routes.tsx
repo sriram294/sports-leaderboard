@@ -16,6 +16,7 @@ import { MatchHistoryScreen } from '../features/matches/MatchHistoryScreen';
 import { AddMatchScreen } from '../features/add-match/AddMatchScreen';
 import { StatsScreen } from '../features/stats/StatsScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
+import { GroupManagementScreen } from '../features/groups/GroupManagementScreen';
 
 function NoGroup() {
   return (
@@ -231,53 +232,10 @@ export function PlayerRoute() {
   );
 }
 
-/**
- * Groups stub — the manage-groups destination (Profile's people icon). Full management
- * (rename, invite, members, roles, session window) lands in the Groups slice; for now it
- * keeps create/join reachable.
- */
+/** Groups management (Profile's people icon): managed-groups list → per-group member/session management. */
 export function GroupsRoute() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [mode, setMode] = useState<'create' | 'join'>('create');
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setMessage('');
-    try {
-      if (mode === 'create') { if (!name.trim()) throw new Error('Enter a group name.'); await api.createGroup({ name: name.trim(), sportCode: 'badminton_doubles' }); setName(''); setMessage('Group created.'); }
-      else { if (!code.trim()) throw new Error('Enter an invite code.'); await api.joinGroup({ code: code.trim().toUpperCase() }); setCode(''); setMessage('You joined the group.'); }
-      queryClient.invalidateQueries({ queryKey: ['groups'] });
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'Could not update groups.');
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <>
-      <button className="back" onClick={() => navigate(-1)}><Icon name="back" size={16} /> Back</button>
-      <h2>Groups</h2>
-      <div className="segmented">
-        <button className={mode === 'create' ? 'selected' : ''} onClick={() => setMode('create')}>Create group</button>
-        <button className={mode === 'join' ? 'selected' : ''} onClick={() => setMode('join')}>Join group</button>
-      </div>
-      <form className="group-form" onSubmit={submit}>
-        <input
-          aria-label={mode === 'create' ? 'Group name' : 'Invite code'}
-          placeholder={mode === 'create' ? 'Saturday Smashers' : 'Invite code'}
-          value={mode === 'create' ? name : code}
-          onChange={event => (mode === 'create' ? setName(event.target.value) : setCode(event.target.value))}
-        />
-        {message && <p className={message.endsWith('.') && !message.includes('Could') ? 'success' : 'form-error'}>{message}</p>}
-        <button className="record-button" type="submit" disabled={busy}>{busy ? 'Saving…' : mode === 'create' ? 'Create group' : 'Join group'}</button>
-      </form>
-    </>
-  );
+  return <GroupManagementScreen onExit={() => navigate('/profile')} />;
 }
 
 /** Settings stub — account + sign-out; the full appearance/updates screen lands in its slice. */

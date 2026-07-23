@@ -1,4 +1,4 @@
-import type { Group, LeaderboardResponse, Match, MatchDetail, MatchListResponse, MembersResponse, MonthlyTrophy, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
+import type { Group, InviteResponse, LeaderboardResponse, Match, MatchDetail, MatchListResponse, Member, MembersResponse, MonthlyTrophy, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
@@ -51,7 +51,12 @@ export const api = {
   attendance: (groupId: string, userId: string, from: string, to: string) =>
     request<PlayerAttendance>(`/groups/${groupId}/members/${userId}/attendance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   trophies: (groupId: string) => request<MonthlyTrophy[]>(`/groups/${groupId}/trophies`),
-  createGroup: (body: unknown) => request<Group>('/groups', { method: 'POST', body: JSON.stringify(body) }),
-  joinGroup: (body: unknown) => request<Group>('/groups/join', { method: 'POST', body: JSON.stringify(body) }),
-  renameGroup: (id: string, body: unknown) => request<Group>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+  createGroup: (name: string) => request<Group>('/groups', { method: 'POST', body: JSON.stringify({ name, sportCode: 'badminton_doubles' }) }),
+  joinGroup: (code: string) => request<Group>('/groups/join', { method: 'POST', body: JSON.stringify({ code }) }),
+  renameGroup: (id: string, name: string) => request<Group>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  createInvite: (id: string) => request<InviteResponse>(`/groups/${id}/invites`, { method: 'POST', body: JSON.stringify({}) }),
+  addMember: (id: string, email: string, displayName: string) => request<Member>(`/groups/${id}/members`, { method: 'POST', body: JSON.stringify({ email, displayName }) }),
+  removeMember: (id: string, userId: string) => request<void>(`/groups/${id}/members/${userId}`, { method: 'DELETE' }),
+  changeMemberRole: (id: string, userId: string, role: 'admin' | 'member') => request<Member>(`/groups/${id}/members/${userId}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+  updateSession: (id: string, start: string | null, end: string | null) => request<Group>(`/groups/${id}/session`, { method: 'PATCH', body: JSON.stringify({ start, end }) }),
 };
