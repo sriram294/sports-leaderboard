@@ -2431,17 +2431,111 @@ h3 {
     border-color: var(--brand);
 }
 
-/* Settings stub. */
-.setting-account {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 16px;
-    margin-bottom: 18px;
+/* ==================== Settings ==================== */
+.settings-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 6px 0 8px;
 }
 
-.settings-note {
-    margin-top: 18px;
+.settings-account {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 14px 0;
+}
+
+.settings-account-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.settings-divider {
+    height: 1px;
+    background: color-mix(in srgb, var(--muted) 25%, transparent);
+}
+
+.settings-link {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    padding: 16px 2px;
+    font-size: 15px;
+    text-align: left;
+}
+
+.settings-link.accent {
+    color: var(--brand);
+    font-weight: 600;
+}
+
+.settings-chevron {
+    color: var(--muted);
+    font-size: 22px;
+    line-height: 1;
+}
+
+.settings-update-status {
+    margin: -6px 2px 0;
+    font-size: 13px;
+}
+
+.settings-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 2px;
+}
+
+.settings-toggle-label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.switch {
+    width: 52px;
+    height: 30px;
+    border-radius: 999px;
+    border: 0;
+    padding: 3px;
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
+    display: flex;
+    align-items: center;
+    transition: background 0.15s ease;
+}
+
+.switch.on {
+    background: var(--brand);
+    justify-content: flex-end;
+}
+
+.switch-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #0a0a0a;
+}
+
+.switch.on .switch-thumb {
+    background: var(--on-brand, #0a0a0a);
+}
+
+.settings-footer {
+    margin-top: 48px;
+    text-align: center;
+    color: color-mix(in srgb, var(--muted) 80%, transparent);
+    font-size: 11px;
+    line-height: 1.9;
+}
+
+.settings-version {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .gs-row small {

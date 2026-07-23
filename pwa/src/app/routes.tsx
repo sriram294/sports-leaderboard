@@ -10,13 +10,13 @@ import { api } from '../data';
 import type { AddMatchPrefill } from '../features/add-match/AddMatchScreen';
 import { shareLeaderboard } from '../share';
 import { Loading, ErrorState } from '../components';
-import { Icon } from '../icons';
 import { BoardScreen } from '../features/board/BoardScreen';
 import { MatchHistoryScreen } from '../features/matches/MatchHistoryScreen';
 import { AddMatchScreen } from '../features/add-match/AddMatchScreen';
 import { StatsScreen } from '../features/stats/StatsScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { GroupManagementScreen } from '../features/groups/GroupManagementScreen';
+import { SettingsScreen } from '../features/settings/SettingsScreen';
 
 function NoGroup() {
   return (
@@ -238,21 +238,9 @@ export function GroupsRoute() {
   return <GroupManagementScreen onExit={() => navigate('/profile')} />;
 }
 
-/** Settings stub — account + sign-out; the full appearance/updates screen lands in its slice. */
+/** Settings — account (identity, updates, sign-out) + appearance (dark-theme switch). */
 export function SettingsRoute() {
   const navigate = useNavigate();
   const { user, signOut } = useSession();
-  return (
-    <>
-      <button className="back" onClick={() => navigate(-1)}><Icon name="back" size={16} /> Back</button>
-      <h2>Settings</h2>
-      <p className="section-label">ACCOUNT</p>
-      <div className="card setting-account">
-        <span>Signed in with Google</span>
-        <span className="muted">{user?.email}</span>
-      </div>
-      <button className="outline-action delete" onClick={signOut}>Sign out</button>
-      <p className="muted settings-note">Appearance and updates arrive in the Settings slice.</p>
-    </>
-  );
+  return <SettingsScreen email={user?.email ?? ''} onBack={() => navigate('/profile')} onSignOut={signOut} />;
 }
