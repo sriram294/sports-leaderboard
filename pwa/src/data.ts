@@ -59,4 +59,6 @@ export const api = {
   removeMember: (id: string, userId: string) => request<void>(`/groups/${id}/members/${userId}`, { method: 'DELETE' }),
   changeMemberRole: (id: string, userId: string, role: 'admin' | 'member') => request<Member>(`/groups/${id}/members/${userId}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   updateSession: (id: string, start: string | null, end: string | null) => request<Group>(`/groups/${id}/session`, { method: 'PATCH', body: JSON.stringify({ start, end }) }),
+  registerDevice: (token: string, platform: string) => request<void>('/devices', { method: 'POST', body: JSON.stringify({ token, platform }) }),
+  unregisterDevice: (token: string) => request<void>('/devices', { method: 'DELETE', body: JSON.stringify({ token }) }),
 };

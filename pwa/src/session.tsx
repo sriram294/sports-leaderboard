@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, auth, type AuthTokens } from './data';
+import { disablePush } from './push';
 import type { User } from './models';
 
 /**
@@ -64,6 +65,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = () => {
+    // Unregister this browser's push token before dropping the session (best-effort).
+    disablePush().catch(() => undefined);
     api.logout().catch(() => undefined);
     auth.set(null);
     setUser(undefined);

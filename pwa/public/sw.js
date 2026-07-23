@@ -29,4 +29,31 @@ self.addEventListener('fetch', event => {
       .catch(() => caches.match(request).then(cached => cached || caches.match('/index.html'))),
   );
 });
-self.addEventListener('notificationclick', event => { event.notification.close(); event.waitUntil(clients.openWindow(event.notification.data?.url || './')); });
+// Web push (FCM). Mirrors pushNotificationFrom() in src/push-core.ts — keep them in sync.
+self.addEventListener('push', event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (e) { payload = {}; }
+  const n = payload.notification || {};
+  const data = payload.data || {};
+  const title = n.title || data.title || 'Playboard';
+  const body = n.body || data.body || '';
+  const url = data.url || (data.matchId ? '/matches' : data.groupId ? '/board' : '/');
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: '/icons/icon.svg',
+    badge: '/icons/icon.svg',
+    data: Object.assign({}, data, { url }),
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windows => {
+      const existing = windows.find(w => 'focus' in w);
+      if (existing) { existing.navigate(url); return existing.focus(); }
+      return clients.openWindow(url);
+    }),
+  );
+});

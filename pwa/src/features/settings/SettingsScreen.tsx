@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { useTheme } from '../../theme';
+import { enablePush, disablePush, isPushConfigured, isPushEnabled, isPushSupported, type PushEnableResult } from '../../push';
 import { Icon } from '../../icons';
 import pkg from '../../../package.json';
+
+const PUSH_MESSAGE: Record<Exclude<PushEnableResult, 'enabled'>, string> = {
+  denied: 'Notifications are blocked in your browser settings.',
+  unsupported: 'This browser doesn’t support notifications.',
+  unconfigured: 'Notifications aren’t set up yet.',
+  error: 'Couldn’t turn on notifications. Try again.',
+};
 
 /**
  * Account + application settings, opened from the signed-in user's profile gear.
@@ -12,6 +20,25 @@ import pkg from '../../../package.json';
 export function SettingsScreen({ email, onBack, onSignOut }: { email: string; onBack: () => void; onSignOut: () => void }) {
   const [theme, setTheme] = useTheme();
   const [updateStatus, setUpdateStatus] = useState<string>();
+  const showNotifications = isPushSupported() && isPushConfigured();
+  const [pushOn, setPushOn] = useState(isPushEnabled);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNote, setPushNote] = useState<string>();
+
+  const togglePush = async () => {
+    if (pushBusy) return;
+    setPushBusy(true);
+    setPushNote(undefined);
+    if (pushOn) {
+      await disablePush();
+      setPushOn(false);
+    } else {
+      const result = await enablePush();
+      if (result === 'enabled') setPushOn(true);
+      else setPushNote(PUSH_MESSAGE[result]);
+    }
+    setPushBusy(false);
+  };
 
   const checkForUpdates = async () => {
     setUpdateStatus('Checking…');
@@ -54,6 +81,26 @@ export function SettingsScreen({ email, onBack, onSignOut }: { email: string; on
         <span>Sign out</span>
         <span className="settings-chevron">›</span>
       </button>
+
+      {showNotifications && (
+        <>
+          <p className="section-label">NOTIFICATIONS</p>
+          <div className="settings-toggle-row">
+            <span className="settings-toggle-label">Match &amp; group alerts</span>
+            <button
+              role="switch"
+              aria-checked={pushOn}
+              aria-label="Match and group alerts"
+              disabled={pushBusy}
+              className={`switch ${pushOn ? 'on' : ''}`}
+              onClick={togglePush}
+            >
+              <span className="switch-thumb" />
+            </button>
+          </div>
+          {pushNote && <p className="muted settings-update-status">{pushNote}</p>}
+        </>
+      )}
 
       <p className="section-label">APPEARANCE</p>
       <div className="settings-toggle-row">
