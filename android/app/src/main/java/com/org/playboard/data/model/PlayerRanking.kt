@@ -34,6 +34,8 @@ data class PlayerRanking(
     val rating: Double? = null,
     /** Below the group's games threshold: listed, but not ranked. */
     val provisional: Boolean = false,
+    /** Last results within the standings window, oldest first (≤10). Empty pre-rollout. */
+    val recentForm: List<Boolean> = emptyList(),
 ) {
     /**
      * Win rate as a whole percentage for display (e.g. `0.83` → `83`).

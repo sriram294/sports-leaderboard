@@ -278,11 +278,6 @@ h3 {
 
 /* ==================== Board ==================== */
 
-/* Extra bottom clearance so the last rows scroll clear of the pinned form bar. */
-.board.has-form {
-    padding-bottom: 88px;
-}
-
 .board-head {
     display: flex;
     align-items: center;
@@ -621,49 +616,27 @@ h3 {
     line-height: 1.3;
 }
 
-/* Pinned "YOUR FORM" bar — floats above the bottom nav over the scrolling board. */
-.form-bar-wrap {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: calc(76px + env(safe-area-inset-bottom));
-    z-index: 3;
-    width: min(560px, 100%);
-    padding: 12px 20px;
-    /* Scrim so rows fade out under the bar rather than being hard-cut. */
-    background: linear-gradient(to top, var(--bg) 55%, transparent);
-    pointer-events: none;
-}
-
-.form-bar {
-    pointer-events: auto;
+/* Per-player form trend, oldest result first — a third line under the name/secondary line. */
+.form-dots {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    border-radius: 16px;
-    background: var(--surface);
-    border: 1px solid color-mix(in srgb, var(--muted) 16%, transparent);
+    gap: 3px;
+    margin-top: 4px;
 }
 
-.form-bar-label {
-    display: flex;
-    flex-direction: column;
+.form-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex: 0 0 auto;
 }
 
-.form-bar-label .eyebrow {
-    margin-bottom: 2px;
+.form-dot.win {
+    background: var(--stat-win);
 }
 
-.form-bar-sub {
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.form-bar-pills {
-    margin-left: auto;
-    display: flex;
-    gap: 6px;
+.form-dot.loss {
+    background: var(--stat-loss);
 }
 
 .bottom-nav {
@@ -1645,28 +1618,6 @@ h3 {
 
 .wordmark.lg {
     font-size: 34px;
-}
-
-/* Form pill — W/L result chip (Board "Your Form" + Stats FORM rows). */
-.form-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    font-size: 11px;
-    font-weight: 400;
-    color: #fff;
-    flex: 0 0 auto;
-}
-
-.form-pill.win {
-    background: var(--stat-win);
-}
-
-.form-pill.loss {
-    background: var(--stat-loss);
 }
 
 /* Theme-aware tweaks for core controls (screens finish their own light pass). */
@@ -2695,33 +2646,6 @@ h3 {
     color: var(--brand);
     font-size: 22px;
     font-weight: 800;
-}
-
-/* Form rows. */
-.form-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.form-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.form-player {
-    flex: 1;
-    font-size: 15px;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.form-pills {
-    display: flex;
-    gap: 6px;
 }
 
 /* Biggest win. */

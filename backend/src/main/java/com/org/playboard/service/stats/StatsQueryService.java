@@ -15,6 +15,7 @@ import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository.PartnerRow;
+import com.org.playboard.repository.match.MatchParticipantRepository.RecentFormRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.WindowedStatRow;
 import com.org.playboard.repository.stats.MemberStatsRepository;
 import com.org.playboard.service.group.GroupMembershipGuard;
@@ -41,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StatsQueryService {
 
     private static final int RECENT_MATCHES_LIMIT = 5;
+    private static final int RECENT_FORM_LIMIT = 10;
 
     private final GroupMembershipGuard membershipGuard;
     private final GroupMemberRepository groupMemberRepository;
@@ -122,7 +124,8 @@ public class StatsQueryService {
                     stats.getCurrentStreak(),
                     stats.getBestStreak()));
         }
-        return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(users));
+        Map<UUID, List<Boolean>> form = recentFormByUser(groupId, null, null);
+        return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(users, form));
     }
 
     /**
@@ -165,11 +168,26 @@ public class StatsQueryService {
                     0, // streaks are all-time only and not shown on the board
                     0));
         }
-        return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(eligible));
+        Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
+        return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(eligible, form));
+    }
+
+    /**
+     * Every eligible player's last {@link #RECENT_FORM_LIMIT} results within
+     * {@code [from, to)}, chronological (oldest first) — see {@link LeaderboardEntryDto}.
+     * Either bound may be null for the all-time board. One set-based query for the whole
+     * group, never per-player.
+     */
+    private Map<UUID, List<Boolean>> recentFormByUser(UUID groupId, Instant from, Instant to) {
+        Map<UUID, List<Boolean>> form = new HashMap<>();
+        for (RecentFormRow row : matchParticipantRepository.findRecentFormForGroup(groupId, from, to, RECENT_FORM_LIMIT)) {
+            form.computeIfAbsent(row.getUserId(), key -> new ArrayList<>()).add(row.isWinner());
+        }
+        return form;
     }
 
     /** Turns a raw row into a wire entry, resolving the user's display fields. */
-    private LeaderboardRanker.EntryFactory entryFactory(Map<UUID, User> users) {
+    private LeaderboardRanker.EntryFactory entryFactory(Map<UUID, User> users, Map<UUID, List<Boolean>> form) {
         return (row, rating, provisional) -> {
             User user = users.get(row.userId());
             return new LeaderboardEntryDto(
@@ -188,7 +206,8 @@ public class StatsQueryService {
                     row.currentStreak(),
                     row.bestStreak(),
                     rating,
-                    provisional);
+                    provisional,
+                    form.getOrDefault(row.userId(), List.of()));
         };
     }
 

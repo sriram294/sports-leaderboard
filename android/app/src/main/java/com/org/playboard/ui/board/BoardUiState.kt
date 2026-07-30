@@ -22,8 +22,6 @@ data class BoardUiState(
     val minGamesToRank: Int = 1,
     /** Calendar window the leaderboard is scoped to; drives the "TOP PLAYERS" toggle. */
     val selectedTimeRange: LeaderboardTimeRange = LeaderboardTimeRange.MONTH,
-    /** The signed-in user's most recent results in this group, newest first (≤5). `true` = win. */
-    val recentForm: List<Boolean> = emptyList(),
 ) {
     /** Players over the games threshold, in canonical order. */
     val rankedPlayers: List<PlayerRanking> get() = rankings.filter { !it.provisional }
@@ -34,13 +32,6 @@ data class BoardUiState(
      * decided by a hot streak over a handful of games.
      */
     val podium: List<PlayerRanking> get() = rankedPlayers.take(3)
-
-    /**
-     * Whether the pinned "YOUR FORM" bar shows. It's hidden for a player with no
-     * matches in the group, and never floats over a spinner / empty / error state.
-     */
-    val showFormBar: Boolean get() =
-        recentForm.isNotEmpty() && !isLoading && !hasLoadFailed && rankings.isNotEmpty()
 
     /**
      * Rows in display order.

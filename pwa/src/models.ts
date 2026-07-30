@@ -43,6 +43,8 @@ export type Ranking = {
   rating?: number | null;
   /** Below the group's games threshold: listed, but not ranked. */
   provisional?: boolean;
+  /** Last results within the standings window, oldest first (≤10). Absent pre-rollout. */
+  recentForm?: boolean[];
 };
 
 /** `GET /groups/{id}/leaderboard` (LeaderboardResponse). */

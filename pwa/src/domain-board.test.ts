@@ -10,7 +10,6 @@ import {
   rankColor,
   ratingLabel,
   ratingColor,
-  recentForm,
   secondaryLine,
   tableRows,
   winRateColor,
@@ -130,10 +129,5 @@ describe('form derivation', () => {
     expect(isWinForMatch(match(true), 'me')).toBe(true);
     expect(isWinForMatch(match(false), 'me')).toBe(false);
     expect(isWinForMatch(match(true, false), 'me')).toBeNull();
-  });
-
-  it('collects at most the last 5 results, newest first, skipping matches the user missed', () => {
-    const matches = [match(true), match(true, false), match(false), match(true), match(false), match(true), match(true)];
-    expect(recentForm(matches, 'me')).toEqual([true, false, true, false, true]);
   });
 });

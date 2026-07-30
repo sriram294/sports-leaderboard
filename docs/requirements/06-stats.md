@@ -19,9 +19,11 @@ best together" view — scoped to the currently selected group. Complements the
   - Longest streak and current hot streak
 - **Best partnership** — the recent teammate pair with the best win rate
   together, tie-broken by games, with both avatars + "Nw / M games".
-- **Recent form** — each ranked player's last-5 W/L as colored pills
-  (`StatWinGreen` / `StatLossRed`), most-recent-first.
 - **Biggest win** — the match with the largest total-points margin (teams + score).
+
+Per-player recent form no longer has a dedicated section here — it moved to
+the [Board](02-board-leaderboard.md) leaderboard row itself (a dots row under
+each player's name), so it's visible without switching tabs.
 
 ## Behavior / Requirements
 1. Scoped to the active group; switching groups (shared switcher) recomputes
@@ -35,12 +37,12 @@ best together" view — scoped to the currently selected group. Complements the
 - **No new backend endpoints.** Reuse `LeaderboardRepository.getLeaderboard`,
   `MatchRepository.getMatches`, and `GroupRepository.selectedGroup`
   (`matchCount`, `dataRevision`).
-- Leaderboard-derived records are all-time accurate. Partnership / form /
-  biggest-win are computed **client-side from `getMatches()`**, which currently
-  returns only the first page (newest ~20) — a reasonable "recent" window; label
-  those sections accordingly. Improves automatically once Matches pagination is
+- Leaderboard-derived records are all-time accurate. Partnership / biggest-win
+  are computed **client-side from `getMatches()`**, which currently returns
+  only the first page (newest ~20) — a reasonable "recent" window; label those
+  sections accordingly. Improves automatically once Matches pagination is
   wired (see [03-matches.md](03-matches.md)).
-- The derivations are pure functions (`computeBestPartnership`, `computeForm`,
+- The derivations are pure functions (`computeBestPartnership`,
   `computeBiggestWin`) and are covered by unit tests without the network.
 - Implementation: `ui/stats/StatsUiState.kt`, `StatsViewModel.kt`,
   `StatsComputations.kt`, and `StatsScreen.kt`. The ViewModel observes the

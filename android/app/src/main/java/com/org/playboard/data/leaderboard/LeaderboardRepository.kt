@@ -67,4 +67,5 @@ private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
     // provisional against it — the UI shows win% and the old ordering rather than
     // marking the whole board unranked.
     provisional = rating != null && provisional,
+    recentForm = recentForm,
 )

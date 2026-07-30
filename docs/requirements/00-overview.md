@@ -15,7 +15,7 @@ in the middle so it stays centered:
 | Board | leaderboard | Group leaderboard / rankings (home) |
 | Matches | crossed rackets | Chronological match history |
 | Add (center, floating) | + | Record a new match |
-| Stats | insights | Group analytics dashboard: records, partnerships, recent form, and biggest win |
+| Stats | insights | Group analytics dashboard: records, partnerships, and biggest win |
 | Profile | person | Signed-in user's stats & account |
 
 Per-page requirement docs:

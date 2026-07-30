@@ -19,7 +19,7 @@ const matches = [
   mk('c', [ref('mani', 'Mani partha'), ref('g1', 'Guest 1')], [ref('g2', 'Guest 2'), ref('g3', 'Guest 3')], 8, 21),
 ];
 
-test('shows records, best partnership, form and biggest win', async ({ page }) => {
+test('shows records, best partnership and biggest win', async ({ page }) => {
   await page.addInitScript(([u, g, rk, ms]) => {
     localStorage.setItem('playboard.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 9e5, user: JSON.parse(u) }));
     localStorage.setItem('playboard.group', 'g1');
@@ -51,8 +51,7 @@ test('shows records, best partnership, form and biggest win', async ({ page }) =
   await expect(page.getByText('2W / 2 games together')).toBeVisible();
   await expect(page.getByText('100%')).toBeVisible();
 
-  // Form + biggest win.
-  await expect(page.getByText('FORM · recent')).toBeVisible();
+  // Biggest win.
   await expect(page.getByText('+13 pts')).toBeVisible();
   await expect(page.getByText('Guest 2 & Guest 3')).toBeVisible();
 });

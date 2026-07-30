@@ -38,7 +38,7 @@ class MonthlyTrophyJobTest {
                 r.gamesPlayed(), r.wins(), r.gamesPlayed() - r.wins(),
                 r.pointsFor(), r.pointsAgainst(),
                 LeaderboardRanker.winRate(r.wins(), r.gamesPlayed()),
-                0, 0, rating, provisional));
+                0, 0, rating, provisional, List.of()));
     }
 
     private static RawStatRow row(int idN, int games, int wins) {
@@ -143,7 +143,7 @@ class MonthlyTrophyJobTest {
                             0, r.userId(), r.userId().toString(), null, null, "#000000",
                             r.gamesPlayed(), r.wins(), r.gamesPlayed() - r.wins(),
                             0, 0, LeaderboardRanker.winRate(r.wins(), r.gamesPlayed()),
-                            0, 0, rating, provisional));
+                            0, 0, rating, provisional, List.of()));
 
             assertThat(pickWinner(s)).isEmpty();
         }

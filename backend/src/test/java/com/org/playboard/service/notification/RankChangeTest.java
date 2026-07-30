@@ -19,7 +19,7 @@ class RankChangeTest {
     private static LeaderboardEntryDto entry(UUID userId, int rank) {
         return new LeaderboardEntryDto(
                 rank, userId, "Player", null, null, null, 10, 5, 5, 100, 90, BigDecimal.valueOf(0.5), 0, 0,
-                BigDecimal.valueOf(24.0), false);
+                BigDecimal.valueOf(24.0), false, List.of());
     }
 
     @Test

@@ -1,9 +1,5 @@
 package com.org.playboard.ui.board
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import com.org.playboard.data.auth.AuthRepository
-import com.org.playboard.data.auth.TokenStore
-import com.org.playboard.data.device.DeviceRegistrar
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.leaderboard.LeaderboardRepository
@@ -20,10 +16,6 @@ import com.org.playboard.data.remote.dto.LeaderboardEntryDto
 import com.org.playboard.data.remote.dto.LeaderboardResponseDto
 import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
-import com.org.playboard.data.remote.dto.MatchPlayerDto
-import com.org.playboard.data.remote.dto.MatchSetDto
-import com.org.playboard.data.remote.dto.MatchSummaryDto
-import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
@@ -32,18 +24,13 @@ import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
-import com.org.playboard.data.stats.StatsRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,16 +38,11 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
 private class FakePlayboardApi(
     var groupsResult: suspend () -> GroupsResponseDto = { GroupsResponseDto(emptyList()) },
     var leaderboardResult: suspend (String) -> LeaderboardResponseDto = { LeaderboardResponseDto(emptyList()) },
-    // Defaults to throwing: StatsRepository wraps it in runCatching, so the form
-    // degrades silently and tests that don't care about form are unaffected.
-    var statsResult: suspend (String, String) -> PlayerStatsDto = { _, _ -> error("no stats in this test") },
 ) : PlayboardApi {
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
@@ -90,7 +72,7 @@ private class FakePlayboardApi(
     override suspend fun removeMember(groupId: String, userId: String) = error("unused")
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun updateSession(groupId: String, request: com.org.playboard.data.remote.dto.UpdateSessionRequestDto): com.org.playboard.data.remote.dto.GroupDto = error("unused")
-    override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = statsResult(groupId, userId)
+    override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("not used in this test")
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto =
         error("recordMatch not used in this test")
@@ -142,42 +124,8 @@ private fun entryDto(
     provisional = provisional,
 )
 
-/**
- * A [PlayerStatsDto] whose `recentMatches` yield exactly [results] as the signed-in
- * user's ("u1") form, newest first — each entry puts u1 on the winning or losing team.
- */
-private fun statsWithForm(results: List<Boolean>, userId: String = "u1") = PlayerStatsDto(
-    userId = userId,
-    displayName = "Raj",
-    photoUrl = null,
-    avatarColor = "#9ADE28",
-    matchesPlayed = results.size,
-    wins = results.count { it },
-    losses = results.count { !it },
-    pointsFor = 0,
-    pointsAgainst = 0,
-    winRate = 0.0,
-    currentStreak = 0,
-    bestStreak = 0,
-    bestPartner = null,
-    recentMatches = results.mapIndexed { i, win ->
-        MatchSummaryDto(
-            id = "m$i",
-            playedAt = "2026-07-0${i + 1}T06:00:00Z",
-            teams = listOf(
-                MatchTeamDto(1, win, listOf(MatchPlayerDto(userId, "Raj", "#9ADE28", null), MatchPlayerDto("u2", "Dev", "#3DB4FF", null))),
-                MatchTeamDto(2, !win, listOf(MatchPlayerDto("u3", "Marcus", "#FF8A3D", null), MatchPlayerDto("u4", "Kiran", "#EAC72B", null))),
-            ),
-            sets = listOf(MatchSetDto(1, 21, 15)),
-        )
-    },
-)
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class BoardViewModelTest {
-
-    @get:Rule
-    val tempFolder = TemporaryFolder()
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -193,17 +141,8 @@ class BoardViewModelTest {
 
     private fun repo(api: FakePlayboardApi) = testGroupRepository(api)
 
-    /** Builds the ViewModel with a signed-in "u1" session so the form collector has a user. */
-    private suspend fun viewModel(repo: GroupRepository, api: FakePlayboardApi): BoardViewModel {
-        val dataStore = PreferenceDataStoreFactory.create(
-            scope = CoroutineScope(testDispatcher),
-            produceFile = { tempFolder.newFile("ds-${System.nanoTime()}.preferences_pb") },
-        )
-        val tokenStore = TokenStore(dataStore)
-        val auth = AuthRepository(api, tokenStore, DeviceRegistrar(api))
-        auth.signInWithGoogle("token")
-        return BoardViewModel(repo, LeaderboardRepository(api), auth, StatsRepository(api))
-    }
+    private fun viewModel(repo: GroupRepository, api: FakePlayboardApi): BoardViewModel =
+        BoardViewModel(repo, LeaderboardRepository(api))
 
     @Test
     fun `loads the active group's leaderboard`() = runTest(testDispatcher) {
@@ -448,131 +387,5 @@ class BoardViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(listOf("Priya", "Newbie"), state.rankings.map { it.displayName })
         assertFalse(state.isRefreshing)
-    }
-
-    @Test
-    fun `form bar shows the signed-in user's last results newest first`() = runTest(testDispatcher) {
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-            statsResult = { _, _ -> statsWithForm(listOf(true, false, true, true, false)) },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertEquals(listOf(true, false, true, true, false), state.recentForm)
-        assertTrue(state.showFormBar)
-    }
-
-    @Test
-    fun `a player with no matches hides the form bar`() = runTest(testDispatcher) {
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-            statsResult = { _, _ -> statsWithForm(emptyList()) },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertTrue(state.recentForm.isEmpty())
-        assertFalse(state.showFormBar)
-    }
-
-    @Test
-    fun `a form fetch failure still renders the leaderboard`() = runTest(testDispatcher) {
-        // statsResult defaults to throwing — the form must degrade silently.
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertEquals(listOf("Priya"), state.rankings.map { it.displayName })
-        assertFalse(state.hasLoadFailed)
-        assertTrue(state.recentForm.isEmpty())
-        assertFalse(state.showFormBar)
-    }
-
-    @Test
-    fun `switching the active group reloads the form`() = runTest(testDispatcher) {
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"), groupDto("g2", "Office League"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-            statsResult = { groupId, _ ->
-                if (groupId == "g1") statsWithForm(listOf(true, true)) else statsWithForm(listOf(false))
-            },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        advanceUntilIdle()
-        assertEquals(listOf(true, true), viewModel.uiState.value.recentForm)
-
-        repo.selectGroup("g2")
-        advanceUntilIdle()
-        assertEquals(listOf(false), viewModel.uiState.value.recentForm)
-    }
-
-    @Test
-    fun `switching group cancels an in-flight form fetch and loads the new group's now`() = runTest(testDispatcher) {
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"), groupDto("g2", "Office League"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-            // g1's form fetch hangs; g2's is immediate.
-            statsResult = { groupId, _ ->
-                if (groupId == "g1") {
-                    delay(10_000)
-                    statsWithForm(listOf(true, true))
-                } else {
-                    statsWithForm(listOf(false))
-                }
-            },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        // g1's form fetch is now in flight (suspended); switch before it could return.
-        advanceTimeBy(1_000)
-        repo.selectGroup("g2")
-        // Advance only a little — still well within g1's 10s hang. collectLatest must have
-        // cancelled g1's fetch and loaded g2's immediately; plain collect would stay blocked
-        // on g1 and leave the form empty until t=10s.
-        advanceTimeBy(1_000)
-        assertEquals(listOf(false), viewModel.uiState.value.recentForm)
-
-        // Drain the (cancelled) g1 timer so runTest ends cleanly; the stale result never lands.
-        advanceUntilIdle()
-        assertEquals(listOf(false), viewModel.uiState.value.recentForm)
-    }
-
-    @Test
-    fun `pull-to-refresh reloads the form`() = runTest(testDispatcher) {
-        var form = listOf(true, false)
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-            statsResult = { _, _ -> statsWithForm(form) },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        advanceUntilIdle()
-        assertEquals(listOf(true, false), viewModel.uiState.value.recentForm)
-
-        // A match played since the initial load; pulling picks up the new form.
-        form = listOf(false, false, true)
-        viewModel.onPullRefresh()
-        advanceUntilIdle()
-        assertEquals(listOf(false, false, true), viewModel.uiState.value.recentForm)
     }
 }

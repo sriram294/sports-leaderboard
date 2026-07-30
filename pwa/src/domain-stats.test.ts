@@ -3,7 +3,6 @@ import type { Match, Ranking } from './models';
 import {
   computeBestPartnership,
   computeBiggestWin,
-  computeRecentForm,
   computeRecords,
   monthlyTrophyLabel,
 } from './domain';
@@ -62,19 +61,6 @@ describe('best partnership', () => {
   });
   it('is null when no pair reaches the minimum games', () => {
     expect(computeBestPartnership([match('m1', [ref('a', 'A'), ref('b', 'B')], [ref('c', 'C'), ref('d', 'D')], 21, 5)])).toBeNull();
-  });
-});
-
-describe('recent form', () => {
-  it("gives each ranked player their last results newest-first, dropping absentees", () => {
-    const matches = [
-      match('m1', [ref('mugu', 'mugu'), ref('x', 'X')], [ref('y', 'Y'), ref('z', 'Z')], 21, 10), // mugu win
-      match('m2', [ref('y', 'Y'), ref('z', 'Z')], [ref('mugu', 'mugu'), ref('x', 'X')], 21, 12), // mugu loss
-    ];
-    const form = computeRecentForm(matches, [rank({ userId: 'mugu', displayName: 'mugu' }), rank({ userId: 'ghost', displayName: 'Ghost' })]);
-    expect(form).toHaveLength(1); // Ghost played nothing → dropped
-    expect(form[0].player.userId).toBe('mugu');
-    expect(form[0].results).toEqual([true, false]);
   });
 });
 

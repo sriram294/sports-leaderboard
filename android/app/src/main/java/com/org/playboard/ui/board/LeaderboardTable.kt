@@ -3,7 +3,9 @@ package com.org.playboard.ui.board
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.org.playboard.data.model.PlayerRanking
+import com.org.playboard.ui.components.FormDots
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.theme.PlayboardTheme
 
@@ -144,6 +147,10 @@ fun LeaderboardRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (entry.recentForm.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                FormDots(results = entry.recentForm)
+            }
         }
         Text(
             text = entry.metricLabel(metric),

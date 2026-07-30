@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { formKey, leaderboardKey, matchesKey, statsKey, useAttendance, useForm, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
+import { leaderboardKey, matchesKey, statsKey, useAttendance, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
 import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, winningTeamNo, type TimeRange } from '../domain';
 import type { RecordMatchRequest, User } from '../models';
 import { api } from '../data';
@@ -31,13 +31,10 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 
 export function BoardRoute() {
   const { activeGroup } = useGroups();
-  const { user } = useSession();
   const navigate = useNavigate();
   // The window persists across group switches (mirrors Android's selectedTimeRange).
   const [range, setRange] = useState<TimeRange>('month');
   const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id, range);
-  // The form bar is secondary: it loads independently and never gates the board.
-  const form = useForm(activeGroup?.id, user?.id);
   if (!activeGroup) return <NoGroup />;
   // Only the very first load spins; range switches keep the previous table (keepPreviousData).
   if (isLoading) return <Loading />;
@@ -48,10 +45,8 @@ export function BoardRoute() {
       rankings={rankings}
       minGamesToRank={data?.minGamesToRank ?? 1}
       groupId={activeGroup.id}
-      user={user!}
       range={range}
       onRangeChange={setRange}
-      recentForm={form.data ?? []}
       onPlayer={userId => navigate(`/player/${userId}`)}
       onShare={() => shareLeaderboard(activeGroup, rankings).catch(() => undefined)}
     />
@@ -74,10 +69,9 @@ export function MatchesRoute() {
   const canModerate = activeGroup.myRole === 'owner' || activeGroup.myRole === 'admin';
   const onDelete = async (matchId: string) => {
     await api.deleteMatch(activeGroup.id, matchId);
-    // Deleting a match changes the leaderboard + the user's form, like recording one does.
+    // Deleting a match changes the leaderboard (rankings + everyone's form dots), like recording one does.
     queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
     queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
-    queryClient.invalidateQueries({ queryKey: formKey(activeGroup.id, user?.id) });
   };
   return (
     <MatchHistoryScreen
@@ -127,10 +121,9 @@ export function AddRoute() {
   const onSubmit = async (body: RecordMatchRequest) => {
     if (editMatchId) await api.editMatch(activeGroup.id, editMatchId, body);
     else await api.createMatch(activeGroup.id, body);
-    // A recorded/edited match changes Board + Matches (+ Stats, which read them) + the form bar.
+    // A recorded/edited match changes Board (rankings + form dots) + Matches (+ Stats, which read them).
     queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
     queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
-    queryClient.invalidateQueries({ queryKey: formKey(activeGroup.id, user?.id) });
     if (editMatchId) queryClient.invalidateQueries({ queryKey: ['matchDetail', activeGroup.id, editMatchId] });
     navigate(editMatchId ? '/matches' : '/board');
   };

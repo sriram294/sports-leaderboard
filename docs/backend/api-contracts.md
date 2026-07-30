@@ -207,12 +207,22 @@ cannot drift apart; there is deliberately no `ORDER BY` in the query.
   { "rank": 1, "userId": "uuid", "displayName": "Priya", "photoUrl": null,
     "avatarColor": "#FF3D8A", "gamesPlayed": 6, "wins": 6, "losses": 0,
     "pointsFor": 252, "pointsAgainst": 180, "winRate": 1.0,
-    "currentStreak": 6, "bestStreak": 6, "rating": 54.1, "provisional": false }
+    "currentStreak": 6, "bestStreak": 6, "rating": 54.1, "provisional": false,
+    "recentForm": [true, true, false, true, true, true] }
 ], "minGamesToRank": 3 }
 ```
 `pointsAgainst` was added alongside the difference tiebreak; `pointsFor` is
 retained (rather than replaced by a computed difference) so clients built
 against the earlier shape keep deserializing.
+
+**`recentForm`** is the player's last 10 results within the standings window
+(the same `from`/`to` as the request), in **chronological** order — oldest
+first, newest last. This is deliberately the opposite of `recentMatches`
+below (newest-first): `recentForm` exists to feed a left-to-right dots row on
+the leaderboard, so chronological order is the render order and no client
+needs to reverse it. A player with fewer than 10 matches in the window simply
+gets a shorter list; one with none gets `[]`. Computed on demand in one
+set-based query per leaderboard fetch, not materialized.
 
 **`rating`** is the Wilson score lower bound on the win rate, scaled to 0–100
 with one decimal — a confidence-adjusted win rate, so a small sample scores

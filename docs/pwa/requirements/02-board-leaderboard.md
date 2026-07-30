@@ -1,13 +1,14 @@
 # Board / Leaderboard
 
-**Source:** Android `ui/board/*` (`BoardScreen.kt`, `LeaderboardTable.kt`, `FormBar.kt`,
+**Source:** Android `ui/board/*` (`BoardScreen.kt`, `LeaderboardTable.kt`,
 `LeaderboardTimeRange.kt`, `BoardUiState.kt`) · `docs/requirements/02-board-leaderboard.md` ·
-`docs/prototype/leaderboard.pdf` · parity target `docs/android screens/board.jpeg` (v4.4).
+`docs/prototype/leaderboard.pdf` · parity target `docs/android screens/board.jpeg` (v4.5) ·
+form-dots placement reference `docs/android screens/board-form-dots-ref.jpeg`.
 
 ## Purpose
 The home tab. Shows the active group's leaderboard for a chosen calendar window: a podium of
-the top three, a full rankings table whose right-hand metric the user can cycle, and a pinned
-bar with the signed-in user's recent form.
+the top three and a full rankings table whose right-hand metric the user can cycle, each row
+carrying that player's recent form.
 
 ## Layout (top to bottom)
 - **Header row:** `TOP PLAYERS` eyebrow + a muted **`This Month ▾`** window selector on the
@@ -18,10 +19,9 @@ bar with the signed-in user's recent form.
   tucked at its bottom edge. Name + `{rating} rating` (or `{win%} win rate` pre-ratings) below.
 - **RANKINGS card:** `RANKINGS` title, then a header row `#  PLAYER  …  RATING ▾` where the
   metric label is the single tappable sort control. One row per player: rank number (colored
-  for the top 3), avatar, bold name over a muted `secondaryLine`, and the big right-hand metric
-  value colored by tier. Provisional players sit below a stronger divider with a `—` rank.
-- **YOUR FORM bar:** pinned above the bottom nav, floating over the scrolling list on a fade
-  scrim — `YOUR FORM` / `Last N matches` on the left, up to 5 W/L pills (newest first) right.
+  for the top 3), avatar, bold name over a muted `secondaryLine`, a row of small win/loss dots
+  (up to 10, oldest on the left) under that, and the big right-hand metric value colored by
+  tier. Provisional players sit below a stronger divider with a `—` rank.
 
 ## Behavior / Requirements
 1. Load `GET /groups/{groupId}/leaderboard?from&to` for the active group; re-load on group
@@ -45,10 +45,11 @@ bar with the signed-in user's recent form.
 6. **Colors** (both themes, from `Color.kt`): rank #1 brand / #2 textPrimary / #3 winRateMid,
    else muted. Win% tiers ≥50 brand / ≥25 mid / else low. Rating tiers ≥40 brand / ≥25 mid /
    else low. Points diff >0 statWin / <0 statLoss / else muted. Provisional metric is muted.
-7. **Form bar** — the user's last ≤5 results in this group (newest first), derived from the
-   player-stats endpoint's `recentMatches`. Hidden when the user has no matches, or over a
-   loading / error / empty state. It never gates the board: it loads independently and a form
-   failure degrades silently.
+7. **Form dots** — each row shows that player's last ≤10 results within the selected window,
+   in chronological order (oldest left, newest right) — small filled circles, green for a win
+   and red for a loss. Ships with the leaderboard response (`recentForm` on each entry), so
+   there's no extra request and no client-side reversal. A player with fewer than 10 matches
+   just shows fewer dots; one with none shows no dots row at all.
 8. **States:** initial-load spinner; retry on load failure; window-aware empty copy when a
    window has no matches (header/selector stays so the user can switch windows).
 
@@ -56,8 +57,7 @@ bar with the signed-in user's recent form.
 - `GET /groups/{groupId}/leaderboard?from&to` → `{ rankings: LeaderboardEntryDto[],
   minGamesToRank }`. Entry fields: `rank, userId, displayName, photoUrl, avatarId, avatarColor,
   gamesPlayed, wins, losses, pointsFor, pointsAgainst, winRate, currentStreak, bestStreak,
-  rating, provisional`.
-- `GET /groups/{groupId}/members/{userId}/stats` → `recentMatches` (for the form bar).
+  rating, provisional, recentForm`.
 
 ## Current rules (settled)
 - **Ratings** are a Wilson-style confidence-adjusted win rate (0–100). They sit below the raw
@@ -71,10 +71,8 @@ bar with the signed-in user's recent form.
 
 ## Parity notes (browser)
 - Android's `PullToRefreshBox` becomes TanStack Query refetch + invalidation; there is no
-  pull-to-refresh gesture. The form bar is `position: fixed` above the bottom nav (Android
-  overlays it in a `Box`); the list reserves bottom padding so its last rows clear the bar.
+  pull-to-refresh gesture.
 - The window selector is a small click-outside menu (Android `DropdownMenu`).
 
 ## Open questions
-- Should the form bar cap at 5 (Android shows `recentMatches.size` verbatim)? Capped at 5 here
-  for the web layout; revisit if the endpoint ever returns more than 5.
+- None currently open for this section.

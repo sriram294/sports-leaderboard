@@ -43,7 +43,6 @@ import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.MonthlyTrophy
 import com.org.playboard.data.model.PlayerRanking
-import com.org.playboard.ui.components.FormPill
 import com.org.playboard.ui.components.MonthlyCrownIcon
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.PlayboardBackground
@@ -94,9 +93,6 @@ private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh
                         item { MonthlyWinnersCard(winners = state.monthlyWinners) }
                     }
                     state.bestPartnership?.let { item { BestPartnershipCard(partnership = it) } }
-                    if (state.recentForm.isNotEmpty()) {
-                        item { RecentFormCard(form = state.recentForm) }
-                    }
                     state.biggestWin?.let { item { BiggestWinCard(biggestWin = it) } }
                     item { Spacer(Modifier.height(12.dp)) }
                 }
@@ -315,45 +311,6 @@ private fun BestPartnershipCard(partnership: BestPartnership) {
     }
 }
 
-// ---- Recent form ---------------------------------------------------------------
-
-@Composable
-private fun RecentFormCard(form: List<PlayerForm>) {
-    InsightCard {
-        SectionLabel("FORM · recent")
-        Spacer(Modifier.height(4.dp))
-        form.forEach { row ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-            ) {
-                PlayerAvatar(
-                    displayName = row.player.displayName,
-                    photoUrl = row.player.photoUrl,
-                    avatarId = row.player.avatarId,
-                    avatarColorHex = row.player.avatarColor,
-                    size = 30.dp,
-                )
-                Text(
-                    text = row.player.displayName,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                    fontWeight = FontWeight.SemiBold,
-                    color = PlayboardTheme.colors.textPrimary,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 10.dp),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    row.results.forEach { isWin -> FormPill(isWin = isWin) }
-                }
-            }
-        }
-    }
-}
-
 // ---- Biggest win ---------------------------------------------------------------
 
 @Composable
@@ -479,10 +436,6 @@ private val previewState = StatsUiState(
         winsTogether = 4,
         winRate = 1.0,
     ),
-    recentForm = listOf(
-        PlayerForm(MatchPlayer("u1", "Priya", "#FF3D8A", null, null), listOf(true, true, false, true, true)),
-        PlayerForm(MatchPlayer("u3", "Raj", "#9ADE28", null, null), listOf(false, true, false)),
-    ),
     biggestWin = BiggestWin(
         match = Match(
             id = "m1",
@@ -523,7 +476,7 @@ private val previewState = StatsUiState(
         MonthlyTrophy(
             month = java.time.YearMonth.of(2026, 4),
             userId = "u2",
-            displayName = "Dev",
+            displayName = "Deenesh Dhadha",
             photoUrl = null,
             avatarId = null,
             avatarColor = "#3DB4FF",
