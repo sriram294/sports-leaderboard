@@ -174,7 +174,6 @@ class StatsViewModelTest {
         assertEquals(6, state.records?.longestStreak?.bestStreak)
         assertNotNull(state.bestPartnership)                          // priya+dev, 2 games
         assertEquals(2, state.bestPartnership?.gamesTogether)
-        assertTrue(state.recentForm.isNotEmpty())
         assertEquals("m2", state.biggestWin?.match?.id)               // 21-4 is the bigger margin
     }
 

@@ -111,17 +111,10 @@ export function rangeWindow(range: TimeRange, now: Date = new Date()): { from: s
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
-/* ==================== Form bar ==================== */
-
 /** Whether a match was a win for `userId`; `null` if they didn't play in it (`Match.isWinFor`). */
 export function isWinForMatch(match: Match, userId: string): boolean | null {
   const team = match.teams.find(t => t.players.some(p => p.userId === userId));
   return team ? team.isWinner : null;
-}
-
-/** The signed-in user's most recent results in a group, newest first, `true` = win (≤5). */
-export function recentForm(matches: Match[], userId: string): boolean[] {
-  return matches.map(m => isWinForMatch(m, userId)).filter((r): r is boolean => r !== null).slice(0, 5);
 }
 
 /* ==================== Add / Edit match (ported from AddMatchUiState.kt) ==================== */
@@ -266,8 +259,6 @@ export function recentMatchRow(match: Match, userId: string): RecentMatchRow {
 export const MIN_LEADER_GAMES = 2;
 /** Min games together before a pair qualifies as the best partnership. */
 export const MIN_PARTNERSHIP_GAMES = 2;
-/** How many recent results a player's "form" shows. */
-export const FORM_WINDOW = 5;
 /** Min run before a streak is worth showing as a record. */
 export const MIN_STREAK = 2;
 
@@ -337,23 +328,6 @@ export function computeBestPartnership(matches: Match[]): BestPartnership | null
     if (!best || winRate > best.winRate || (winRate === best.winRate && agg.games > best.games)) best = { ...agg, winRate };
   }
   return best ? { player1: best.p1, player2: best.p2, gamesTogether: best.games, winsTogether: best.wins, winRate: best.winRate } : null;
-}
-
-export type PlayerForm = { player: PlayerRef; results: boolean[] };
-
-/** Each ranked player's last [FORM_WINDOW] results, newest-first; players absent from the window are dropped. */
-export function computeRecentForm(matches: Match[], rankings: Ranking[]): PlayerForm[] {
-  const forms: PlayerForm[] = [];
-  for (const rank of rankings) {
-    const results = matches
-      .map(match => match.teams.find(team => team.players.some(p => p.userId === rank.userId))?.isWinner)
-      .filter((r): r is boolean => r === true || r === false)
-      .slice(0, FORM_WINDOW);
-    if (results.length > 0) {
-      forms.push({ player: { userId: rank.userId, displayName: rank.displayName, avatarColor: rank.avatarColor, avatarId: rank.avatarId, photoUrl: rank.photoUrl }, results });
-    }
-  }
-  return forms;
 }
 
 export type BiggestWin = { match: Match; margin: number };

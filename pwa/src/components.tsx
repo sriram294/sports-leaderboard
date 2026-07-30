@@ -65,9 +65,14 @@ export function Wordmark({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
   );
 }
 
-/** W/L result chip used by the Board form bar and the Stats form rows. */
-export function FormPill({ win }: { win: boolean }) {
-  return <span className={`form-pill ${win ? 'win' : 'loss'}`} aria-label={win ? 'Win' : 'Loss'}>{win ? 'W' : 'L'}</span>;
+/** A row of small win/loss dots — the leaderboard's per-player form trend, oldest result first. */
+export function FormDots({ results }: { results: boolean[] }) {
+  if (results.length === 0) return null;
+  return (
+    <span className="form-dots" aria-label={`Recent form: ${results.map(w => (w ? 'win' : 'loss')).join(', ')}`}>
+      {results.map((win, i) => <span key={i} className={`form-dot ${win ? 'win' : 'loss'}`} />)}
+    </span>
+  );
 }
 
 export function Button({ children, onClick, variant = 'primary', type = 'button', disabled = false }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'ghost' | 'danger'; type?: 'button' | 'submit'; disabled?: boolean }) {

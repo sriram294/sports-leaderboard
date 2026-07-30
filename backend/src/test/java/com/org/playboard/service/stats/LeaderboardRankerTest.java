@@ -38,7 +38,7 @@ class LeaderboardRankerTest {
                 r.gamesPlayed(), r.wins(), r.gamesPlayed() - r.wins(),
                 r.pointsFor(), r.pointsAgainst(),
                 LeaderboardRanker.winRate(r.wins(), r.gamesPlayed()),
-                r.currentStreak(), r.bestStreak(), rating, provisional));
+                r.currentStreak(), r.bestStreak(), rating, provisional, List.of()));
     }
 
     @Nested

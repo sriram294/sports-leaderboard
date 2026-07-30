@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import type { Match, MonthlyTrophy, Ranking } from '../../models';
-import { Avatar, FormPill } from '../../components';
+import { Avatar } from '../../components';
 import {
   computeBestPartnership,
   computeBiggestWin,
-  computeRecentForm,
   computeRecords,
   matchTeam,
   monthlyTrophyLabel,
@@ -14,7 +13,6 @@ import {
   winningTeamNo,
   type BestPartnership,
   type BiggestWin,
-  type PlayerForm,
   type Records,
 } from '../../domain';
 
@@ -28,13 +26,12 @@ type Props = {
 /**
  * Stats / Insights — see docs/pwa/requirements/06-stats.md and Android `ui/stats/*`.
  * A group-level dashboard: all-time RECORDS from the leaderboard + group match count, then
- * MONTHLY WINNERS (served) and the recent-window sections (BEST PARTNERSHIP / FORM / BIGGEST
- * WIN) derived client-side from the first page of matches — no new endpoints.
+ * MONTHLY WINNERS (served) and the recent-window sections (BEST PARTNERSHIP / BIGGEST WIN)
+ * derived client-side from the first page of matches — no new endpoints.
  */
 export function StatsScreen({ rankings, matchCount, matches, trophies }: Props) {
   const records = useMemo(() => computeRecords(rankings, matchCount), [rankings, matchCount]);
   const partnership = useMemo(() => computeBestPartnership(matches), [matches]);
-  const form = useMemo(() => computeRecentForm(matches, rankings), [matches, rankings]);
   const biggestWin = useMemo(() => computeBiggestWin(matches), [matches]);
 
   if (matchCount === 0 && matches.length === 0) {
@@ -46,7 +43,6 @@ export function StatsScreen({ rankings, matchCount, matches, trophies }: Props) 
       <RecordsCard records={records} />
       {trophies.length > 0 && <MonthlyWinnersCard winners={trophies} />}
       {partnership && <BestPartnershipCard partnership={partnership} />}
-      {form.length > 0 && <RecentFormCard form={form} />}
       {biggestWin && <BiggestWinCard biggestWin={biggestWin} />}
     </div>
   );
@@ -111,25 +107,6 @@ function BestPartnershipCard({ partnership }: { partnership: BestPartnership }) 
           <span>{partnership.winsTogether}W / {partnership.gamesTogether} games together</span>
         </div>
         <span className="partnership-rate">{percent(partnership.winRate)}%</span>
-      </div>
-    </section>
-  );
-}
-
-function RecentFormCard({ form }: { form: PlayerForm[] }) {
-  return (
-    <section className="card insight-card">
-      <p className="section-label">FORM · recent</p>
-      <div className="form-rows">
-        {form.map(row => (
-          <div className="form-row" key={row.player.userId}>
-            <Avatar person={row.player} size={34} />
-            <span className="form-player">{row.player.displayName}</span>
-            <span className="form-pills">
-              {row.results.map((win, index) => <FormPill key={index} win={win} />)}
-            </span>
-          </div>
-        ))}
       </div>
     </section>
   );

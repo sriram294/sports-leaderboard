@@ -284,6 +284,69 @@ class StatsQueryServiceIntegrationTest {
     }
 
     /**
+     * {@code recentForm} caps at 10 results, oldest first (chronological — the render order
+     * for a left-to-right dots row), regardless of which side of the match a player is on.
+     */
+    @Test
+    void recentFormReturnsLastTenResultsChronologicallyOldestFirst() {
+        Fixture f = newFixture();
+        Instant base = Instant.parse("2026-01-01T00:00:00Z");
+        // 12 matches, alternating raj+dev vs marcus+kiran, team1 (raj) wins on even i.
+        for (int i = 0; i < 12; i++) {
+            int winner = (i % 2 == 0) ? 1 : 2;
+            recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran),
+                    21, 15, winner, base.plus(Duration.ofHours(i)));
+        }
+
+        LeaderboardResponse leaderboard = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId());
+
+        // Only the last 10 of 12 matches (i=2..11) survive, oldest of those first.
+        LeaderboardEntryDto raj = entryFor(leaderboard, f.raj.getId());
+        assertThat(raj.recentForm()).containsExactly(true, false, true, false, true, false, true, false, true, false);
+
+        // The opposing team's form is the mirror image.
+        LeaderboardEntryDto marcus = entryFor(leaderboard, f.marcus.getId());
+        assertThat(marcus.recentForm()).containsExactly(false, true, false, true, false, true, false, true, false, true);
+    }
+
+    /** A player with fewer than 10 matches gets exactly that many, not padded. */
+    @Test
+    void recentFormIsNotPaddedForAPlayerWithFewMatches() {
+        Fixture f = newFixture();
+        Instant base = Instant.parse("2026-01-01T00:00:00Z");
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 15, 1, base);
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran),
+                21, 15, 1, base.plus(Duration.ofHours(1)));
+        recordMatch(f.group, f.raj, List.of(f.raj, f.kiran), List.of(f.dev, f.marcus),
+                10, 21, 2, base.plus(Duration.ofHours(2)));
+
+        LeaderboardResponse leaderboard = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId());
+
+        assertThat(entryFor(leaderboard, f.raj.getId()).recentForm()).containsExactly(true, true, false);
+    }
+
+    /** The This Month board's recentForm only counts matches inside the window, like its other fields. */
+    @Test
+    void windowedRecentFormExcludesMatchesOutsideTheWindow() {
+        Fixture f = newFixture();
+        ZoneId zone = ZoneId.of("UTC");
+        LocalDate firstOfMonth = LocalDate.now(zone).withDayOfMonth(1);
+        Instant from = firstOfMonth.atStartOfDay(zone).toInstant();
+        Instant to = firstOfMonth.plusMonths(1).atStartOfDay(zone).toInstant();
+        Instant inWindow = from.plus(Duration.ofHours(1));
+        Instant lastMonth = firstOfMonth.minusDays(5).atStartOfDay(zone).toInstant();
+
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 15, 2, lastMonth);
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 15, 1, inWindow);
+
+        LeaderboardResponse windowed = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId(), from, to);
+        LeaderboardResponse allTime = statsQueryService.getLeaderboard(f.group.getId(), f.raj.getId());
+
+        assertThat(entryFor(windowed, f.raj.getId()).recentForm()).containsExactly(true);
+        assertThat(entryFor(allTime, f.raj.getId()).recentForm()).containsExactly(false, true);
+    }
+
+    /**
      * Attendance returns the player's match instants inside {@code [from, to)} only —
      * out-of-window matches are excluded, and two matches on the same day both come back
      * (the client buckets instants into local days).

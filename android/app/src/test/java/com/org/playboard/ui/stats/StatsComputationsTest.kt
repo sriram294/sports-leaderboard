@@ -83,33 +83,6 @@ class StatsComputationsTest {
         assertEquals(3, best.gamesTogether)
     }
 
-    // ---- recent form ----
-
-    @Test
-    fun `recent form keeps last five newest-first and reflects the player's result`() {
-        // matches passed newest-first (as the repo returns)
-        val matches = (1..7).map { i ->
-            // priya on team 1; wins the odd-numbered (newest) ones
-            match("m$i", listOf(p("priya"), p("dev")), listOf(p("raj"), p("kiran")), winner = if (i % 2 == 1) 1 else 2)
-        }
-        val form = computeRecentForm(matches, listOf(ranking("priya", 7, 4, 100, 0.57)))
-        val priya = form.single()
-        assertEquals(5, priya.results.size)                       // capped at FORM_WINDOW
-        assertEquals(listOf(true, false, true, false, true), priya.results) // newest-first
-    }
-
-    @Test
-    fun `recent form omits players with no matches in the window`() {
-        val matches = listOf(
-            match("m1", listOf(p("priya"), p("dev")), listOf(p("raj"), p("kiran")), winner = 1),
-        )
-        val form = computeRecentForm(
-            matches,
-            listOf(ranking("priya", 1, 1, 21, 1.0), ranking("ghost", 0, 0, 0, 0.0)),
-        )
-        assertEquals(listOf("priya"), form.map { it.player.userId })
-    }
-
     // ---- biggest win ----
 
     @Test

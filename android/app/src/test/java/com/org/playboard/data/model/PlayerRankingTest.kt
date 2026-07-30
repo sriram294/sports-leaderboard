@@ -14,6 +14,7 @@ class PlayerRankingTest {
         wins: Int = 3,
         rating: Double? = 40.0,
         provisional: Boolean = false,
+        recentForm: List<Boolean> = emptyList(),
     ) = PlayerRanking(
         rank = 1,
         userId = "u1",
@@ -29,6 +30,7 @@ class PlayerRankingTest {
         winRate = winRate,
         rating = rating,
         provisional = provisional,
+        recentForm = recentForm,
     )
 
     @Test
@@ -111,5 +113,13 @@ class PlayerRankingTest {
         ).secondaryLine(minGamesToRank = 10)
 
         assertEquals("7 games \u00b7 6-1 \u00b7 86% \u00b7 3 more to rank", line)
+    }
+
+    @Test
+    fun `recent form defaults to empty and otherwise carries through unchanged`() {
+        assertEquals(emptyList<Boolean>(), ranking().recentForm)
+
+        val form = listOf(true, false, true)
+        assertEquals(form, ranking(recentForm = form).recentForm)
     }
 }

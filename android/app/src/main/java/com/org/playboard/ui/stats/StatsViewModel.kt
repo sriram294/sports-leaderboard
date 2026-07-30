@@ -89,7 +89,6 @@ class StatsViewModel @Inject constructor(
                 hasMatches = false,
                 records = null,
                 bestPartnership = null,
-                recentForm = emptyList(),
                 biggestWin = null,
                 monthlyWinners = emptyList(),
             )
@@ -120,7 +119,6 @@ class StatsViewModel @Inject constructor(
                 hasMatches = group.matchCount > 0,
                 records = computeRecords(rankings, group.matchCount),
                 bestPartnership = computeBestPartnership(matches),
-                recentForm = computeRecentForm(matches, rankings),
                 biggestWin = computeBiggestWin(matches),
                 monthlyWinners = monthlyWinners,
             )

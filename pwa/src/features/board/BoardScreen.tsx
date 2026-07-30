@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { Ranking, User } from '../../models';
-import { Avatar, FormPill } from '../../components';
+import type { Ranking } from '../../models';
+import { Avatar, FormDots } from '../../components';
 import { Icon } from '../../icons';
 import {
   METRIC_LABEL,
@@ -24,10 +24,8 @@ type Props = {
   rankings: Ranking[];
   minGamesToRank: number;
   groupId: string;
-  user: User;
   range: TimeRange;
   onRangeChange: (range: TimeRange) => void;
-  recentForm: boolean[];
   onPlayer: (userId: string) => void;
   onShare: () => void;
 };
@@ -35,20 +33,19 @@ type Props = {
 /**
  * Board (home) tab — see docs/pwa/requirements/02-board-leaderboard.md and the Android
  * `ui/board/*`. The "TOP PLAYERS" header (with the calendar-window selector) is always
- * shown, so an empty window still lets the user switch ranges; below it sit the podium,
- * the RANKINGS card (whose header cycles the sort metric), and a pinned "YOUR FORM" bar.
+ * shown, so an empty window still lets the user switch ranges; below it sit the podium and
+ * the RANKINGS card (whose header cycles the sort metric; each row's form dots come with it).
  */
-export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, recentForm, onPlayer, onShare }: Props) {
+export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, onPlayer, onShare }: Props) {
   const [metric, setMetric] = useState<RankingSortMetric>('rating');
   // A different group is a different board, so the metric resets to the default.
   useEffect(() => setMetric('rating'), [groupId]);
 
   const podium = podiumOf(rankings);
   const rows = tableRows(rankings, metric);
-  const showForm = recentForm.length > 0 && rankings.length > 0;
 
   return (
-    <div className={`board${showForm ? ' has-form' : ''}`}>
+    <div className="board">
       <div className="board-head">
         <div className="board-head-title">
           <span className="eyebrow">TOP PLAYERS</span>
@@ -98,6 +95,7 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
                   <span className="col-player">
                     <span className="ranking-name">{row.displayName}</span>
                     <span className="ranking-sub">{secondaryLine(row, minGamesToRank)}</span>
+                    <FormDots results={row.recentForm ?? []} />
                   </span>
                   <span className="col-metric value" style={{ color: metricColor(row, metric) }}>
                     {metricValue(row, metric)}
@@ -107,20 +105,6 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
             })}
           </section>
         </>
-      )}
-
-      {showForm && (
-        <div className="form-bar-wrap">
-          <div className="form-bar">
-            <div className="form-bar-label">
-              <span className="eyebrow">YOUR FORM</span>
-              <span className="form-bar-sub">Last {recentForm.length} {recentForm.length === 1 ? 'match' : 'matches'}</span>
-            </div>
-            <div className="form-bar-pills">
-              {recentForm.map((win, index) => <FormPill key={index} win={win} />)}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

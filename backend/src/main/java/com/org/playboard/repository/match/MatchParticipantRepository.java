@@ -120,4 +120,38 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
         long getPointsAgainst();
     }
+
+    // Backs the leaderboard's recentForm — every member's last :limit results within
+    // [from, to) in one set-based query (a per-user window function, not N queries).
+    // Window is [from, to); either bound may be null for the all-time board, hence the
+    // cast(... as timestamptz) is null guards — Postgres can't infer a null bind
+    // parameter's type in a native query without them. Ordered chronologically
+    // (oldest first) per user so the service layer can group without re-sorting.
+    @Query(value = """
+        select ranked.user_id as userId, ranked.is_winner as winner, ranked.played_at as playedAt
+        from (
+            select mp.user_id, mt.is_winner, m.played_at,
+                   row_number() over (partition by mp.user_id order by m.played_at desc, m.id desc) as rn
+            from match_participants mp
+              join matches m on m.id = mp.match_id and m.group_id = :groupId and m.is_deleted = false
+              join match_teams mt on mt.id = mp.match_team_id
+            where (cast(:from as timestamptz) is null or m.played_at >= :from)
+              and (cast(:to as timestamptz) is null or m.played_at < :to)
+        ) ranked
+        where ranked.rn <= :limit
+        order by ranked.user_id, ranked.played_at asc
+        """, nativeQuery = true)
+    List<RecentFormRow> findRecentFormForGroup(
+            @Param("groupId") UUID groupId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("limit") int limit);
+
+    interface RecentFormRow {
+        UUID getUserId();
+
+        boolean isWinner();
+
+        Instant getPlayedAt();
+    }
 }

@@ -1,6 +1,6 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api } from './data';
-import { rangeWindow, recentForm, type TimeRange } from './domain';
+import { rangeWindow, type TimeRange } from './domain';
 
 /**
  * Shared read queries keyed by group. Mutations (add/edit/delete match, group
@@ -13,7 +13,6 @@ import { rangeWindow, recentForm, type TimeRange } from './domain';
  */
 export const leaderboardKey = (groupId?: string) => ['leaderboard', groupId] as const;
 export const matchesKey = (groupId?: string) => ['matches', groupId] as const;
-export const formKey = (groupId?: string, userId?: string) => ['form', groupId, userId] as const;
 
 /**
  * Board leaderboard for a calendar window. `keepPreviousData` keeps the current table
@@ -75,13 +74,3 @@ export const useMatchDetail = (groupId?: string, matchId?: string) =>
     enabled: !!groupId && !!matchId,
   });
 
-/**
- * The signed-in user's last-5 results for the Board form bar. Secondary to the
- * leaderboard: derived from the player-stats endpoint's `recentMatches`.
- */
-export const useForm = (groupId?: string, userId?: string) =>
-  useQuery({
-    queryKey: formKey(groupId, userId),
-    queryFn: async () => recentForm((await api.stats(groupId!, userId!)).recentMatches ?? [], userId!),
-    enabled: !!groupId && !!userId,
-  });

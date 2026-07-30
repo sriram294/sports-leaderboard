@@ -9,9 +9,8 @@ import com.org.playboard.data.model.PlayerRanking
  * Immutable state for the Stats/Insights tab (docs/requirements/06-stats.md): a
  * group-level analytics dashboard scoped to the active group. Records are all-time
  * (from the leaderboard + `Group.matchCount`); the match-derived sections
- * ([bestPartnership], [recentForm], [biggestWin]) are computed from the recent
- * window `MatchRepository.getMatches` returns (first page), so the UI labels them
- * as recent.
+ * ([bestPartnership], [biggestWin]) are computed from the recent window
+ * `MatchRepository.getMatches` returns (first page), so the UI labels them as recent.
  */
 data class StatsUiState(
     val isLoading: Boolean = true,
@@ -25,7 +24,6 @@ data class StatsUiState(
     val hasMatches: Boolean = false,
     val records: Records? = null,
     val bestPartnership: BestPartnership? = null,
-    val recentForm: List<PlayerForm> = emptyList(),
     val biggestWin: BiggestWin? = null,
     /**
      * Who topped each completed month, newest first (last 6). Unlike the other sections
@@ -58,12 +56,6 @@ data class BestPartnership(
 ) {
     val winRatePercent: Int get() = (winRate * 100).toInt()
 }
-
-/** One ranked player's recent results, most-recent-first (`true` = win). */
-data class PlayerForm(
-    val player: MatchPlayer,
-    val results: List<Boolean>,
-)
 
 /** The recent match with the largest total-points margin (summed across sets). */
 data class BiggestWin(

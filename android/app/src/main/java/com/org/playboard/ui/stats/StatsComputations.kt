@@ -11,9 +11,6 @@ internal const val MIN_LEADER_GAMES = 2
 /** Minimum games together before a pair qualifies as the best partnership. */
 internal const val MIN_PARTNERSHIP_GAMES = 2
 
-/** How many recent results a player's "form" shows. */
-internal const val FORM_WINDOW = 5
-
 /** Minimum run before a streak is worth showing as a record (a run of 0/1 isn't). */
 internal const val MIN_STREAK = 2
 
@@ -71,28 +68,6 @@ internal fun computeBestPartnership(matches: List<Match>): BestPartnership? {
         .maxWithOrNull(compareBy({ it.winRate }, { it.games }))
         ?.let { BestPartnership(it.p1, it.p2, it.games, it.wins, it.winRate) }
 }
-
-/**
- * Each ranked player's last [FORM_WINDOW] results, most-recent-first — [matches]
- * arrive newest-first, so their order is preserved. Players with no match in the
- * window are omitted so the section stays meaningful.
- */
-internal fun computeRecentForm(matches: List<Match>, rankings: List<PlayerRanking>): List<PlayerForm> =
-    rankings.mapNotNull { rank ->
-        val results = matches
-            .mapNotNull { match ->
-                match.teams.firstOrNull { team -> team.players.any { it.userId == rank.userId } }?.isWinner
-            }
-            .take(FORM_WINDOW)
-        if (results.isEmpty()) {
-            null
-        } else {
-            PlayerForm(
-                player = MatchPlayer(rank.userId, rank.displayName, rank.avatarColor, rank.photoUrl, rank.avatarId),
-                results = results,
-            )
-        }
-    }
 
 /**
  * The match with the largest total-points margin (each team's set scores summed,

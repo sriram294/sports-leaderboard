@@ -17,9 +17,12 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
   highlight). Provisional players are never shown on the podium.
 - **Share** action: renders the active group's leaderboard as an image and
   opens the Android share sheet.
-- **Rankings table**: all players in the group as two-line rows — rank,
+- **Rankings table**: all players in the group as three-line rows — rank,
   avatar + name, and the active metric on the right; beneath the name a
-  muted summary reading `37 games · 22-15 · 59% · +76`. The trailing DIFF
+  muted summary reading `37 games · 22-15 · 59% · +76`, then a row of small
+  win/loss dots (up to 10, oldest on the left) showing that player's recent
+  form within the selected window. Players with fewer than 10 matches show
+  fewer dots; a player with none shows no dots row at all. The trailing DIFF
   is points for − against, signed, green when positive and red when
   negative. The right-hand header label is tappable and cycles the metric
   (Rating → Win% → Games → Diff); the large number follows it.
@@ -46,6 +49,10 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
 ## Data needed
 - Per group: list of players with GP, W, L, PF, PA, win%. The table shows the
   PF − PA difference rather than PF itself; both raw totals remain on Profile.
+- Per player: `recentForm` — up to 10 results within the selected window, in
+  chronological order (oldest first), so the dots row reads left-to-right
+  without any client-side reversal. Ships with the leaderboard response, not
+  a separate call.
 
 ## Current ranking behavior
 
