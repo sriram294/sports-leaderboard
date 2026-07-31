@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface MonthlyTrophyRepository extends JpaRepository<MonthlyTrophy, UUID> {
 
@@ -24,7 +25,15 @@ public interface MonthlyTrophyRepository extends JpaRepository<MonthlyTrophy, UU
      *
      * <p>A null {@code userId} is a legitimate verdict, meaning the month was evaluated and
      * nobody qualified.
+     *
+     * <p>{@code @Transactional} lives here rather than on {@code MonthlyTrophyJob}: the job
+     * calls this three levels deep through plain {@code this.} calls
+     * ({@code awardCompletedMonths -> processGroup -> awardMonth}), and Spring's proxy-based
+     * AOP does not intercept self-invocation, so an annotation up there would silently no-op.
+     * This repository method is always invoked through its own Spring-managed proxy no matter
+     * who calls it, so the transaction always actually opens.
      */
+    @Transactional
     @Modifying
     @Query(
             value =

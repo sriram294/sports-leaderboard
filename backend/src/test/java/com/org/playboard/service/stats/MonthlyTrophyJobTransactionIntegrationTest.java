@@ -11,8 +11,8 @@ import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.stats.MonthlyTrophyRepository;
 import com.org.playboard.repository.user.UserRepository;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,15 +23,23 @@ import org.springframework.boot.test.context.SpringBootTest;
 /**
  * Deliberately <em>not</em> {@code @Transactional}, unlike {@link MonthlyTrophyJobIntegrationTest}.
  *
- * <p>{@code awardMonth} calls the {@code @Modifying} {@code awardIfAbsent} insert, which needs
- * an active transaction. In production that call arrives from the bare {@code @Scheduled}
- * method with no transaction of its own; a test wrapped in {@code @Transactional} supplies one
- * for free and would never catch a missing one on the production method. This is what broke
- * the very first live award (the July→August rollover): every group's scan failed with
- * {@code TransactionRequiredException}.
+ * <p>Exercises {@link MonthlyTrophyJob#processGroup} — the same entry point
+ * {@code awardCompletedMonths} reaches via a bare {@code this.} call — rather than calling
+ * {@code awardMonth} directly. That distinction matters: {@code awardMonth} is only ever
+ * reached through self-invocation in production, which Spring's proxy-based AOP does not
+ * intercept, so calling it directly on the injected bean would exercise a code path that
+ * cannot actually occur and would not have caught the bug this test guards against (a first
+ * attempt at this test did exactly that, and passed against broken code).
+ *
+ * <p>This is what broke the very first live award, at the July→August rollover: every group's
+ * scan failed with {@code TransactionRequiredException} because the write in
+ * {@code MonthlyTrophyRepository.awardIfAbsent} had no active transaction.
  */
 @SpringBootTest
 class MonthlyTrophyJobTransactionIntegrationTest {
+
+    private static final Instant JUNE_START = Instant.parse("2026-06-01T00:00:00Z");
+    private static final Instant AFTER_JUNE = Instant.parse("2026-07-05T00:00:00Z");
 
     @Autowired private MonthlyTrophyJob job;
     @Autowired private MonthlyTrophyRepository trophyRepository;
@@ -70,8 +78,8 @@ class MonthlyTrophyJobTransactionIntegrationTest {
     }
 
     @Test
-    void awardingAMonthCommitsOutsideAnyCallerTransaction() {
-        assertThatCode(() -> job.awardMonth(group.getId(), YearMonth.of(2026, 6)))
+    void scanningAGroupCommitsOutsideAnyCallerTransaction() {
+        assertThatCode(() -> job.processGroup(group.getId(), JUNE_START, AFTER_JUNE))
                 .doesNotThrowAnyException();
 
         assertThat(trophyRepository.findDecidedMonths(group.getId()))
@@ -80,8 +88,8 @@ class MonthlyTrophyJobTransactionIntegrationTest {
 
     @Test
     void reRunningOutsideATransactionStillClaimsOnlyOnce() {
-        job.awardMonth(group.getId(), YearMonth.of(2026, 6));
-        job.awardMonth(group.getId(), YearMonth.of(2026, 6));
+        job.processGroup(group.getId(), JUNE_START, AFTER_JUNE);
+        job.processGroup(group.getId(), JUNE_START, AFTER_JUNE);
 
         MonthlyTrophy stored = trophyRepository.findAll().stream()
                 .filter(trophy -> trophy.getGroupId().equals(group.getId()))
