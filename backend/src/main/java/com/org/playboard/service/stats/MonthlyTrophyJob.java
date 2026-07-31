@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Awards the monthly leaderboard crown: the top ranked player of each completed calendar
@@ -117,12 +116,11 @@ public class MonthlyTrophyJob {
         }
     }
 
-    // awardIfAbsent is a @Modifying repository query; without an active transaction it
-    // throws TransactionRequiredException rather than running. This was invisible in tests
-    // because MonthlyTrophyJobIntegrationTest is itself @Transactional, supplying the
-    // transaction that production, calling this from a bare @Scheduled method, does not have.
-    @Transactional
-    void awardMonth(UUID groupId, YearMonth month) {
+    // The transaction that awardIfAbsent needs lives on MonthlyTrophyRepository itself, not
+    // here — this method is reached via self-invocation from awardCompletedMonths, which
+    // Spring's proxy-based @Transactional cannot intercept. See the Javadoc on
+    // MonthlyTrophyRepository.awardIfAbsent.
+    private void awardMonth(UUID groupId, YearMonth month) {
         Instant from = month.atDay(1).atStartOfDay(zone).toInstant();
         Instant to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
 
