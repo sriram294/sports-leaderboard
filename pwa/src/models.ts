@@ -63,8 +63,8 @@ export type MatchEvent = { userId: string; displayName: string; action: string; 
 export type MatchDetail = Match & { recordedBy: { userId: string; displayName: string }; recordedAt: string; events: MatchEvent[] };
 /** `GET /groups/{id}/matches` (MatchListResponse) — a cursor-paginated page. */
 export type MatchListResponse = { matches: Match[]; nextCursor?: string };
-/** The viewed player's best doubles partner (BestPartnerDto). */
-export type BestPartner = { userId: string; displayName: string; avatarId?: string | null; photoUrl?: string | null; avatarColor: string; gamesTogether: number; winsTogether: number; winRate: number };
+/** `GET /groups/{id}/members/{userId}/stats/partners` (PartnerDto) — one partner a player has had, fetched separately, on demand. */
+export type Partner = { userId: string; displayName: string; avatarId?: string | null; photoUrl?: string | null; avatarColor: string; gamesTogether: number; winsTogether: number; winRate: number };
 /** A month the player topped the group leaderboard (MonthlyTrophyDto). */
 export type MonthlyTrophy = { month: string; userId: string; displayName: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string; rating: number; gamesPlayed: number; wins: number };
 /** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — the full player-stats payload. */
@@ -82,7 +82,6 @@ export type PlayerStats = {
   currentStreak: number;
   bestStreak: number;
   matchesPlayed: number;
-  bestPartner?: BestPartner | null;
   recentMatches: Match[];
   trophies: MonthlyTrophy[];
 };

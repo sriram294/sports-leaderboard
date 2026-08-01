@@ -54,9 +54,19 @@ export const useTrophies = (groupId?: string) =>
 
 export const statsKey = (groupId?: string, userId?: string) => ['stats', groupId, userId] as const;
 
-/** A player's full profile stats (hero, tiles, best partner, recent matches, trophies). */
+/** A player's full profile stats (hero, tiles, recent matches, trophies). */
 export const usePlayerStats = (groupId?: string, userId?: string) =>
   useQuery({ queryKey: statsKey(groupId, userId), queryFn: () => api.stats(groupId!, userId!), enabled: !!groupId && !!userId });
+
+export const partnersKey = (groupId?: string, userId?: string) => ['partners', groupId, userId] as const;
+
+/**
+ * A player's partner list (every teammate they've had, most games together first), fetched
+ * only while `userId` is defined — pass `undefined` when the Partners card is collapsed, the
+ * same expand-to-fetch pattern as [useMatchDetail].
+ */
+export const usePartners = (groupId?: string, userId?: string) =>
+  useQuery({ queryKey: partnersKey(groupId, userId), queryFn: () => api.partners(groupId!, userId!), enabled: !!groupId && !!userId });
 
 /** The player's attendance days over a `[from, to)` window, for the activity heatmap. */
 export const useAttendance = (groupId?: string, userId?: string, from?: string, to?: string) =>

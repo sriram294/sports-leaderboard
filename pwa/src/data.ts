@@ -1,4 +1,4 @@
-import type { Group, InviteResponse, LeaderboardResponse, Match, MatchDetail, MatchListResponse, Member, MembersResponse, MonthlyTrophy, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
+import type { Group, InviteResponse, LeaderboardResponse, Match, MatchDetail, MatchListResponse, Member, MembersResponse, MonthlyTrophy, Partner, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
@@ -48,6 +48,7 @@ export const api = {
   selectAvatar: (avatarId: string) => request<User>('/users/me/avatar', { method: 'PATCH', body: JSON.stringify({ avatarId }) }),
   uploadPhoto: (file: File) => { const form = new FormData(); form.append('file', file); return request<User>('/users/me/photo', { method: 'POST', body: form }); },
   stats: (groupId: string, userId: string) => request<PlayerStats>(`/groups/${groupId}/members/${userId}/stats`),
+  partners: (groupId: string, userId: string) => request<Partner[]>(`/groups/${groupId}/members/${userId}/stats/partners`),
   attendance: (groupId: string, userId: string, from: string, to: string) =>
     request<PlayerAttendance>(`/groups/${groupId}/members/${userId}/attendance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   trophies: (groupId: string) => request<MonthlyTrophy[]>(`/groups/${groupId}/trophies`),

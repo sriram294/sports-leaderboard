@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import type { BestPartner, MatchSet, PlayerStats } from '../../models';
+import type { MatchSet, Partner, PlayerStats } from '../../models';
 import { Avatar } from '../../components';
 import { Icon } from '../../icons';
+import { usePartners } from '../../queries';
 import {
   WEEKDAYS,
   dateLabel,
@@ -21,6 +22,7 @@ export type ProfileIdentity = { displayName: string; photoUrl?: string | null; a
 export type ProfileAttendance = { months: HeatMonth[]; activeDays: Set<string> };
 
 type Props = {
+  groupId: string;
   stats: PlayerStats;
   isOwn: boolean;
   identity: ProfileIdentity;
@@ -39,7 +41,7 @@ type Props = {
  * pencil, avatar "+" badge → picker/upload); a viewed player (Board drill-down) is read-only
  * with a back button. Below the hero: 2×3 stat tiles, activity heatmap, best partner, recent matches.
  */
-export function ProfileScreen({ stats, isOwn, identity, attendance, onRename, onSelectAvatar, onUploadPhoto, onOpenSettings, onOpenGroups, onBack }: Props) {
+export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onRename, onSelectAvatar, onUploadPhoto, onOpenSettings, onOpenGroups, onBack }: Props) {
   const [avatarSheet, setAvatarSheet] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -103,7 +105,7 @@ export function ProfileScreen({ stats, isOwn, identity, attendance, onRename, on
 
       {attendance && attendance.months.length > 0 && <ActivityHeatmap attendance={attendance} />}
 
-      {stats.bestPartner && <BestPartnerCard partner={stats.bestPartner} />}
+      <PartnersCard groupId={groupId} userId={stats.userId} />
 
       {rows.length > 0 && (
         <>
@@ -179,19 +181,45 @@ function ActivityHeatmap({ attendance }: { attendance: ProfileAttendance }) {
   );
 }
 
-function BestPartnerCard({ partner }: { partner: BestPartner }) {
+/**
+ * Collapsed by default — the partner list is only fetched from the server once the user
+ * taps to expand, not eagerly with the rest of the profile (mirrors the Matches screen's
+ * expand-to-fetch card detail).
+ */
+function PartnersCard({ groupId, userId }: { groupId: string; userId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const partners = usePartners(groupId, expanded ? userId : undefined);
   return (
     <>
-      <p className="section-label">BEST PARTNER</p>
-      <div className="card partner-card">
-        <Avatar person={partner} size={44} />
-        <div className="partner-info">
-          <strong>{partner.displayName}</strong>
-          <span>{partner.winsTogether}W / {partner.gamesTogether} games together</span>
-        </div>
-        <span className="partner-rate" style={{ color: partner.avatarColor }}>{percent(partner.winRate)}%</span>
+      <button className="section-label-toggle" onClick={() => setExpanded(v => !v)} aria-expanded={expanded}>
+        <span className="section-label">PARTNERS</span>
+        <span className="caret" aria-hidden="true">{expanded ? '▴' : '▾'}</span>
+      </button>
+      <div className="card">
+        {!expanded && <p className="muted">Tap to see who you've partnered with</p>}
+        {expanded && partners.isLoading && <p className="muted">Loading…</p>}
+        {expanded && partners.error && <p className="muted">Couldn't load partners. Tap to retry.</p>}
+        {expanded && partners.data && partners.data.length === 0 && <p className="muted">No completed matches with a teammate yet.</p>}
+        {expanded && partners.data && partners.data.length > 0 && (
+          <div className="partner-rows">
+            {partners.data.map(partner => <PartnerRow key={partner.userId} partner={partner} />)}
+          </div>
+        )}
       </div>
     </>
+  );
+}
+
+function PartnerRow({ partner }: { partner: Partner }) {
+  return (
+    <div className="partner-row">
+      <Avatar person={partner} size={44} />
+      <div className="partner-info">
+        <strong>{partner.displayName}</strong>
+        <span>{partner.winsTogether}W / {partner.gamesTogether} games together</span>
+      </div>
+      <span className="partner-rate" style={{ color: partner.avatarColor }}>{percent(partner.winRate)}%</span>
+    </div>
   );
 }
 

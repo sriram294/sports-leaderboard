@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
-import type { Match, MonthlyTrophy, Ranking } from '../../models';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Match, MonthlyTrophy, Partner, Ranking } from '../../models';
 import { Avatar } from '../../components';
+import { usePartners } from '../../queries';
 import {
-  computeBestPartnership,
   computeBiggestWin,
   computeRecords,
   matchTeam,
@@ -11,12 +11,13 @@ import {
   teamName,
   winRatePercent,
   winningTeamNo,
-  type BestPartnership,
   type BiggestWin,
   type Records,
 } from '../../domain';
 
 type Props = {
+  groupId: string;
+  currentUserId?: string;
   rankings: Ranking[];
   matchCount: number;
   matches: Match[];
@@ -25,13 +26,13 @@ type Props = {
 
 /**
  * Stats / Insights — see docs/pwa/requirements/06-stats.md and Android `ui/stats/*`.
- * A group-level dashboard: all-time RECORDS from the leaderboard + group match count, then
- * MONTHLY WINNERS (served) and the recent-window sections (BEST PARTNERSHIP / BIGGEST WIN)
- * derived client-side from the first page of matches — no new endpoints.
+ * A group-level dashboard: all-time RECORDS from the leaderboard + group match count,
+ * MONTHLY WINNERS (served), a PARTNERS card (pick any player from the leaderboard, fetch
+ * just their partner list on demand), and BIGGEST WIN derived client-side from the first
+ * page of matches — no new endpoints beyond the per-player partners one Profile also uses.
  */
-export function StatsScreen({ rankings, matchCount, matches, trophies }: Props) {
+export function StatsScreen({ groupId, currentUserId, rankings, matchCount, matches, trophies }: Props) {
   const records = useMemo(() => computeRecords(rankings, matchCount), [rankings, matchCount]);
-  const partnership = useMemo(() => computeBestPartnership(matches), [matches]);
   const biggestWin = useMemo(() => computeBiggestWin(matches), [matches]);
 
   if (matchCount === 0 && matches.length === 0) {
@@ -42,7 +43,7 @@ export function StatsScreen({ rankings, matchCount, matches, trophies }: Props) 
     <div className="stats">
       <RecordsCard records={records} />
       {trophies.length > 0 && <MonthlyWinnersCard winners={trophies} />}
-      {partnership && <BestPartnershipCard partnership={partnership} />}
+      <PartnersCard groupId={groupId} rankings={rankings} currentUserId={currentUserId} />
       {biggestWin && <BiggestWinCard biggestWin={biggestWin} />}
     </div>
   );
@@ -93,22 +94,98 @@ function MonthlyWinnersCard({ winners }: { winners: MonthlyTrophy[] }) {
   );
 }
 
-function BestPartnershipCard({ partnership }: { partnership: BestPartnership }) {
+/**
+ * Collapsed by default. Expanding reveals a player picker (defaulting to the signed-in
+ * user) and fetches just that player's partner list — not eagerly with the rest of the
+ * page, and not every pair in the group at once.
+ */
+function PartnersCard({ groupId, rankings, currentUserId }: { groupId: string; rankings: Ranking[]; currentUserId?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>();
+
+  // Default the picker to the signed-in user (or the first player) the first time the
+  // card is expanded; a player with zero games can't have partners either, so the
+  // leaderboard roster already excludes anyone who couldn't appear here anyway.
+  useEffect(() => {
+    if (expanded && !selectedId) {
+      setSelectedId(rankings.find(r => r.userId === currentUserId)?.userId ?? rankings[0]?.userId);
+    }
+  }, [expanded, selectedId, rankings, currentUserId]);
+
+  const partners = usePartners(groupId, expanded ? selectedId : undefined);
+  const selected = rankings.find(r => r.userId === selectedId);
+
   return (
-    <section className="card insight-card partnership-card">
-      <p className="section-label">BEST PARTNERSHIP · recent</p>
-      <div className="partnership-row">
-        <span className="partnership-avatars">
-          <Avatar person={partnership.player1} size={44} />
-          <Avatar person={partnership.player2} size={44} />
-        </span>
-        <div className="partnership-info">
-          <strong>{partnership.player1.displayName} & {partnership.player2.displayName}</strong>
-          <span>{partnership.winsTogether}W / {partnership.gamesTogether} games together</span>
-        </div>
-        <span className="partnership-rate">{percent(partnership.winRate)}%</span>
-      </div>
+    <section className="card insight-card">
+      <button className="section-label-toggle" onClick={() => setExpanded(v => !v)} aria-expanded={expanded}>
+        <span className="section-label">PARTNERS</span>
+        <span className="caret" aria-hidden="true">{expanded ? '▴' : '▾'}</span>
+      </button>
+      {!expanded ? (
+        <p className="muted">Tap to see a player's partners</p>
+      ) : (
+        <>
+          <PlayerPicker players={rankings} selected={selected} onSelect={setSelectedId} />
+          {partners.isLoading && <p className="muted">Loading…</p>}
+          {partners.error && <p className="muted">Couldn't load partners. Tap a player to retry.</p>}
+          {partners.data && partners.data.length === 0 && <p className="muted">No completed matches with a teammate yet.</p>}
+          {partners.data && partners.data.length > 0 && (
+            <div className="partner-rows">
+              {partners.data.map(partner => <PartnerRow key={partner.userId} partner={partner} />)}
+            </div>
+          )}
+        </>
+      )}
     </section>
+  );
+}
+
+/** Avatar + name pill that opens a dropdown of every player on the leaderboard, same pattern as Board's range selector. */
+function PlayerPicker({ players, selected, onSelect }: { players: Ranking[]; selected?: Ranking; onSelect: (userId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+  return (
+    <div className="player-picker" ref={ref}>
+      <button className="player-picker-trigger" onClick={() => setOpen(v => !v)} aria-haspopup="menu" aria-expanded={open}>
+        {selected && <Avatar person={selected} size={28} />}
+        <span>{selected?.displayName ?? 'Select a player'}</span>
+        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
+      {open && (
+        <div className="player-picker-menu" role="menu">
+          {players.map(player => (
+            <button
+              key={player.userId}
+              role="menuitem"
+              className={player.userId === selected?.userId ? 'selected' : ''}
+              onClick={() => { onSelect(player.userId); setOpen(false); }}
+            >
+              <Avatar person={player} size={26} />
+              <span>{player.displayName}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PartnerRow({ partner }: { partner: Partner }) {
+  return (
+    <div className="partner-row">
+      <Avatar person={partner} size={44} />
+      <div className="partner-info">
+        <strong>{partner.displayName}</strong>
+        <span>{partner.winsTogether}W / {partner.gamesTogether} games together</span>
+      </div>
+      <span className="partner-rate" style={{ color: partner.avatarColor }}>{percent(partner.winRate)}%</span>
+    </div>
   );
 }
 

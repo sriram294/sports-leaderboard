@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Match, Ranking } from './models';
 import {
-  computeBestPartnership,
   computeBiggestWin,
   computeRecords,
   monthlyTrophyLabel,
@@ -46,22 +45,6 @@ const match = (id: string, t1: ReturnType<typeof ref>[], t2: ReturnType<typeof r
     { teamNo: 1, isWinner: t1Score > t2Score, players: t1 },
     { teamNo: 2, isWinner: t2Score > t1Score, players: t2 },
   ],
-});
-
-describe('best partnership', () => {
-  it('picks the pair with the best win rate (min 2 games), order-independent', () => {
-    const matches = [
-      match('m1', [ref('mugu', 'mugu'), ref('pori', 'Pori')], [ref('a', 'A'), ref('b', 'B')], 21, 10),
-      match('m2', [ref('pori', 'Pori'), ref('mugu', 'mugu')], [ref('a', 'A'), ref('b', 'B')], 21, 15),
-      match('m3', [ref('a', 'A'), ref('b', 'B')], [ref('c', 'C'), ref('d', 'D')], 21, 5),
-    ];
-    const p = computeBestPartnership(matches);
-    expect(p).toMatchObject({ gamesTogether: 2, winsTogether: 2, winRate: 1 });
-    expect([p!.player1.userId, p!.player2.userId].sort()).toEqual(['mugu', 'pori']);
-  });
-  it('is null when no pair reaches the minimum games', () => {
-    expect(computeBestPartnership([match('m1', [ref('a', 'A'), ref('b', 'B')], [ref('c', 'C'), ref('d', 'D')], 21, 5)])).toBeNull();
-  });
 });
 
 describe('biggest win', () => {

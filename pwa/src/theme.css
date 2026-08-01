@@ -2235,12 +2235,39 @@ h3 {
     background: var(--brand);
 }
 
-/* Best partner. */
-.partner-card {
+/* Partners (collapsed-by-default card, Profile + Stats). */
+.section-label-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: 0;
+    margin: 22px 0 10px;
+    text-align: left;
+}
+
+.section-label-toggle .section-label {
+    margin: 0;
+}
+
+.partner-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.section-label-toggle + .muted,
+.section-label-toggle + .partner-rows,
+.player-picker + .muted,
+.player-picker + .partner-rows {
+    margin-top: 12px;
+}
+
+.partner-row {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 16px;
 }
 
 .partner-info {
@@ -2263,6 +2290,58 @@ h3 {
 .partner-rate {
     font-size: 22px;
     font-weight: 700;
+}
+
+/* Player picker (Stats Partners card) — same structure as .range-selector/.range-menu. */
+.player-picker {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.player-picker-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: 0;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 0;
+}
+
+.player-picker-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 6;
+    min-width: 200px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.player-picker-menu button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    color: var(--text);
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.player-picker-menu button.selected {
+    color: var(--brand);
+    font-weight: 600;
 }
 
 /* Recent matches. */

@@ -144,8 +144,9 @@ export function AddRoute() {
 
 export function StatsRoute() {
   const { activeGroup } = useGroups();
+  const { user } = useSession();
   const leaderboard = useLeaderboard(activeGroup?.id);
-  // Records are all-time (leaderboard + matchCount); the derived sections use the recent
+  // Records are all-time (leaderboard + matchCount); Biggest Win uses the recent
   // window — the first page of matches — mirroring Android's getMatches() first page.
   const matches = useMatchesInfinite(activeGroup?.id);
   const trophies = useTrophies(activeGroup?.id);
@@ -154,6 +155,8 @@ export function StatsRoute() {
   if (leaderboard.error) return <ErrorState message={errorMessage(leaderboard.error)} retry={() => leaderboard.refetch()} />;
   return (
     <StatsScreen
+      groupId={activeGroup.id}
+      currentUserId={user?.id}
       rankings={leaderboard.data?.rankings ?? []}
       matchCount={activeGroup.matchCount}
       matches={matches.data?.pages[0]?.matches ?? []}
@@ -190,6 +193,7 @@ export function ProfileRoute() {
   };
   return (
     <ProfileScreen
+      groupId={activeGroup.id}
       stats={stats.data}
       isOwn
       identity={{ displayName: user!.displayName, photoUrl: user!.photoUrl, avatarId: user!.avatarId, avatarColor: user!.avatarColor }}
@@ -216,6 +220,7 @@ export function PlayerRoute() {
   if (stats.error || !stats.data) return <ErrorState message="Player not found." retry={() => navigate('/board')} />;
   return (
     <ProfileScreen
+      groupId={activeGroup?.id ?? ''}
       stats={stats.data}
       isOwn={false}
       identity={{ displayName: stats.data.displayName, photoUrl: stats.data.photoUrl, avatarId: stats.data.avatarId, avatarColor: stats.data.avatarColor }}

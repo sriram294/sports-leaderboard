@@ -257,8 +257,6 @@ export function recentMatchRow(match: Match, userId: string): RecentMatchRow {
 
 /** Min games before a player can be the win-rate "Win leader" record. */
 export const MIN_LEADER_GAMES = 2;
-/** Min games together before a pair qualifies as the best partnership. */
-export const MIN_PARTNERSHIP_GAMES = 2;
 /** Min run before a streak is worth showing as a record. */
 export const MIN_STREAK = 2;
 
@@ -294,40 +292,6 @@ export function computeRecords(rankings: Ranking[], matchCount: number): Records
     longestStreak: longest && longest.bestStreak >= MIN_STREAK ? longest : undefined,
     currentStreak: hot && hot.currentStreak >= MIN_STREAK ? hot : undefined,
   };
-}
-
-export type BestPartnership = { player1: PlayerRef; player2: PlayerRef; gamesTogether: number; winsTogether: number; winRate: number };
-
-/**
- * The teammate pair with the best win rate together across [matches] (min
- * [MIN_PARTNERSHIP_GAMES] games, tie-broken by games). Pairs are keyed order-independently.
- */
-export function computeBestPartnership(matches: Match[]): BestPartnership | null {
-  type Agg = { p1: PlayerRef; p2: PlayerRef; games: number; wins: number };
-  const byPair = new Map<string, Agg>();
-  for (const match of matches) {
-    for (const team of match.teams) {
-      const players = team.players;
-      for (let i = 0; i < players.length; i++) {
-        for (let j = i + 1; j < players.length; j++) {
-          const a = players[i], b = players[j];
-          const [first, second] = a.userId <= b.userId ? [a, b] : [b, a];
-          const key = `${first.userId}|${second.userId}`;
-          let agg = byPair.get(key);
-          if (!agg) { agg = { p1: first, p2: second, games: 0, wins: 0 }; byPair.set(key, agg); }
-          agg.games++;
-          if (team.isWinner) agg.wins++;
-        }
-      }
-    }
-  }
-  let best: (Agg & { winRate: number }) | null = null;
-  for (const agg of byPair.values()) {
-    if (agg.games < MIN_PARTNERSHIP_GAMES) continue;
-    const winRate = agg.wins / agg.games;
-    if (!best || winRate > best.winRate || (winRate === best.winRate && agg.games > best.games)) best = { ...agg, winRate };
-  }
-  return best ? { player1: best.p1, player2: best.p2, gamesTogether: best.games, winsTogether: best.wins, winRate: best.winRate } : null;
 }
 
 export type BiggestWin = { match: Match; margin: number };

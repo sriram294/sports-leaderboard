@@ -19,8 +19,14 @@ const matches = [
   mk('c', [ref('mani', 'Mani partha'), ref('g1', 'Guest 1')], [ref('g2', 'Guest 2'), ref('g3', 'Guest 3')], 8, 21),
 ];
 
-test('shows records, best partnership and biggest win', async ({ page }) => {
-  await page.addInitScript(([u, g, rk, ms]) => {
+// mugu partnered with Pori twice (both wins) — used to verify the Partners card's
+// per-player fetch once a player is picked.
+const partnersByPlayer: Record<string, unknown[]> = {
+  mugu: [{ userId: 'pori', displayName: 'Pori', avatarColor: '#888', avatarId: null, photoUrl: null, gamesTogether: 2, winsTogether: 2, winRate: 1 }],
+};
+
+test('shows records, biggest win, and a player-picked partner list', async ({ page }) => {
+  await page.addInitScript(([u, g, rk, ms, pp]) => {
     localStorage.setItem('playboard.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 9e5, user: JSON.parse(u) }));
     localStorage.setItem('playboard.group', 'g1');
     const orig = window.fetch;
@@ -31,12 +37,16 @@ test('shows records, best partnership and biggest win', async ({ page }) => {
       if (path.endsWith('/users/me')) return json(JSON.parse(u));
       if (path.endsWith('/groups')) return json({ groups: [JSON.parse(g)] });
       if (path.endsWith('/trophies')) return json([]);
+      if (path.endsWith('/stats/partners')) {
+        const userId = path.split('/').at(-3);
+        return json((JSON.parse(pp) as Record<string, unknown[]>)[userId!] ?? []);
+      }
       if (path.includes('/leaderboard')) return json({ rankings: JSON.parse(rk), minGamesToRank: 10 });
       if (path.includes('/matches')) return json({ matches: JSON.parse(ms) });
       if (path.includes('/stats')) return json({ userId: 'me', displayName: 'Sriram', recentMatches: [] });
       return orig(input, init);
     };
-  }, [JSON.stringify(user), JSON.stringify(group), JSON.stringify(rankings), JSON.stringify(matches)]);
+  }, [JSON.stringify(user), JSON.stringify(group), JSON.stringify(rankings), JSON.stringify(matches), JSON.stringify(partnersByPlayer)]);
 
   await page.goto('/stats', { waitUntil: 'networkidle' });
 
@@ -46,10 +56,14 @@ test('shows records, best partnership and biggest win', async ({ page }) => {
   await expect(page.getByText('56 games')).toBeVisible();
   await expect(page.getByText('10 in a row')).toBeVisible();
 
-  // Best partnership: mugu & Pori won both their games together → 100%.
-  await expect(page.getByText('mugu & Pori')).toBeVisible();
+  // Partners: collapsed by default — no fetch, no picker, no rows.
+  await expect(page.getByText("Tap to see a player's partners")).toBeVisible();
+
+  // Expanding defaults the picker to the first player (the signed-in user, "me",
+  // isn't on this leaderboard) and fetches their partners.
+  await page.getByText('PARTNERS', { exact: true }).click();
+  await expect(page.locator('.player-picker-trigger')).toContainText('mugu');
   await expect(page.getByText('2W / 2 games together')).toBeVisible();
-  await expect(page.getByText('100%')).toBeVisible();
 
   // Biggest win.
   await expect(page.getByText('+13 pts')).toBeVisible();
