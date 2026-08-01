@@ -17,10 +17,12 @@ best together" view — scoped to the currently selected group. Complements the
   - Most points (max `pointsFor`)
   - Most active (max `gamesPlayed`)
   - Longest streak and current hot streak
-- **Partners** — collapsed by default; expanding fetches and shows every pair
-  in the group who has partnered at least once, all-time accurate, ranked by
-  games together (ties broken by win rate together), with both avatars +
-  "Nw / M games" per pair.
+- **Partners** — collapsed by default; expanding reveals a player picker
+  (avatar + name dropdown of everyone on the leaderboard, defaulting to the
+  signed-in user) and fetches and shows that one player's partners, all-time
+  accurate, ranked by games together (ties broken by win rate together), same
+  row style as Profile's Partners card. Picking a different player refetches
+  for them.
 - **Biggest win** — the match with the largest total-points margin (teams + score).
 
 Per-player recent form no longer has a dedicated section here — it moved to
@@ -44,11 +46,15 @@ each player's name), so it's visible without switching tabs.
   page (newest ~20) — a reasonable "recent" window; labeled accordingly.
   Improves automatically once Matches pagination is wired (see
   [03-matches.md](03-matches.md)).
-- **Partners is its own backend endpoint** (`GET
-  /groups/{groupId}/stats/partners`, see
-  [api-contracts.md](../backend/api-contracts.md)), all-time accurate and
-  fetched only when the card is expanded, not eagerly with the rest of the
-  page — see [data-model.md](../backend/data-model.md) for why this isn't
+- **Partners reuses the same per-player endpoint as Profile** (`GET
+  /groups/{groupId}/members/{userId}/stats/partners`, see
+  [api-contracts.md](../backend/api-contracts.md)) — there is no separate
+  group-wide "every pair" endpoint. The picker's roster comes from the
+  leaderboard response already fetched for Records (everyone with at least
+  one game — a player with zero games can't have partners either), so no
+  extra request is needed just to populate the dropdown. All-time accurate
+  and fetched only for the selected player, only when the card is expanded —
+  see [data-model.md](../backend/data-model.md) for why this isn't
   materialized.
 - Biggest-win is a pure function (`computeBiggestWin`) covered by unit tests
   without the network.

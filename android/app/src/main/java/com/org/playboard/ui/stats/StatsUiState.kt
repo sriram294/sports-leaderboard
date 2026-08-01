@@ -2,7 +2,7 @@ package com.org.playboard.ui.stats
 
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MonthlyTrophy
-import com.org.playboard.data.model.PartnerPairing
+import com.org.playboard.data.model.Partner
 import com.org.playboard.data.model.PlayerRanking
 
 /**
@@ -10,7 +10,8 @@ import com.org.playboard.data.model.PlayerRanking
  * group-level analytics dashboard scoped to the active group. Records are all-time
  * (from the leaderboard + `Group.matchCount`); [biggestWin] is computed from the
  * recent window `MatchRepository.getMatches` returns (first page), so the UI labels
- * it as recent. [partnerPairs] is all-time and fetched only on expand.
+ * it as recent. The Partners card lets the user pick any player from [players] and
+ * fetches that player's partner list on demand.
  */
 data class StatsUiState(
     val isLoading: Boolean = true,
@@ -33,12 +34,16 @@ data class StatsUiState(
      */
     val monthlyWinners: List<MonthlyTrophy> = emptyList(),
     /**
-     * "Partners" card state — every pair in the group who has partnered at least
-     * once, most games together first. Collapsed by default; expanding fetches the
-     * full list on demand rather than loading it eagerly with the rest of the page.
+     * "Partners" card state — collapsed by default. Expanding shows a player picker
+     * (defaulting to the signed-in user) populated from [players] — everyone on the
+     * leaderboard, since a player with zero games can't have any partners either —
+     * and fetches the selected player's partner list on demand, not eagerly with
+     * the rest of the page.
      */
     val partnersExpanded: Boolean = false,
-    val partnerPairs: List<PartnerPairing> = emptyList(),
+    val players: List<PlayerRanking> = emptyList(),
+    val selectedPlayerId: String? = null,
+    val partners: List<Partner> = emptyList(),
     val isPartnersLoading: Boolean = false,
     val partnersLoadFailed: Boolean = false,
 )

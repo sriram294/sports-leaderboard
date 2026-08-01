@@ -27,7 +27,6 @@ import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PartnerDto
-import com.org.playboard.data.remote.dto.PartnerPairDto
 import com.org.playboard.data.remote.dto.PlayerAttendanceDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -119,7 +118,6 @@ private open class FakePlayboardApi(
         partnersCalls++
         return partners[userId].orEmpty()
     }
-    override suspend fun getGroupPartnerPairs(groupId: String): List<PartnerPairDto> = error("unused")
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): PlayerAttendanceDto =
         attendance[userId] ?: PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")

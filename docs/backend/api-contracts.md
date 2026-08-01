@@ -267,7 +267,7 @@ requirement #2) — same endpoint, different `userId`.
 }
 ```
 Partner counts are **not** included here — they're their own on-demand
-endpoints below, so a client can defer the query until the player actually
+endpoint below, so a client can defer the query until the player actually
 opens a "Partners" list rather than loading it eagerly with the rest of this
 payload.
 
@@ -276,26 +276,15 @@ Every partner this player has had in the group, most games together first
 (ties broken by win rate together, descending). Same access rules as `/stats`
 (caller must be an active member; target must be an active non-guest member,
 else `404 MEMBER_NOT_FOUND`). Guests are excluded as partners. Empty array if
-the player has no completed matches with a teammate yet.
+the player has no completed matches with a teammate yet. The Stats screen's
+group-wide "Partners" card calls this once per selected player (via a picker),
+rather than a separate group-wide endpoint.
 ```json
 [
   { "userId": "uuid", "displayName": "Dev", "avatarColor": "#3DB4FF",
     "gamesTogether": 2, "winsTogether": 2, "winRate": 1.0 },
   { "userId": "uuid", "displayName": "Kiran", "avatarColor": "#F5A623",
     "gamesTogether": 1, "winsTogether": 0, "winRate": 0.0 }
-]
-```
-
-### `GET /groups/{groupId}/stats/partners`
-Group-wide: every pair of players who have partnered at least once, most
-games together first (ties broken by win rate together, descending). Guests
-are excluded from both sides of a pair. Caller must be an active member of
-the group.
-```json
-[
-  { "player1Id": "uuid", "player1DisplayName": "Raj", "player1AvatarColor": "#9ADE28",
-    "player2Id": "uuid", "player2DisplayName": "Dev", "player2AvatarColor": "#3DB4FF",
-    "gamesTogether": 2, "winsTogether": 2, "winRate": 1.0 }
 ]
 ```
 

@@ -308,15 +308,16 @@ pointer.
 
 **Partner counts** ([05-profile.md](../requirements/05-profile.md),
 [06-stats.md](../requirements/06-stats.md)) are deliberately *not*
-materialized: both the per-player partner list and the group-wide partner-pairs
-list sit behind their own endpoints, fetched only when a client expands the
-"Partners" card rather than eagerly with the rest of the page — an even lower
-frequency than the old single "Best Partner" this replaced. The per-player
-list groups `match_participants` by teammate for that player/group, indexed
-via `idx_participants_user`; the group-wide list is one set-based self-join
-over the group's `match_participants` (`findGroupPartnerPairs`). If either
-becomes a hot path later, add a `partner_stats` table using the same recompute
-pattern as `member_stats` without touching anything else.
+materialized: the per-player partner list sits behind its own endpoint,
+fetched only when a client expands a "Partners" card (Profile's own, or
+Stats' group-wide card after picking a player) rather than eagerly with the
+rest of the page — an even lower frequency than the old single "Best Partner"
+this replaced. It groups `match_participants` by teammate for that
+player/group, indexed via `idx_participants_user`. There is no separate
+group-wide "every pair" endpoint — Stats reuses this same per-player endpoint
+once per selected player. If it becomes a hot path later, add a
+`partner_stats` table using the same recompute pattern as `member_stats`
+without touching anything else.
 
 ## How future requirements slot in
 
