@@ -14,8 +14,9 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 - Identity card: avatar, name, "N matches played", win rate %
 - Stat tiles (2x3 grid): Wins, Losses, Pts For, Streak (+ Best streak
   sub-label), Best Streak, Pts Against
-- **Best Partner** card: partner avatar/name, "NW / M games together",
-  win% with that partner
+- **Partners** card: collapsed by default; expanding fetches and shows every
+  partner this player has had, ranked by games together (each row: avatar/name,
+  "NW / M games together", win% with that partner)
 - **Recent Matches** list: win/loss color-coded left border, date,
   "w/ [partner] vs [opponent1 & opponent2]", set scores
 
@@ -28,10 +29,11 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
    circle ([00-overview.md](00-overview.md)). On an own profile, tap the
    avatar to select and upload a replacement photo; the profile name can also
    be changed through the edit-name sheet.
-4. Stats (matches played, win rate, W/L, PF/PA, streak, best streak, best
-   partner, recent matches) are scoped to the **currently selected group**
-   — switching groups via the header recalculates all of it for the player
-   being viewed.
+4. Stats (matches played, win rate, W/L, PF/PA, streak, best streak, recent
+   matches) are scoped to the **currently selected group** — switching groups
+   via the header recalculates all of it for the player being viewed. The
+   Partners card is fetched separately, only on expand, and also resets
+   (collapses) on a group switch.
 5. Recent Matches list — tapping an entry could deep-link to that match's
    expanded view on the Matches tab (not specified in prototype, natural
    extension — flag as open question).
@@ -39,14 +41,13 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 ## Data needed
 - Per player per group: matchesPlayed, wins, losses, ptsFor, ptsAgainst,
   currentStreak, bestStreak, winRate.
-- Best partner: computed pairing with highest win% (min games threshold
-  TBD) among all partners played with in this group.
+- Partners: every pairing this player has had in the group, most games
+  together first (tie-broken by win rate together), fetched from its own
+  endpoint only when the card is expanded — not bundled into the stats above.
 - Recent matches: last N matches involving this player, most recent first.
 
 ## Open questions
 - Photo crop and remove-photo-to-revert-to-initial are not implemented.
-- Best Partner minimum-games threshold (a 1-game 100% "best partner" may
-  be misleading — same concern as leaderboard ranking).
 - Do stats aggregate across all groups anywhere, or always per-group only?
 - Tapping a name inside Recent Matches (e.g. "Dev", "Marcus & Kiran") —
   does it navigate to that player's profile (consistent with Board tap

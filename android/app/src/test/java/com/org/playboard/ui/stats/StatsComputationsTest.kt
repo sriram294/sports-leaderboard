@@ -41,48 +41,6 @@ private fun ranking(
 
 class StatsComputationsTest {
 
-    // ---- best partnership ----
-
-    @Test
-    fun `best partnership picks the highest win rate above the min games`() {
-        val matches = listOf(
-            // Priya+Dev: 2 games, 2 wins -> 1.0
-            match("m1", listOf(p("priya"), p("dev")), listOf(p("raj"), p("kiran")), winner = 1),
-            match("m2", listOf(p("priya"), p("dev")), listOf(p("raj"), p("kiran")), winner = 1),
-            // Raj+Kiran: 2 games, 0 wins -> 0.0 (already above; lower rate)
-        )
-        val best = computeBestPartnership(matches)!!
-        assertEquals(setOf("priya", "dev"), setOf(best.player1.userId, best.player2.userId))
-        assertEquals(2, best.gamesTogether)
-        assertEquals(2, best.winsTogether)
-        assertEquals(1.0, best.winRate, 0.0001)
-    }
-
-    @Test
-    fun `best partnership excludes pairs below the minimum games`() {
-        val matches = listOf(
-            match("m1", listOf(p("a"), p("b")), listOf(p("c"), p("d")), winner = 1),
-        )
-        // Every pair has only 1 game together -> nobody qualifies.
-        assertNull(computeBestPartnership(matches))
-    }
-
-    @Test
-    fun `best partnership tie-breaks by games played`() {
-        val matches = listOf(
-            // a+b: 3 games all won -> 1.0
-            match("m1", listOf(p("a"), p("b")), listOf(p("x"), p("y")), winner = 1),
-            match("m2", listOf(p("a"), p("b")), listOf(p("x"), p("y")), winner = 1),
-            match("m3", listOf(p("a"), p("b")), listOf(p("x"), p("y")), winner = 1),
-            // c+d: 2 games all won -> 1.0 but fewer games
-            match("m4", listOf(p("c"), p("d")), listOf(p("x"), p("y")), winner = 1),
-            match("m5", listOf(p("c"), p("d")), listOf(p("x"), p("y")), winner = 1),
-        )
-        val best = computeBestPartnership(matches)!!
-        assertEquals(setOf("a", "b"), setOf(best.player1.userId, best.player2.userId))
-        assertEquals(3, best.gamesTogether)
-    }
-
     // ---- biggest win ----
 
     @Test

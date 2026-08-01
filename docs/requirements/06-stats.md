@@ -17,8 +17,10 @@ best together" view — scoped to the currently selected group. Complements the
   - Most points (max `pointsFor`)
   - Most active (max `gamesPlayed`)
   - Longest streak and current hot streak
-- **Best partnership** — the recent teammate pair with the best win rate
-  together, tie-broken by games, with both avatars + "Nw / M games".
+- **Partners** — collapsed by default; expanding fetches and shows every pair
+  in the group who has partnered at least once, all-time accurate, ranked by
+  games together (ties broken by win rate together), with both avatars +
+  "Nw / M games" per pair.
 - **Biggest win** — the match with the largest total-points margin (teams + score).
 
 Per-player recent form no longer has a dedicated section here — it moved to
@@ -34,25 +36,33 @@ each player's name), so it's visible without switching tabs.
    Profile grid.
 
 ## Data / implementation notes
-- **No new backend endpoints.** Reuse `LeaderboardRepository.getLeaderboard`,
-  `MatchRepository.getMatches`, and `GroupRepository.selectedGroup`
-  (`matchCount`, `dataRevision`).
-- Leaderboard-derived records are all-time accurate. Partnership / biggest-win
-  are computed **client-side from `getMatches()`**, which currently returns
-  only the first page (newest ~20) — a reasonable "recent" window; label those
-  sections accordingly. Improves automatically once Matches pagination is
-  wired (see [03-matches.md](03-matches.md)).
-- The derivations are pure functions (`computeBestPartnership`,
-  `computeBiggestWin`) and are covered by unit tests without the network.
+- Reuse `LeaderboardRepository.getLeaderboard`, `MatchRepository.getMatches`,
+  and `GroupRepository.selectedGroup` (`matchCount`, `dataRevision`) for
+  Records and Biggest Win.
+- Leaderboard-derived records are all-time accurate. Biggest-win is computed
+  **client-side from `getMatches()`**, which currently returns only the first
+  page (newest ~20) — a reasonable "recent" window; labeled accordingly.
+  Improves automatically once Matches pagination is wired (see
+  [03-matches.md](03-matches.md)).
+- **Partners is its own backend endpoint** (`GET
+  /groups/{groupId}/stats/partners`, see
+  [api-contracts.md](../backend/api-contracts.md)), all-time accurate and
+  fetched only when the card is expanded, not eagerly with the rest of the
+  page — see [data-model.md](../backend/data-model.md) for why this isn't
+  materialized.
+- Biggest-win is a pure function (`computeBiggestWin`) covered by unit tests
+  without the network.
 - Implementation: `ui/stats/StatsUiState.kt`, `StatsViewModel.kt`,
   `StatsComputations.kt`, and `StatsScreen.kt`. The ViewModel observes the
   selected group and data revision; `StatsComputationsTest` and
-  `StatsViewModelTest` cover the derivations and state flow.
+  `StatsViewModelTest` cover the derivations, the expand-to-fetch partner
+  flow, and state flow.
 - If any section becomes an actual chart (e.g. a win-rate bar), consult the
   dataviz guidance first.
 
 ## Open questions
-- Minimum-games threshold before a player shows in "records"/partnerships
-  (same concern as leaderboard ranking — a 1-game 100% is noise).
+- Minimum-games threshold before a player shows in "records" (same concern
+  as leaderboard ranking — a 1-game 100% is noise). Partners has no such
+  threshold — every pair that has played together at least once is shown.
 - Whether records should be all-time (needs match pagination for match-derived
   ones) or explicitly "recent" for v1.

@@ -22,16 +22,15 @@ data class PlayerStatsDto(
     val winRate: Double,
     val currentStreak: Int,
     val bestStreak: Int,
-    /** Null until the player has completed a match with a teammate. */
-    val bestPartner: BestPartnerDto? = null,
     /** MatchSummaryDto, newest first, capped at 5 server-side. */
     val recentMatches: List<MatchSummaryDto> = emptyList(),
     /** Months this player topped the group, newest first. Empty on a pre-trophy backend. */
     val trophies: List<MonthlyTrophyDto> = emptyList(),
 )
 
+/** `GET /groups/{groupId}/members/{userId}/stats/partners` — fetched separately, on expand. */
 @Serializable
-data class BestPartnerDto(
+data class PartnerDto(
     val userId: String,
     val displayName: String,
     val photoUrl: String? = null,

@@ -90,6 +90,10 @@ class ProfileViewModel @Inject constructor(
                 val user = currentUser.first() ?: return@collect
                 val group = groupRepository.selectedGroup.first() ?: return@collect
                 load(user, group, _viewedUserId.value, showLoading = false)
+                // A new match also changes partner counts — refresh an open card too.
+                if (_uiState.value.partnersExpanded) {
+                    fetchPartners(group.id, _viewedUserId.value ?: user.id)
+                }
             }
         }
     }
@@ -104,6 +108,33 @@ class ProfileViewModel @Inject constructor(
 
     fun onSignOutClicked() {
         viewModelScope.launch { authRepository.signOut() }
+    }
+
+    /**
+     * Expands the "Partners" card (fetching the full list, every time — same
+     * always-refetch-on-expand behavior as MatchesViewModel's match detail) or
+     * collapses it if already open.
+     */
+    fun onPartnersToggled() {
+        val state = _uiState.value
+        if (state.partnersExpanded) {
+            _uiState.update { it.copy(partnersExpanded = false) }
+            return
+        }
+        val groupId = state.groupId ?: return
+        val userId = state.stats?.userId ?: return
+        _uiState.update { it.copy(partnersExpanded = true, isPartnersLoading = true, partnersLoadFailed = false) }
+        viewModelScope.launch { fetchPartners(groupId, userId) }
+    }
+
+    private suspend fun fetchPartners(groupId: String, userId: String) {
+        statsRepository.getPartners(groupId, userId)
+            .onSuccess { partners ->
+                _uiState.update { if (it.partnersExpanded) it.copy(isPartnersLoading = false, partners = partners) else it }
+            }
+            .onFailure {
+                _uiState.update { if (it.partnersExpanded) it.copy(isPartnersLoading = false, partnersLoadFailed = true) else it }
+            }
     }
 
     // ── Profile editing (own profile only) — docs/requirements/05-profile.md req #3 ──
@@ -205,12 +236,17 @@ class ProfileViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isLoading = showLoading, hasLoadFailed = false, noGroup = false,
-                groupName = group.name, isOwnProfile = isOwnProfile,
+                groupName = group.name, groupId = group.id, isOwnProfile = isOwnProfile,
                 attendanceMonths = months,
                 // Drop stale stats/attendance on a foreground (re)load so a failure can't
                 // show a different player's data; a silent revision refresh keeps them.
                 stats = if (showLoading) null else it.stats,
                 attendanceDays = if (showLoading) emptySet() else it.attendanceDays,
+                // Collapse the partner list too — it may belong to a different player/group.
+                partnersExpanded = if (showLoading) false else it.partnersExpanded,
+                partners = if (showLoading) emptyList() else it.partners,
+                isPartnersLoading = if (showLoading) false else it.isPartnersLoading,
+                partnersLoadFailed = if (showLoading) false else it.partnersLoadFailed,
             )
         }
         statsRepository.getPlayerStats(group.id, targetId)

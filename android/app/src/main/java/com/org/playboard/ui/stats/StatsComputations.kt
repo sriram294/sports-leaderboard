@@ -1,15 +1,11 @@
 package com.org.playboard.ui.stats
 
 import com.org.playboard.data.model.Match
-import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.PlayerRanking
 import kotlin.math.abs
 
 /** Minimum games before a player can be the win-rate "Win leader" record. */
 internal const val MIN_LEADER_GAMES = 2
-
-/** Minimum games together before a pair qualifies as the best partnership. */
-internal const val MIN_PARTNERSHIP_GAMES = 2
 
 /** Minimum run before a streak is worth showing as a record (a run of 0/1 isn't). */
 internal const val MIN_STREAK = 2
@@ -32,42 +28,6 @@ internal fun computeRecords(rankings: List<PlayerRanking>, matchCount: Int): Rec
         longestStreak = rankings.maxByOrNull { it.bestStreak }?.takeIf { it.bestStreak >= MIN_STREAK },
         currentStreak = rankings.maxByOrNull { it.currentStreak }?.takeIf { it.currentStreak >= MIN_STREAK },
     )
-
-/**
- * The teammate pair with the best win rate together across [matches] (min
- * [MIN_PARTNERSHIP_GAMES] games, tie-broken by games played). Each match team is
- * one pairing; pairs are keyed by their two user ids order-independently.
- */
-internal fun computeBestPartnership(matches: List<Match>): BestPartnership? {
-    class Agg(val p1: MatchPlayer, val p2: MatchPlayer) {
-        var games = 0
-        var wins = 0
-        val winRate: Double get() = if (games == 0) 0.0 else wins.toDouble() / games
-    }
-
-    val byPair = LinkedHashMap<Pair<String, String>, Agg>()
-    for (match in matches) {
-        for (team in match.teams) {
-            val players = team.players
-            for (i in players.indices) {
-                for (j in i + 1 until players.size) {
-                    val a = players[i]
-                    val b = players[j]
-                    val ordered = if (a.userId <= b.userId) a to b else b to a
-                    val key = ordered.first.userId to ordered.second.userId
-                    val agg = byPair.getOrPut(key) { Agg(ordered.first, ordered.second) }
-                    agg.games++
-                    if (team.isWinner) agg.wins++
-                }
-            }
-        }
-    }
-
-    return byPair.values
-        .filter { it.games >= MIN_PARTNERSHIP_GAMES }
-        .maxWithOrNull(compareBy({ it.winRate }, { it.games }))
-        ?.let { BestPartnership(it.p1, it.p2, it.games, it.wins, it.winRate) }
-}
 
 /**
  * The match with the largest total-points margin (each team's set scores summed,

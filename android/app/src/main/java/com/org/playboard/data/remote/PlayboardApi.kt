@@ -14,6 +14,8 @@ import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.MemberDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
+import com.org.playboard.data.remote.dto.PartnerDto
+import com.org.playboard.data.remote.dto.PartnerPairDto
 import com.org.playboard.data.remote.dto.PlayerAttendanceDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -146,6 +148,15 @@ interface PlayboardApi {
         @Path("groupId") groupId: String,
         @Path("userId") userId: String,
     ): PlayerStatsDto
+
+    @GET("api/v1/groups/{groupId}/members/{userId}/stats/partners")
+    suspend fun getPartners(
+        @Path("groupId") groupId: String,
+        @Path("userId") userId: String,
+    ): List<PartnerDto>
+
+    @GET("api/v1/groups/{groupId}/stats/partners")
+    suspend fun getGroupPartnerPairs(@Path("groupId") groupId: String): List<PartnerPairDto>
 
     @GET("api/v1/groups/{groupId}/members/{userId}/attendance")
     suspend fun getPlayerAttendance(

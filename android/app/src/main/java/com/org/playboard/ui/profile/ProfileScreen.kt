@@ -62,12 +62,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.org.playboard.R
-import com.org.playboard.data.model.BestPartner
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.MonthlyTrophy
+import com.org.playboard.data.model.Partner
 import com.org.playboard.data.model.PlayerStats
 import com.org.playboard.ui.components.MonthlyCrownBadge
 import com.org.playboard.ui.components.PlayerAvatar
@@ -110,6 +110,7 @@ fun ProfileScreen(
         onRenameDismiss = viewModel::onRenameDismissed,
         onOpenSettings = onOpenSettings,
         onOpenGroupManagement = onOpenGroupManagement,
+        onPartnersToggled = viewModel::onPartnersToggled,
     )
 }
 
@@ -127,6 +128,7 @@ private fun ProfileContent(
     onRenameDismiss: () -> Unit = {},
     onOpenSettings: (() -> Unit)? = null,
     onOpenGroupManagement: (() -> Unit)? = null,
+    onPartnersToggled: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -210,6 +212,7 @@ private fun ProfileContent(
                 stats = state.stats,
                 onEditName = onEditName,
                 onEditAvatar = { showAvatarSheet = true },
+                onPartnersToggled = onPartnersToggled,
             )
         }
     }
@@ -245,6 +248,7 @@ private fun StatsList(
     stats: PlayerStats,
     onEditName: () -> Unit,
     onEditAvatar: () -> Unit,
+    onPartnersToggled: () -> Unit,
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -278,8 +282,14 @@ private fun StatsList(
         if (stats.trophies.isNotEmpty()) {
             item { TrophyShelf(trophies = stats.trophies) }
         }
-        stats.bestPartner?.let { partner ->
-            item { BestPartnerCard(partner = partner) }
+        item {
+            PartnersCard(
+                expanded = state.partnersExpanded,
+                partners = state.partners,
+                isLoading = state.isPartnersLoading,
+                loadFailed = state.partnersLoadFailed,
+                onToggle = onPartnersToggled,
+            )
         }
         if (state.recentMatches.isNotEmpty()) {
             item { SectionLabel("RECENT MATCHES") }
@@ -582,45 +592,97 @@ private fun TrophyShelf(trophies: List<MonthlyTrophy>) {
 /** Matches AttendanceCalendar's MONTH_GAP so the two strips share a rhythm. */
 private val TROPHY_GAP = 12.dp
 
+/**
+ * Collapsed by default — the partner list is only fetched from the server once the
+ * user taps to expand, rather than loading it eagerly with the rest of the profile.
+ */
 @Composable
-private fun BestPartnerCard(partner: BestPartner) {
-    val accent = avatarColor(partner.avatarColor)
+private fun PartnersCard(
+    expanded: Boolean,
+    partners: List<Partner>,
+    isLoading: Boolean,
+    loadFailed: Boolean,
+    onToggle: () -> Unit,
+) {
     Column {
-        SectionLabel("BEST PARTNER")
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle),
+        ) {
+            SectionLabel("PARTNERS")
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = if (expanded) "▲" else "▼",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
+            )
+        }
         Surface(shape = RoundedCornerShape(16.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(16.dp),
-            ) {
-                PlayerAvatar(
-                    displayName = partner.displayName,
-                    photoUrl = partner.photoUrl,
-                    avatarId = partner.avatarId,
-                    avatarColorHex = partner.avatarColor,
-                    size = 44.dp,
-                )
-                Spacer(Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (!expanded) {
                     Text(
-                        text = partner.displayName,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
-                        fontWeight = FontWeight.SemiBold,
-                        color = PlayboardTheme.colors.textPrimary,
-                    )
-                    Text(
-                        text = "${partner.winsTogether}W / ${partner.gamesTogether} games together",
+                        text = "Tap to see who you've partnered with",
                         style = MaterialTheme.typography.labelSmall,
                         color = PlayboardTheme.colors.textMuted,
                     )
+                } else if (isLoading) {
+                    CircularProgressIndicator(color = PlayboardTheme.colors.brand, modifier = Modifier.size(20.dp))
+                } else if (loadFailed) {
+                    Text(
+                        text = "Couldn't load partners. Tap to retry.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PlayboardTheme.colors.textMuted,
+                    )
+                } else if (partners.isEmpty()) {
+                    Text(
+                        text = "No completed matches with a teammate yet.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PlayboardTheme.colors.textMuted,
+                    )
+                } else {
+                    partners.forEachIndexed { index, partner ->
+                        if (index > 0) Spacer(Modifier.height(14.dp))
+                        PartnerRow(partner)
+                    }
                 }
-                Text(
-                    text = "${partner.winRatePercent}%",
-                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 24.sp),
-                    fontWeight = FontWeight.Bold,
-                    color = accent,
-                )
             }
         }
+    }
+}
+
+@Composable
+private fun PartnerRow(partner: Partner) {
+    val accent = avatarColor(partner.avatarColor)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        PlayerAvatar(
+            displayName = partner.displayName,
+            photoUrl = partner.photoUrl,
+            avatarId = partner.avatarId,
+            avatarColorHex = partner.avatarColor,
+            size = 44.dp,
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = partner.displayName,
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+                fontWeight = FontWeight.SemiBold,
+                color = PlayboardTheme.colors.textPrimary,
+            )
+            Text(
+                text = "${partner.winsTogether}W / ${partner.gamesTogether} games together",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
+            )
+        }
+        Text(
+            text = "${partner.winRatePercent}%",
+            style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 24.sp),
+            fontWeight = FontWeight.Bold,
+            color = accent,
+        )
     }
 }
 
@@ -753,7 +815,6 @@ private val previewStats = PlayerStats(
     winRate = 0.5,
     currentStreak = 2,
     bestStreak = 2,
-    bestPartner = BestPartner("u2", "Dev", null, null, "#3DB4FF", gamesTogether = 2, winsTogether = 2, winRate = 1.0),
     recentMatches = listOf(
         Match(
             id = "m1",
@@ -793,6 +854,11 @@ private val previewStats = PlayerStats(
     ),
 )
 
+private val previewPartners = listOf(
+    Partner("u2", "Dev", null, null, "#3DB4FF", gamesTogether = 2, winsTogether = 2, winRate = 1.0),
+    Partner("u4", "Kiran", null, null, "#EAC72B", gamesTogether = 1, winsTogether = 0, winRate = 0.0),
+)
+
 private val previewAttendanceMonths = heatmapMonths(LocalDate.of(2026, 7, 19))
 private val previewAttendanceDays: Set<LocalDate> = setOf(
     LocalDate.of(2026, 4, 6), LocalDate.of(2026, 4, 20),
@@ -814,6 +880,8 @@ private fun ProfileContentPreview() {
                     stats = previewStats,
                     attendanceMonths = previewAttendanceMonths,
                     attendanceDays = previewAttendanceDays,
+                    partnersExpanded = true,
+                    partners = previewPartners,
                 ),
                 onRetry = {},
             )

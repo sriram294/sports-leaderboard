@@ -1,6 +1,7 @@
 package com.org.playboard.ui.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.MonthlyTrophy
+import com.org.playboard.data.model.PartnerPairing
 import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.MonthlyCrownIcon
 import com.org.playboard.ui.components.PlayerAvatar
@@ -56,12 +58,18 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         state = uiState,
         onRetry = viewModel::retry,
         onPullRefresh = viewModel::onPullRefresh,
+        onPartnersToggled = viewModel::onPartnersToggled,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh: () -> Unit) {
+private fun StatsContent(
+    state: StatsUiState,
+    onRetry: () -> Unit,
+    onPullRefresh: () -> Unit,
+    onPartnersToggled: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -92,7 +100,15 @@ private fun StatsContent(state: StatsUiState, onRetry: () -> Unit, onPullRefresh
                     if (state.monthlyWinners.isNotEmpty()) {
                         item { MonthlyWinnersCard(winners = state.monthlyWinners) }
                     }
-                    state.bestPartnership?.let { item { BestPartnershipCard(partnership = it) } }
+                    item {
+                        PartnerPairsCard(
+                            expanded = state.partnersExpanded,
+                            pairs = state.partnerPairs,
+                            isLoading = state.isPartnersLoading,
+                            loadFailed = state.partnersLoadFailed,
+                            onToggle = onPartnersToggled,
+                        )
+                    }
                     state.biggestWin?.let { item { BiggestWinCard(biggestWin = it) } }
                     item { Spacer(Modifier.height(12.dp)) }
                 }
@@ -261,53 +277,110 @@ private val WINNER_AVATAR_SIZE = 60.dp
 /** Avatar plus the crown's corner offset, with room either side for a rotated crown to bleed. */
 private val WINNER_TILE_WIDTH = 76.dp
 
-// ---- Best partnership ----------------------------------------------------------
+// ---- Partners --------------------------------------------------------------
 
+/**
+ * Collapsed by default — every pair's games-together count is only fetched from
+ * the server once the user taps to expand, not eagerly with the rest of the page.
+ */
 @Composable
-private fun BestPartnershipCard(partnership: BestPartnership) {
+private fun PartnerPairsCard(
+    expanded: Boolean,
+    pairs: List<PartnerPairing>,
+    isLoading: Boolean,
+    loadFailed: Boolean,
+    onToggle: () -> Unit,
+) {
     InsightCard {
-        SectionLabel("BEST PARTNERSHIP · recent")
-        Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Row {
-                PlayerAvatar(
-                    displayName = partnership.player1.displayName,
-                    photoUrl = partnership.player1.photoUrl,
-                    avatarId = partnership.player1.avatarId,
-                    avatarColorHex = partnership.player1.avatarColor,
-                    size = 44.dp,
-                )
-                Spacer(Modifier.width(8.dp))
-                PlayerAvatar(
-                    displayName = partnership.player2.displayName,
-                    photoUrl = partnership.player2.photoUrl,
-                    avatarId = partnership.player2.avatarId,
-                    avatarColorHex = partnership.player2.avatarColor,
-                    size = 44.dp,
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${partnership.player1.displayName} & ${partnership.player2.displayName}",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
-                    fontWeight = FontWeight.SemiBold,
-                    color = PlayboardTheme.colors.textPrimary,
-                    maxLines = 1,
-                )
-                Text(
-                    text = "${partnership.winsTogether}W / ${partnership.gamesTogether} games together",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = PlayboardTheme.colors.textMuted,
-                )
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle),
+        ) {
+            SectionLabel("PARTNERS")
+            Spacer(Modifier.weight(1f))
             Text(
-                text = "${partnership.winRatePercent}%",
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 24.sp),
-                fontWeight = FontWeight.Bold,
-                color = PlayboardTheme.colors.brand,
+                text = if (expanded) "▲" else "▼",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
             )
         }
+        if (!expanded) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Tap to see who's partnered with whom",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
+            )
+        } else if (isLoading) {
+            Spacer(Modifier.height(12.dp))
+            CircularProgressIndicator(color = PlayboardTheme.colors.brand, modifier = Modifier.height(20.dp))
+        } else if (loadFailed) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Couldn't load partners. Tap to retry.",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
+            )
+        } else if (pairs.isEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "No completed matches with a teammate yet.",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
+            )
+        } else {
+            Spacer(Modifier.height(12.dp))
+            pairs.forEachIndexed { index, pair ->
+                if (index > 0) Spacer(Modifier.height(14.dp))
+                PartnerPairRow(pair)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PartnerPairRow(pair: PartnerPairing) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row {
+            PlayerAvatar(
+                displayName = pair.player1DisplayName,
+                photoUrl = null,
+                avatarId = pair.player1AvatarId,
+                avatarColorHex = pair.player1AvatarColor,
+                size = 44.dp,
+            )
+            Spacer(Modifier.width(8.dp))
+            PlayerAvatar(
+                displayName = pair.player2DisplayName,
+                photoUrl = null,
+                avatarId = pair.player2AvatarId,
+                avatarColorHex = pair.player2AvatarColor,
+                size = 44.dp,
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${pair.player1DisplayName} & ${pair.player2DisplayName}",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+                fontWeight = FontWeight.SemiBold,
+                color = PlayboardTheme.colors.textPrimary,
+                maxLines = 1,
+            )
+            Text(
+                text = "${pair.winsTogether}W / ${pair.gamesTogether} games together",
+                style = MaterialTheme.typography.labelSmall,
+                color = PlayboardTheme.colors.textMuted,
+            )
+        }
+        Text(
+            text = "${pair.winRatePercent}%",
+            style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 24.sp),
+            fontWeight = FontWeight.Bold,
+            color = PlayboardTheme.colors.brand,
+        )
     }
 }
 
@@ -429,12 +502,18 @@ private val previewState = StatsUiState(
         longestStreak = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
         currentStreak = previewRanking(1, "u1", "Priya", 6, 6, 252, 1.0, currentStreak = 6, bestStreak = 6),
     ),
-    bestPartnership = BestPartnership(
-        player1 = MatchPlayer("u1", "Priya", "#FF3D8A", null, null),
-        player2 = MatchPlayer("u2", "Dev", "#3DB4FF", null, null),
-        gamesTogether = 4,
-        winsTogether = 4,
-        winRate = 1.0,
+    partnersExpanded = true,
+    partnerPairs = listOf(
+        PartnerPairing(
+            player1Id = "u1", player1DisplayName = "Priya", player1AvatarId = null, player1AvatarColor = "#FF3D8A",
+            player2Id = "u2", player2DisplayName = "Dev", player2AvatarId = null, player2AvatarColor = "#3DB4FF",
+            gamesTogether = 4, winsTogether = 4, winRate = 1.0,
+        ),
+        PartnerPairing(
+            player1Id = "u3", player1DisplayName = "Raj", player1AvatarId = null, player1AvatarColor = "#9ADE28",
+            player2Id = "u4", player2DisplayName = "Kiran", player2AvatarId = null, player2AvatarColor = "#EAC72B",
+            gamesTogether = 2, winsTogether = 0, winRate = 0.0,
+        ),
     ),
     biggestWin = BiggestWin(
         match = Match(
@@ -492,7 +571,7 @@ private val previewState = StatsUiState(
 private fun StatsContentPreview() {
     PlayboardTheme {
         PlayboardBackground {
-            StatsContent(state = previewState, onRetry = {}, onPullRefresh = {})
+            StatsContent(state = previewState, onRetry = {}, onPullRefresh = {}, onPartnersToggled = {})
         }
     }
 }
@@ -506,6 +585,7 @@ private fun StatsEmptyPreview() {
                 state = StatsUiState(isLoading = false, hasMatches = false, groupName = "New Crew"),
                 onRetry = {},
                 onPullRefresh = {},
+                onPartnersToggled = {},
             )
         }
     }
