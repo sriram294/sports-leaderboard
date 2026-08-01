@@ -5,7 +5,6 @@ import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
 import com.org.playboard.data.model.Partner
-import com.org.playboard.data.model.PartnerPairing
 import com.org.playboard.data.model.PlayerStats
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.MatchPlayerDto
@@ -14,7 +13,6 @@ import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
 import com.org.playboard.data.remote.dto.PartnerDto
-import com.org.playboard.data.remote.dto.PartnerPairDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.trophy.toMonthlyTrophyOrNull
 import com.org.playboard.di.AuthenticatedApi
@@ -39,10 +37,6 @@ class StatsRepository @Inject constructor(
     /** Every partner this player has had in the group, most games together first. Fetched only on expand. */
     suspend fun getPartners(groupId: String, userId: String): Result<List<Partner>> =
         runCatching { api.getPartners(groupId, userId).map(PartnerDto::toPartner) }
-
-    /** Every pair in the group who has partnered at least once, most games together first. Fetched only on expand. */
-    suspend fun getPartnerPairs(groupId: String): Result<List<PartnerPairing>> =
-        runCatching { api.getGroupPartnerPairs(groupId).map(PartnerPairDto::toPartnerPairing) }
 
     /**
      * The local calendar days on which the player was in a match, within `[from, to)`.
@@ -87,20 +81,6 @@ private fun PartnerDto.toPartner() = Partner(
     photoUrl = photoUrl,
     avatarId = avatarId,
     avatarColor = avatarColor,
-    gamesTogether = gamesTogether,
-    winsTogether = winsTogether,
-    winRate = winRate,
-)
-
-private fun PartnerPairDto.toPartnerPairing() = PartnerPairing(
-    player1Id = player1Id,
-    player1DisplayName = player1DisplayName,
-    player1AvatarId = player1AvatarId,
-    player1AvatarColor = player1AvatarColor,
-    player2Id = player2Id,
-    player2DisplayName = player2DisplayName,
-    player2AvatarId = player2AvatarId,
-    player2AvatarColor = player2AvatarColor,
     gamesTogether = gamesTogether,
     winsTogether = winsTogether,
     winRate = winRate,

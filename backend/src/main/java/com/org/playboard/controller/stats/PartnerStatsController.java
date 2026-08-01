@@ -1,7 +1,6 @@
 package com.org.playboard.controller.stats;
 
 import com.org.playboard.dto.stats.PartnerDto;
-import com.org.playboard.dto.stats.PartnerPairDto;
 import com.org.playboard.service.stats.StatsQueryService;
 import java.util.List;
 import java.util.UUID;
@@ -29,12 +28,5 @@ public class PartnerStatsController {
     public List<PartnerDto> getPartners(
             @AuthenticationPrincipal UUID callerId, @PathVariable UUID groupId, @PathVariable UUID userId) {
         return statsQueryService.getPartners(groupId, userId, callerId);
-    }
-
-    /** Every pair of players in the group who have partnered at least once, most games together first. */
-    @GetMapping("/api/v1/groups/{groupId}/stats/partners")
-    public List<PartnerPairDto> getGroupPartnerPairs(
-            @AuthenticationPrincipal UUID callerId, @PathVariable UUID groupId) {
-        return statsQueryService.getGroupPartnerPairs(groupId, callerId);
     }
 }

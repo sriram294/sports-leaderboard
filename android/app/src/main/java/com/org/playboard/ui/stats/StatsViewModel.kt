@@ -2,11 +2,13 @@ package com.org.playboard.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.org.playboard.data.auth.AuthRepository
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.model.Group
+import com.org.playboard.data.model.SessionState
 import com.org.playboard.data.stats.StatsRepository
 import com.org.playboard.data.trophy.TrophyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,11 +29,13 @@ import kotlinx.coroutines.launch
  * observes the shared active group (+ load status) and reloads on a match change.
  * Records derive from the leaderboard (all-time); biggest win from the recent match
  * window — both computed by the pure functions in StatsComputations. The "Partners"
- * card is separate: it's fetched from its own endpoint only once the user expands it,
- * not eagerly with the rest of the page.
+ * card is separate: it lets the user pick any player (defaulting to themself) from a
+ * picker, then fetches just that player's partner list from its own endpoint only once
+ * the card is expanded, not eagerly with the rest of the page.
  */
 @HiltViewModel
 class StatsViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
     private val groupRepository: GroupRepository,
     private val leaderboardRepository: LeaderboardRepository,
     private val matchRepository: MatchRepository,
@@ -55,16 +59,20 @@ class StatsViewModel @Inject constructor(
             groupRepository.dataRevision.drop(1).collect {
                 val group = groupRepository.selectedGroup.first() ?: return@collect
                 load(group, showLoading = false)
-                // A new match also changes partner counts — refresh an open card too.
-                if (_uiState.value.partnersExpanded) fetchPartnerPairs(group.id)
+                // A new match also changes partner counts — refresh an open selection too.
+                val state = _uiState.value
+                if (state.partnersExpanded) {
+                    state.selectedPlayerId?.let { userId -> fetchPartners(group.id, userId) }
+                }
             }
         }
     }
 
     /**
-     * Expands the "Partners" card (fetching the full list, every time — same
-     * always-refetch-on-expand behavior as MatchesViewModel's match detail) or
-     * collapses it if already open.
+     * Expands the "Partners" card — defaulting the player picker to the signed-in user
+     * (or the first player on the leaderboard if they haven't played yet) and fetching
+     * that player's partners, every time, same always-refetch-on-expand behavior as
+     * MatchesViewModel's match detail — or collapses it if already open.
      */
     fun onPartnersToggled() {
         val state = _uiState.value
@@ -73,17 +81,32 @@ class StatsViewModel @Inject constructor(
             return
         }
         val groupId = state.groupId ?: return
-        _uiState.update { it.copy(partnersExpanded = true, isPartnersLoading = true, partnersLoadFailed = false) }
-        viewModelScope.launch { fetchPartnerPairs(groupId) }
+        viewModelScope.launch {
+            val currentUserId = (authRepository.sessionState.first() as? SessionState.SignedIn)?.user?.id
+            val defaultPlayerId = state.selectedPlayerId
+                ?.takeIf { id -> state.players.any { it.userId == id } }
+                ?: state.players.firstOrNull { it.userId == currentUserId }?.userId
+                ?: state.players.firstOrNull()?.userId
+            _uiState.update { it.copy(partnersExpanded = true, selectedPlayerId = defaultPlayerId) }
+            if (defaultPlayerId != null) fetchPartners(groupId, defaultPlayerId)
+        }
     }
 
-    private suspend fun fetchPartnerPairs(groupId: String) {
-        statsRepository.getPartnerPairs(groupId)
-            .onSuccess { pairs ->
-                _uiState.update { if (it.partnersExpanded) it.copy(isPartnersLoading = false, partnerPairs = pairs) else it }
+    /** Picks a different player in the expanded card's picker and fetches their partners. */
+    fun onPlayerSelected(userId: String) {
+        val groupId = _uiState.value.groupId ?: return
+        _uiState.update { it.copy(selectedPlayerId = userId) }
+        viewModelScope.launch { fetchPartners(groupId, userId) }
+    }
+
+    private suspend fun fetchPartners(groupId: String, userId: String) {
+        _uiState.update { if (it.selectedPlayerId == userId) it.copy(isPartnersLoading = true, partnersLoadFailed = false) else it }
+        statsRepository.getPartners(groupId, userId)
+            .onSuccess { partners ->
+                _uiState.update { if (it.selectedPlayerId == userId) it.copy(isPartnersLoading = false, partners = partners) else it }
             }
             .onFailure {
-                _uiState.update { if (it.partnersExpanded) it.copy(isPartnersLoading = false, partnersLoadFailed = true) else it }
+                _uiState.update { if (it.selectedPlayerId == userId) it.copy(isPartnersLoading = false, partnersLoadFailed = true) else it }
             }
     }
 
@@ -123,7 +146,9 @@ class StatsViewModel @Inject constructor(
                 biggestWin = null,
                 monthlyWinners = emptyList(),
                 partnersExpanded = false,
-                partnerPairs = emptyList(),
+                players = emptyList(),
+                selectedPlayerId = null,
+                partners = emptyList(),
                 isPartnersLoading = false,
                 partnersLoadFailed = false,
             )
@@ -135,9 +160,10 @@ class StatsViewModel @Inject constructor(
             it.copy(
                 isLoading = showLoading, hasLoadFailed = false, noGroup = false,
                 groupName = group.name, groupId = group.id,
-                // Collapse the partner list too — it may belong to a different group.
+                // Collapse the partner picker too — it may belong to a different group.
                 partnersExpanded = if (showLoading) false else it.partnersExpanded,
-                partnerPairs = if (showLoading) emptyList() else it.partnerPairs,
+                selectedPlayerId = if (showLoading) null else it.selectedPlayerId,
+                partners = if (showLoading) emptyList() else it.partners,
                 isPartnersLoading = if (showLoading) false else it.isPartnersLoading,
                 partnersLoadFailed = if (showLoading) false else it.partnersLoadFailed,
             )
@@ -163,6 +189,7 @@ class StatsViewModel @Inject constructor(
                 records = computeRecords(rankings, group.matchCount),
                 biggestWin = computeBiggestWin(matches),
                 monthlyWinners = monthlyWinners,
+                players = rankings,
             )
         }
     }

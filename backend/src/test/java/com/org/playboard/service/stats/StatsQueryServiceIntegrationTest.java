@@ -10,7 +10,6 @@ import com.org.playboard.dto.match.RecordMatchRequest.TeamInput;
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
 import com.org.playboard.dto.stats.PartnerDto;
-import com.org.playboard.dto.stats.PartnerPairDto;
 import com.org.playboard.dto.stats.PlayerAttendanceDto;
 import com.org.playboard.dto.stats.PlayerStatsDto;
 import com.org.playboard.entity.group.Group;
@@ -37,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 // Live-DB test covering the leaderboard ranking order, own/tapped player
 // stats (including the zero-matches case), and the on-demand partner-count
-// computation across multiple partners and pairs.
+// computation across multiple partners.
 @SpringBootTest
 @Transactional
 class StatsQueryServiceIntegrationTest {
@@ -126,41 +125,6 @@ class StatsQueryServiceIntegrationTest {
         playThreeMatches(f);
 
         assertThat(statsQueryService.getPartners(f.group.getId(), f.newbie.getId(), f.raj.getId())).isEmpty();
-    }
-
-    @Test
-    void getGroupPartnerPairsCoversEveryPairSortedByGamesThenWinRate() {
-        Fixture f = newFixture();
-        playThreeMatches(f);
-
-        List<PartnerPairDto> pairs = statsQueryService.getGroupPartnerPairs(f.group.getId(), f.raj.getId());
-
-        // (raj,dev) and (marcus,kiran) each played together twice; (dev,marcus) and
-        // (raj,kiran) once each from the third match.
-        assertThat(pairs).hasSize(4);
-        assertThat(pairs).allSatisfy(pair -> assertThat(pair.gamesTogether()).isBetween(1, 2));
-
-        PartnerPairDto rajDev = findPair(pairs, f.raj.getId(), f.dev.getId());
-        assertThat(rajDev.gamesTogether()).isEqualTo(2);
-        assertThat(rajDev.winsTogether()).isEqualTo(2);
-        assertThat(rajDev.winRate()).isEqualByComparingTo("1.0000");
-
-        PartnerPairDto marcusKiran = findPair(pairs, f.marcus.getId(), f.kiran.getId());
-        assertThat(marcusKiran.gamesTogether()).isEqualTo(2);
-        assertThat(marcusKiran.winsTogether()).isZero();
-
-        // (raj,dev) and (marcus,kiran) both have 2 games together — raj/dev's better
-        // win rate sorts it first.
-        assertThat(pairs.get(0)).isEqualTo(rajDev);
-        assertThat(pairs.get(1)).isEqualTo(marcusKiran);
-    }
-
-    private static PartnerPairDto findPair(List<PartnerPairDto> pairs, UUID userA, UUID userB) {
-        return pairs.stream()
-                .filter(p -> (p.player1Id().equals(userA) && p.player2Id().equals(userB))
-                        || (p.player1Id().equals(userB) && p.player2Id().equals(userA)))
-                .findFirst()
-                .orElseThrow();
     }
 
     /**

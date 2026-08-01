@@ -5,7 +5,6 @@ import com.org.playboard.dto.match.MatchSummaryDto;
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
 import com.org.playboard.dto.stats.PartnerDto;
-import com.org.playboard.dto.stats.PartnerPairDto;
 import com.org.playboard.dto.stats.PlayerAttendanceDto;
 import com.org.playboard.dto.stats.PlayerStatsDto;
 import com.org.playboard.entity.group.GroupMember;
@@ -15,7 +14,6 @@ import com.org.playboard.entity.stats.MemberStats;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
-import com.org.playboard.repository.match.MatchParticipantRepository.PartnerPairRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.PartnerRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.RecentFormRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.WindowedStatRow;
@@ -324,54 +322,5 @@ public class StatsQueryService {
                 .thenComparing(PartnerDto::winRate)
                 .reversed());
         return partners;
-    }
-
-    /**
-     * Every pair of players in the group who have partnered at least once, most
-     * games together first. Group-wide, so unlike {@link #getPartners} there's
-     * no single target player — just the caller's own membership to check.
-     */
-    @Transactional(readOnly = true)
-    public List<PartnerPairDto> getGroupPartnerPairs(UUID groupId, UUID callerId) {
-        membershipGuard.requireActiveMember(groupId, callerId);
-
-        Set<UUID> guestIds = groupMemberRepository
-                .findByGroupIdAndStatusAndRole(groupId, MemberStatus.ACTIVE, GroupRole.GUEST)
-                .stream()
-                .map(m -> m.getUser().getId())
-                .collect(Collectors.toSet());
-
-        List<PartnerPairDto> pairs = new ArrayList<>();
-        for (PartnerPairRow row : matchParticipantRepository.findGroupPartnerPairs(groupId)) {
-            if (guestIds.contains(row.getPlayer1Id()) || guestIds.contains(row.getPlayer2Id())) {
-                continue;
-            }
-            User player1 = groupMemberRepository
-                    .findByGroupIdAndUserId(groupId, row.getPlayer1Id())
-                    .orElseThrow()
-                    .getUser();
-            User player2 = groupMemberRepository
-                    .findByGroupIdAndUserId(groupId, row.getPlayer2Id())
-                    .orElseThrow()
-                    .getUser();
-            BigDecimal winRate = BigDecimal.valueOf(row.getWinsTogether())
-                    .divide(BigDecimal.valueOf(row.getGamesTogether()), 4, RoundingMode.HALF_UP);
-            pairs.add(new PartnerPairDto(
-                    player1.getId(),
-                    player1.getDisplayName(),
-                    player1.getAvatarId(),
-                    player1.getAvatarColor(),
-                    player2.getId(),
-                    player2.getDisplayName(),
-                    player2.getAvatarId(),
-                    player2.getAvatarColor(),
-                    (int) row.getGamesTogether(),
-                    (int) row.getWinsTogether(),
-                    winRate));
-        }
-        pairs.sort(Comparator.comparing(PartnerPairDto::gamesTogether)
-                .thenComparing(PartnerPairDto::winRate)
-                .reversed());
-        return pairs;
     }
 }
