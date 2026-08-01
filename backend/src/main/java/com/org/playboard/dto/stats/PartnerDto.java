@@ -3,7 +3,7 @@ package com.org.playboard.dto.stats;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record BestPartnerDto(
+public record PartnerDto(
         UUID userId,
         String displayName,
         String avatarId,

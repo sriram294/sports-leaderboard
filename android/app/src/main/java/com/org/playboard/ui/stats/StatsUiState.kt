@@ -1,16 +1,16 @@
 package com.org.playboard.ui.stats
 
 import com.org.playboard.data.model.Match
-import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MonthlyTrophy
+import com.org.playboard.data.model.PartnerPairing
 import com.org.playboard.data.model.PlayerRanking
 
 /**
  * Immutable state for the Stats/Insights tab (docs/requirements/06-stats.md): a
  * group-level analytics dashboard scoped to the active group. Records are all-time
- * (from the leaderboard + `Group.matchCount`); the match-derived sections
- * ([bestPartnership], [biggestWin]) are computed from the recent window
- * `MatchRepository.getMatches` returns (first page), so the UI labels them as recent.
+ * (from the leaderboard + `Group.matchCount`); [biggestWin] is computed from the
+ * recent window `MatchRepository.getMatches` returns (first page), so the UI labels
+ * it as recent. [partnerPairs] is all-time and fetched only on expand.
  */
 data class StatsUiState(
     val isLoading: Boolean = true,
@@ -20,10 +20,11 @@ data class StatsUiState(
     /** No active group (the user hasn't created/joined one yet). */
     val noGroup: Boolean = false,
     val groupName: String? = null,
+    /** Active group id, kept for the "Partners" card's on-expand fetch. */
+    val groupId: String? = null,
     /** Whether the group has any recorded matches; gates the empty state. */
     val hasMatches: Boolean = false,
     val records: Records? = null,
-    val bestPartnership: BestPartnership? = null,
     val biggestWin: BiggestWin? = null,
     /**
      * Who topped each completed month, newest first (last 6). Unlike the other sections
@@ -31,6 +32,15 @@ data class StatsUiState(
      * never recomputed, so it can't be derived from the current leaderboard.
      */
     val monthlyWinners: List<MonthlyTrophy> = emptyList(),
+    /**
+     * "Partners" card state — every pair in the group who has partnered at least
+     * once, most games together first. Collapsed by default; expanding fetches the
+     * full list on demand rather than loading it eagerly with the rest of the page.
+     */
+    val partnersExpanded: Boolean = false,
+    val partnerPairs: List<PartnerPairing> = emptyList(),
+    val isPartnersLoading: Boolean = false,
+    val partnersLoadFailed: Boolean = false,
 )
 
 /** All-time group records, derived from the leaderboard + `Group.matchCount`. */
@@ -45,17 +55,6 @@ data class Records(
     /** Highest current win streak (who's hot now); null unless someone is on a [MIN_STREAK]+ run. */
     val currentStreak: PlayerRanking? = null,
 )
-
-/** The teammate pair with the best win rate together (min [MIN_PARTNERSHIP_GAMES] games). */
-data class BestPartnership(
-    val player1: MatchPlayer,
-    val player2: MatchPlayer,
-    val gamesTogether: Int,
-    val winsTogether: Int,
-    val winRate: Double,
-) {
-    val winRatePercent: Int get() = (winRate * 100).toInt()
-}
 
 /** The recent match with the largest total-points margin (summed across sets). */
 data class BiggestWin(

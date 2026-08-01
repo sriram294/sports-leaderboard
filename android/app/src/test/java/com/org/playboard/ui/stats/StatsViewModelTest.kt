@@ -21,12 +21,15 @@ import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
+import com.org.playboard.data.remote.dto.PartnerDto
+import com.org.playboard.data.remote.dto.PartnerPairDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
+import com.org.playboard.data.stats.StatsRepository
 import com.org.playboard.testing.testGroupRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,7 +43,6 @@ import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -50,7 +52,9 @@ private class FakePlayboardApi(
     var leaderboardResult: suspend (String) -> LeaderboardResponseDto = { LeaderboardResponseDto(emptyList()) },
     var matchesResult: suspend (String) -> MatchListResponseDto = { MatchListResponseDto(emptyList(), null) },
     var trophiesResult: suspend (String) -> List<MonthlyTrophyDto> = { emptyList() },
+    var partnerPairsResult: suspend (String) -> List<PartnerPairDto> = { emptyList() },
 ) : PlayboardApi {
+    var partnerPairsCalls = 0
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = error("unused")
@@ -70,6 +74,11 @@ private class FakePlayboardApi(
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun updateSession(groupId: String, request: com.org.playboard.data.remote.dto.UpdateSessionRequestDto): com.org.playboard.data.remote.dto.GroupDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")
+    override suspend fun getPartners(groupId: String, userId: String): List<PartnerDto> = error("unused")
+    override suspend fun getGroupPartnerPairs(groupId: String): List<PartnerPairDto> {
+        partnerPairsCalls++
+        return partnerPairsResult(groupId)
+    }
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
     override suspend fun getMatches(groupId: String, cursor: String?, limit: Int?, mine: Boolean?): MatchListResponseDto = matchesResult(groupId)
@@ -133,6 +142,7 @@ class StatsViewModelTest {
             LeaderboardRepository(api),
             MatchRepository(api, groups, json),
             TrophyRepository(api),
+            StatsRepository(api),
         )
         return vm to groups
     }
@@ -172,9 +182,60 @@ class StatsViewModelTest {
         assertEquals("priya", state.records?.longestStreak?.userId)  // best_streak 6
         assertEquals("priya", state.records?.currentStreak?.userId)  // only positive current run
         assertEquals(6, state.records?.longestStreak?.bestStreak)
-        assertNotNull(state.bestPartnership)                          // priya+dev, 2 games
-        assertEquals(2, state.bestPartnership?.gamesTogether)
         assertEquals("m2", state.biggestWin?.match?.id)               // 21-4 is the bigger margin
+    }
+
+    @Test
+    fun `partner pairs are not fetched until the card is expanded`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto(matchCount = 12))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entry(1, "priya", 6, 6, 252, 1.0))) },
+            matchesResult = { MatchListResponseDto(emptyList(), null) },
+            partnerPairsResult = {
+                listOf(
+                    PartnerPairDto("priya", "Priya", null, "#7ED321", "dev", "Dev", null, "#3DB4FF", 2, 2, 1.0),
+                )
+            },
+        )
+        val (vm, groups) = viewModel(api)
+        groups.refreshGroups()
+        advanceUntilIdle()
+
+        assertEquals(0, api.partnerPairsCalls)
+        assertTrue(vm.uiState.value.partnerPairs.isEmpty())
+
+        vm.onPartnersToggled()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(1, api.partnerPairsCalls)
+        assertTrue(state.partnersExpanded)
+        assertEquals(2, state.partnerPairs.single().gamesTogether)
+    }
+
+    @Test
+    fun `collapsing and re-expanding partner pairs re-fetches`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto(matchCount = 12))) },
+            leaderboardResult = { LeaderboardResponseDto(listOf(entry(1, "priya", 6, 6, 252, 1.0))) },
+            matchesResult = { MatchListResponseDto(emptyList(), null) },
+        )
+        val (vm, groups) = viewModel(api)
+        groups.refreshGroups()
+        advanceUntilIdle()
+
+        vm.onPartnersToggled()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.partnersExpanded)
+
+        vm.onPartnersToggled()
+        assertFalse(vm.uiState.value.partnersExpanded)
+
+        vm.onPartnersToggled()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.partnersExpanded)
+        assertEquals(2, api.partnerPairsCalls)
     }
 
     @Test

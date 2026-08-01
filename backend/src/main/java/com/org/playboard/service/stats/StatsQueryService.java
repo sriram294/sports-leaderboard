@@ -2,9 +2,10 @@ package com.org.playboard.service.stats;
 
 import com.org.playboard.common.ApiException;
 import com.org.playboard.dto.match.MatchSummaryDto;
-import com.org.playboard.dto.stats.BestPartnerDto;
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
+import com.org.playboard.dto.stats.PartnerDto;
+import com.org.playboard.dto.stats.PartnerPairDto;
 import com.org.playboard.dto.stats.PlayerAttendanceDto;
 import com.org.playboard.dto.stats.PlayerStatsDto;
 import com.org.playboard.entity.group.GroupMember;
@@ -14,6 +15,7 @@ import com.org.playboard.entity.stats.MemberStats;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
+import com.org.playboard.repository.match.MatchParticipantRepository.PartnerPairRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.PartnerRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.RecentFormRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.WindowedStatRow;
@@ -225,7 +227,6 @@ public class StatsQueryService {
                 .findByGroupIdAndUserId(groupId, targetUserId)
                 .orElseGet(() -> new MemberStats(target.getGroup(), user));
 
-        BestPartnerDto bestPartner = computeBestPartner(groupId, targetUserId);
         List<MatchSummaryDto> recentMatches = matchService.findRecentMatches(groupId, targetUserId, RECENT_MATCHES_LIMIT);
 
         return new PlayerStatsDto(
@@ -242,7 +243,6 @@ public class StatsQueryService {
                 stats.getWinRate() != null ? stats.getWinRate() : BigDecimal.ZERO,
                 stats.getCurrentStreak(),
                 stats.getBestStreak(),
-                bestPartner,
                 recentMatches,
                 monthlyTrophyService.forPlayer(groupId, user));
     }
@@ -265,17 +265,25 @@ public class StatsQueryService {
                 matchParticipantRepository.findPlayerActivity(groupId, targetUserId, from, to));
     }
 
-    // "Best" = highest win rate together (min 1 game), tie-broken by most
-    // games together. Null if the player has no completed matches with a
-    // teammate yet — see api-contracts.md.
-    private BestPartnerDto computeBestPartner(UUID groupId, UUID userId) {
-        List<PartnerRow> rows = matchParticipantRepository.findPartnerHistory(groupId, userId);
-        if (rows.isEmpty()) {
-            return null;
-        }
+    /**
+     * Every partner this player has had in the group, most games together first
+     * (ties broken by win rate together, descending). Fetched on demand — it's
+     * behind its own endpoint, not bundled into {@link #getPlayerStats}, so a
+     * client can defer the query until the player actually opens the list.
+     */
+    @Transactional(readOnly = true)
+    public List<PartnerDto> getPartners(UUID groupId, UUID targetUserId, UUID callerId) {
+        membershipGuard.requireActiveMember(groupId, callerId);
+        groupMemberRepository
+                .findByGroupIdAndUserId(groupId, targetUserId)
+                .filter(m -> m.getStatus() == MemberStatus.ACTIVE && m.getRole() != GroupRole.GUEST)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
+
+        List<PartnerRow> rows = matchParticipantRepository.findPartnerHistory(groupId, targetUserId);
 
         // Guest fillers aren't real partners — leave them out of the tally so a
-        // one-off guest can never surface as someone's "best partner".
+        // one-off guest can never surface in the partner list.
         Set<UUID> guestIds = groupMemberRepository
                 .findByGroupIdAndStatusAndRole(groupId, MemberStatus.ACTIVE, GroupRole.GUEST)
                 .stream()
@@ -293,42 +301,77 @@ public class StatsQueryService {
                 counts[1]++;
             }
         }
-        if (tally.isEmpty()) {
-            return null;
-        }
 
-        UUID bestPartnerId = null;
-        int[] bestCounts = null;
+        List<PartnerDto> partners = new ArrayList<>();
         for (Map.Entry<UUID, int[]> entry : tally.entrySet()) {
             int[] counts = entry.getValue();
-            if (bestCounts == null || isBetterPartner(counts, bestCounts)) {
-                bestPartnerId = entry.getKey();
-                bestCounts = counts;
-            }
+            User partner = groupMemberRepository
+                    .findByGroupIdAndUserId(groupId, entry.getKey())
+                    .orElseThrow()
+                    .getUser();
+            BigDecimal winRate = BigDecimal.valueOf(counts[1])
+                    .divide(BigDecimal.valueOf(counts[0]), 4, RoundingMode.HALF_UP);
+            partners.add(new PartnerDto(
+                    partner.getId(),
+                    partner.getDisplayName(),
+                    partner.getAvatarId(),
+                    partner.getAvatarColor(),
+                    counts[0],
+                    counts[1],
+                    winRate));
         }
-
-        User partner = groupMemberRepository
-                .findByGroupIdAndUserId(groupId, bestPartnerId)
-                .orElseThrow()
-                .getUser();
-        BigDecimal winRate = BigDecimal.valueOf(bestCounts[1])
-                .divide(BigDecimal.valueOf(bestCounts[0]), 4, RoundingMode.HALF_UP);
-        return new BestPartnerDto(
-                partner.getId(),
-                partner.getDisplayName(),
-                partner.getAvatarId(),
-                partner.getAvatarColor(),
-                bestCounts[0],
-                bestCounts[1],
-                winRate);
+        partners.sort(Comparator.comparing(PartnerDto::gamesTogether)
+                .thenComparing(PartnerDto::winRate)
+                .reversed());
+        return partners;
     }
 
-    private boolean isBetterPartner(int[] candidate, int[] current) {
-        double candidateWinRate = (double) candidate[1] / candidate[0];
-        double currentWinRate = (double) current[1] / current[0];
-        if (candidateWinRate != currentWinRate) {
-            return candidateWinRate > currentWinRate;
+    /**
+     * Every pair of players in the group who have partnered at least once, most
+     * games together first. Group-wide, so unlike {@link #getPartners} there's
+     * no single target player — just the caller's own membership to check.
+     */
+    @Transactional(readOnly = true)
+    public List<PartnerPairDto> getGroupPartnerPairs(UUID groupId, UUID callerId) {
+        membershipGuard.requireActiveMember(groupId, callerId);
+
+        Set<UUID> guestIds = groupMemberRepository
+                .findByGroupIdAndStatusAndRole(groupId, MemberStatus.ACTIVE, GroupRole.GUEST)
+                .stream()
+                .map(m -> m.getUser().getId())
+                .collect(Collectors.toSet());
+
+        List<PartnerPairDto> pairs = new ArrayList<>();
+        for (PartnerPairRow row : matchParticipantRepository.findGroupPartnerPairs(groupId)) {
+            if (guestIds.contains(row.getPlayer1Id()) || guestIds.contains(row.getPlayer2Id())) {
+                continue;
+            }
+            User player1 = groupMemberRepository
+                    .findByGroupIdAndUserId(groupId, row.getPlayer1Id())
+                    .orElseThrow()
+                    .getUser();
+            User player2 = groupMemberRepository
+                    .findByGroupIdAndUserId(groupId, row.getPlayer2Id())
+                    .orElseThrow()
+                    .getUser();
+            BigDecimal winRate = BigDecimal.valueOf(row.getWinsTogether())
+                    .divide(BigDecimal.valueOf(row.getGamesTogether()), 4, RoundingMode.HALF_UP);
+            pairs.add(new PartnerPairDto(
+                    player1.getId(),
+                    player1.getDisplayName(),
+                    player1.getAvatarId(),
+                    player1.getAvatarColor(),
+                    player2.getId(),
+                    player2.getDisplayName(),
+                    player2.getAvatarId(),
+                    player2.getAvatarColor(),
+                    (int) row.getGamesTogether(),
+                    (int) row.getWinsTogether(),
+                    winRate));
         }
-        return candidate[0] > current[0];
+        pairs.sort(Comparator.comparing(PartnerPairDto::gamesTogether)
+                .thenComparing(PartnerPairDto::winRate)
+                .reversed());
+        return pairs;
     }
 }

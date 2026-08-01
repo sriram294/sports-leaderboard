@@ -154,4 +154,30 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
         Instant getPlayedAt();
     }
+
+    // Backs the group-wide partner-pairs list — every pair of players who have
+    // shared a match_team at least once, tallied in one set-based query rather
+    // than one self-join per player. mp1.user_id < mp2.user_id both dedupes each
+    // unordered pair to a single row and fixes which side is "player1"/"player2".
+    @Query(value = """
+        select mp1.user_id as player1Id, mp2.user_id as player2Id,
+               count(distinct m.id) as gamesTogether,
+               count(distinct case when mt.is_winner then m.id end) as winsTogether
+        from match_participants mp1
+          join match_participants mp2 on mp2.match_team_id = mp1.match_team_id and mp1.user_id < mp2.user_id
+          join match_teams mt on mt.id = mp1.match_team_id
+          join matches m on m.id = mt.match_id and m.group_id = :groupId and m.is_deleted = false
+        group by mp1.user_id, mp2.user_id
+        """, nativeQuery = true)
+    List<PartnerPairRow> findGroupPartnerPairs(@Param("groupId") UUID groupId);
+
+    interface PartnerPairRow {
+        UUID getPlayer1Id();
+
+        UUID getPlayer2Id();
+
+        long getGamesTogether();
+
+        long getWinsTogether();
+    }
 }

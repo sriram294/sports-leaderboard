@@ -9,7 +9,6 @@ import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.testing.testGroupRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.remote.PlayboardApi
-import com.org.playboard.data.remote.dto.BestPartnerDto
 import com.org.playboard.data.remote.dto.CreateGroupRequestDto
 import com.org.playboard.data.remote.dto.CreateInviteRequestDto
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
@@ -27,6 +26,8 @@ import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MembersResponseDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
+import com.org.playboard.data.remote.dto.PartnerDto
+import com.org.playboard.data.remote.dto.PartnerPairDto
 import com.org.playboard.data.remote.dto.PlayerAttendanceDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.remote.dto.RecordMatchRequestDto
@@ -63,10 +64,12 @@ private open class FakePlayboardApi(
     var groups: List<GroupDto> = emptyList(),
     var stats: Map<String, PlayerStatsDto> = emptyMap(),
     var attendance: Map<String, PlayerAttendanceDto> = emptyMap(),
+    var partners: Map<String, List<PartnerDto>> = emptyMap(),
 ) : PlayboardApi {
     override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
     override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
     var statsCalls = 0
+    var partnersCalls = 0
     var userName = "Raj"
     var userPhotoUrl: String? = null
     var userAvatarId: String? = null
@@ -112,6 +115,11 @@ private open class FakePlayboardApi(
         statsCalls++
         return stats[userId] ?: error("no stats for $userId")
     }
+    override suspend fun getPartners(groupId: String, userId: String): List<PartnerDto> {
+        partnersCalls++
+        return partners[userId].orEmpty()
+    }
+    override suspend fun getGroupPartnerPairs(groupId: String): List<PartnerPairDto> = error("unused")
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): PlayerAttendanceDto =
         attendance[userId] ?: PlayerAttendanceDto()
     override suspend fun recordMatch(groupId: String, request: RecordMatchRequestDto): RecordMatchResponseDto = error("unused")
@@ -136,7 +144,6 @@ private fun player(id: String, name: String) = MatchPlayerDto(id, name, "#FF3D8A
 private fun statsDto(
     userId: String = "u1",
     displayName: String = "Raj",
-    withPartner: Boolean = true,
     trophies: List<MonthlyTrophyDto> = emptyList(),
 ) = PlayerStatsDto(
     userId = userId,
@@ -151,7 +158,6 @@ private fun statsDto(
     winRate = 0.5,
     currentStreak = 2,
     bestStreak = 3,
-    bestPartner = if (withPartner) BestPartnerDto("u2", "Dev", null, null, "#3DB4FF", 2, 2, 1.0) else null,
     recentMatches = listOf(
         MatchSummaryDto(
             id = "m1",
@@ -213,7 +219,6 @@ class ProfileViewModelTest {
         assertTrue(state.isOwnProfile)
         assertEquals(50, state.stats?.winRatePercent)
         assertEquals(8, state.stats?.matchesPlayed)
-        assertEquals("Dev", state.stats?.bestPartner?.displayName)
     }
 
     @Test
@@ -302,12 +307,49 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `bestPartner may be absent`() = runTest(testDispatcher) {
-        val api = FakePlayboardApi(groups = listOf(groupDto()), stats = mapOf("u1" to statsDto(withPartner = false)))
+    fun `partners are not fetched until the card is expanded`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            stats = mapOf("u1" to statsDto()),
+            partners = mapOf("u1" to listOf(PartnerDto("u2", "Dev", null, null, "#3DB4FF", 2, 2, 1.0))),
+        )
         val (viewModel, _, _) = readyViewModel(api)
         advanceUntilIdle()
 
-        assertNull(viewModel.uiState.value.stats?.bestPartner)
+        assertEquals(0, api.partnersCalls)
+        assertTrue(viewModel.uiState.value.partners.isEmpty())
+
+        viewModel.onPartnersToggled()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(1, api.partnersCalls)
+        assertTrue(state.partnersExpanded)
+        assertEquals("Dev", state.partners.single().displayName)
+    }
+
+    @Test
+    fun `collapsing and re-expanding partners re-fetches`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto()),
+            stats = mapOf("u1" to statsDto()),
+            partners = mapOf("u1" to listOf(PartnerDto("u2", "Dev", null, null, "#3DB4FF", 2, 2, 1.0))),
+        )
+        val (viewModel, _, _) = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onPartnersToggled()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.partnersExpanded)
+
+        viewModel.onPartnersToggled()
+        assertFalse(viewModel.uiState.value.partnersExpanded)
+
+        viewModel.onPartnersToggled()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.partnersExpanded)
+        assertEquals(2, api.partnersCalls)
     }
 
     @Test

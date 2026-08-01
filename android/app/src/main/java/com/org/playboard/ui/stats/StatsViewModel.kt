@@ -7,6 +7,7 @@ import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.model.Group
+import com.org.playboard.data.stats.StatsRepository
 import com.org.playboard.data.trophy.TrophyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -24,9 +25,10 @@ import kotlinx.coroutines.launch
  * Stats/Insights tab (docs/requirements/06-stats.md): a group-level analytics
  * dashboard scoped to the active group. Follows [com.org.playboard.ui.board.BoardViewModel]:
  * observes the shared active group (+ load status) and reloads on a match change.
- * All sections derive from existing endpoints — the leaderboard (all-time records)
- * plus the recent match window (partnership / form / biggest win) — computed by the
- * pure functions in StatsComputations, so there's no new backend.
+ * Records derive from the leaderboard (all-time); biggest win from the recent match
+ * window — both computed by the pure functions in StatsComputations. The "Partners"
+ * card is separate: it's fetched from its own endpoint only once the user expands it,
+ * not eagerly with the rest of the page.
  */
 @HiltViewModel
 class StatsViewModel @Inject constructor(
@@ -34,6 +36,7 @@ class StatsViewModel @Inject constructor(
     private val leaderboardRepository: LeaderboardRepository,
     private val matchRepository: MatchRepository,
     private val trophyRepository: TrophyRepository,
+    private val statsRepository: StatsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StatsUiState())
@@ -52,8 +55,36 @@ class StatsViewModel @Inject constructor(
             groupRepository.dataRevision.drop(1).collect {
                 val group = groupRepository.selectedGroup.first() ?: return@collect
                 load(group, showLoading = false)
+                // A new match also changes partner counts — refresh an open card too.
+                if (_uiState.value.partnersExpanded) fetchPartnerPairs(group.id)
             }
         }
+    }
+
+    /**
+     * Expands the "Partners" card (fetching the full list, every time — same
+     * always-refetch-on-expand behavior as MatchesViewModel's match detail) or
+     * collapses it if already open.
+     */
+    fun onPartnersToggled() {
+        val state = _uiState.value
+        if (state.partnersExpanded) {
+            _uiState.update { it.copy(partnersExpanded = false) }
+            return
+        }
+        val groupId = state.groupId ?: return
+        _uiState.update { it.copy(partnersExpanded = true, isPartnersLoading = true, partnersLoadFailed = false) }
+        viewModelScope.launch { fetchPartnerPairs(groupId) }
+    }
+
+    private suspend fun fetchPartnerPairs(groupId: String) {
+        statsRepository.getPartnerPairs(groupId)
+            .onSuccess { pairs ->
+                _uiState.update { if (it.partnersExpanded) it.copy(isPartnersLoading = false, partnerPairs = pairs) else it }
+            }
+            .onFailure {
+                _uiState.update { if (it.partnersExpanded) it.copy(isPartnersLoading = false, partnersLoadFailed = true) else it }
+            }
     }
 
     /** Retry path: recover a failed group-list fetch, or reload the insights. */
@@ -86,18 +117,30 @@ class StatsViewModel @Inject constructor(
                 hasLoadFailed = loadState == GroupsLoadState.FAILED,
                 noGroup = loadState == GroupsLoadState.LOADED,
                 groupName = null,
+                groupId = null,
                 hasMatches = false,
                 records = null,
-                bestPartnership = null,
                 biggestWin = null,
                 monthlyWinners = emptyList(),
+                partnersExpanded = false,
+                partnerPairs = emptyList(),
+                isPartnersLoading = false,
+                partnersLoadFailed = false,
             )
         }
     }
 
     private suspend fun load(group: Group, showLoading: Boolean) {
         _uiState.update {
-            it.copy(isLoading = showLoading, hasLoadFailed = false, noGroup = false, groupName = group.name)
+            it.copy(
+                isLoading = showLoading, hasLoadFailed = false, noGroup = false,
+                groupName = group.name, groupId = group.id,
+                // Collapse the partner list too — it may belong to a different group.
+                partnersExpanded = if (showLoading) false else it.partnersExpanded,
+                partnerPairs = if (showLoading) emptyList() else it.partnerPairs,
+                isPartnersLoading = if (showLoading) false else it.isPartnersLoading,
+                partnersLoadFailed = if (showLoading) false else it.partnersLoadFailed,
+            )
         }
         val rankings = leaderboardRepository.getLeaderboard(group.id).getOrElse {
             _uiState.update { s -> s.copy(isLoading = false, hasLoadFailed = s.records == null) }
@@ -118,7 +161,6 @@ class StatsViewModel @Inject constructor(
                 groupName = group.name,
                 hasMatches = group.matchCount > 0,
                 records = computeRecords(rankings, group.matchCount),
-                bestPartnership = computeBestPartnership(matches),
                 biggestWin = computeBiggestWin(matches),
                 monthlyWinners = monthlyWinners,
             )

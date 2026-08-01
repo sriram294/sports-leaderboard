@@ -20,7 +20,6 @@ public record PlayerStatsDto(
         BigDecimal winRate,
         int currentStreak,
         int bestStreak,
-        BestPartnerDto bestPartner,
         List<MatchSummaryDto> recentMatches,
         /** Months this player topped the group, newest first; empty for everyone else. */
         List<MonthlyTrophyDto> trophies) {}

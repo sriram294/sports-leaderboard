@@ -2,6 +2,7 @@ package com.org.playboard.ui.profile
 
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchSet
+import com.org.playboard.data.model.Partner
 import com.org.playboard.data.model.PlayerStats
 import java.time.Instant
 import java.time.LocalDate
@@ -13,6 +14,8 @@ data class ProfileUiState(
     val hasLoadFailed: Boolean = false,
     val noGroup: Boolean = false,
     val groupName: String? = null,
+    /** Active group id, kept for the "Partners" card's on-expand fetch. */
+    val groupId: String? = null,
     /** Signed-in user's email — shown in the account row (own profile only). */
     val email: String? = null,
     /**
@@ -44,6 +47,14 @@ data class ProfileUiState(
     val updateError: String? = null,
     /** The "edit name" sheet; `null` when closed. */
     val renameSheet: EditNameSheetState? = null,
+    /**
+     * "Partners" card state. Collapsed by default; expanding fetches the full
+     * partner list on demand rather than loading it eagerly with [stats].
+     */
+    val partnersExpanded: Boolean = false,
+    val partners: List<Partner> = emptyList(),
+    val isPartnersLoading: Boolean = false,
+    val partnersLoadFailed: Boolean = false,
 ) {
     /** Recent matches rendered relative to the viewed player (partner vs opponents). */
     val recentMatches: List<RecentMatchRow>

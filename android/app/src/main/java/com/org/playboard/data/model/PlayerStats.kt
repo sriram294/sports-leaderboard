@@ -18,7 +18,6 @@ data class PlayerStats(
     val winRate: Double,
     val currentStreak: Int,
     val bestStreak: Int,
-    val bestPartner: BestPartner?,
     /** Last matches involving this player, newest first (≤5). */
     val recentMatches: List<Match>,
     /** Months this player topped the group's leaderboard, newest first. */
@@ -28,8 +27,8 @@ data class PlayerStats(
     val winRatePercent: Int get() = (winRate * 100).toInt()
 }
 
-/** The partner this player wins most with in the group (min-games threshold is server-side). */
-data class BestPartner(
+/** One partner this player has had in the group, fetched separately (on expand) from [PlayerStats]. */
+data class Partner(
     val userId: String,
     val displayName: String,
     val photoUrl: String?,
