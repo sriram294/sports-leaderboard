@@ -11,18 +11,29 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.FileProvider
+import coil3.BitmapImage
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import com.org.playboard.data.auth.ActivityProvider
 import com.org.playboard.data.model.Group
 import com.org.playboard.data.model.PlayerRanking
+import com.org.playboard.ui.components.avatarAssetUrl
 import com.org.playboard.ui.theme.PlayboardTheme
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
 
 private const val TAG = "LeaderboardShare"
 
@@ -30,12 +41,14 @@ private const val TAG = "LeaderboardShare"
  * Renders [LeaderboardShareCard] off-screen to a PNG and hands it to the Android
  * share sheet (`ACTION_SEND`, `image/png`).
  *
- * The card is composed in a throwaway [ComposeView] attached to the current
+ * Player avatars are resolved up front by [preloadAvatars] — before the card is even
+ * composed — since the capture snapshots right after the first draw and can't wait on
+ * [coil3.compose.AsyncImage]'s own async load or draw the hardware bitmaps it decodes by
+ * default. The card is then composed in a throwaway [ComposeView] attached to the current
  * Activity's content root (via [ActivityProvider]) — attaching gives Compose the
  * lifecycle/owners it needs. It is then re-measured unbounded so a card taller than
  * the screen is captured whole rather than clipped to the content root. The view is
- * drawn at alpha 0 so it never flashes, then removed. Avatars are initials-only, so
- * there is no async image load to wait on before capturing.
+ * drawn at alpha 0 so it never flashes, then removed.
  *
  * Kept out of the ViewModel deliberately: it touches Android `View`/`Context`,
  * which the ViewModels must stay free of (see PROJECT_RULES).
@@ -54,7 +67,10 @@ suspend fun renderAndShareLeaderboard(
         return
     }
     try {
-        val bitmap = withContext(Dispatchers.Main) { captureCard(activity, group, rankings, minGamesToRank, darkTheme) }
+        val avatars = preloadAvatars(context, topRankings(rankings))
+        val bitmap = withContext(Dispatchers.Main) {
+            captureCard(activity, group, rankings, minGamesToRank, darkTheme, avatars)
+        }
         val uri = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "shared").apply { mkdirs() }
             val file = File(dir, shareImageFileName(group.id))
@@ -78,6 +94,31 @@ suspend fun renderAndShareLeaderboard(
  *  the rankings table always has room for full player names regardless of screen size. */
 private const val CARD_WIDTH_DP = 460f
 
+/**
+ * Resolves each of [rankings]'s avatars (uploaded photo, else bundled `avatarId`) to a plain
+ * software [ImageBitmap], in parallel. `allowHardware(false)` is the load-bearing bit: Coil
+ * otherwise decodes into hardware bitmaps, which [captureCard]'s offscreen software canvas
+ * can't draw ("Software rendering doesn't support hardware bitmaps"). A player with neither
+ * (or whose load fails) is simply absent from the result — [LeaderboardShareCard] falls back
+ * to the colored initial for any userId it can't find here.
+ */
+private suspend fun preloadAvatars(
+    context: Context,
+    rankings: List<PlayerRanking>,
+): Map<String, ImageBitmap> = coroutineScope {
+    val loader = context.imageLoader
+    rankings.mapNotNull { entry ->
+        val model = entry.photoUrl ?: entry.avatarId?.let(::avatarAssetUrl)
+        model?.let { entry.userId to it }
+    }.map { (userId, model) ->
+        async {
+            val request = ImageRequest.Builder(context).data(model).allowHardware(false).build()
+            val image = (loader.execute(request) as? SuccessResult)?.image
+            userId to (image as? BitmapImage)?.bitmap?.asImageBitmap()
+        }
+    }.awaitAll().mapNotNull { (userId, bitmap) -> bitmap?.let { userId to it } }.toMap()
+}
+
 /** Composes the card in an attached [ComposeView], waits for its first draw, and snapshots it. */
 private suspend fun captureCard(
     activity: Activity,
@@ -85,6 +126,7 @@ private suspend fun captureCard(
     rankings: List<PlayerRanking>,
     minGamesToRank: Int,
     darkTheme: Boolean,
+    avatars: Map<String, ImageBitmap>,
 ): Bitmap {
     val root = activity.findViewById<ViewGroup>(android.R.id.content)
     val widthPx = (CARD_WIDTH_DP * activity.resources.displayMetrics.density).toInt()
@@ -93,7 +135,12 @@ private suspend fun captureCard(
         layoutParams = FrameLayout.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             PlayboardTheme(darkTheme = darkTheme) {
-                LeaderboardShareCard(group = group, rankings = rankings, minGamesToRank = minGamesToRank)
+                LeaderboardShareCard(
+                    group = group,
+                    rankings = rankings,
+                    minGamesToRank = minGamesToRank,
+                    avatars = avatars,
+                )
             }
         }
     }

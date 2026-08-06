@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,9 +50,10 @@ import java.time.format.DateTimeFormatter
  * A self-contained, branded snapshot of a group's leaderboard, built to be rendered
  * off-screen and captured to a PNG for sharing (see [renderAndShareLeaderboard]).
  *
- * Mirrors the Board tab's visual language (podium + rankings) but is non-interactive
- * and draws avatars as colored initials only ([PlayerAvatar] with `photoUrl = null`),
- * so it renders synchronously with no async image load to wait on during capture.
+ * Mirrors the Board tab's visual language (podium + rankings) but is non-interactive.
+ * Avatars are drawn from [avatars] — bitmaps the caller has already resolved via
+ * [preloadAvatars], so the card itself needs no async image load — falling back to a
+ * colored initial ([PlayerAvatar]) for any player missing from that map.
  */
 @Composable
 fun LeaderboardShareCard(
@@ -60,6 +62,9 @@ fun LeaderboardShareCard(
     minGamesToRank: Int,
     modifier: Modifier = Modifier,
     date: LocalDate = LocalDate.now(),
+    // Preloaded, non-hardware avatar bitmaps keyed by userId — see renderAndShareLeaderboard's
+    // preloadAvatars. A row/slot with no entry here just shows the colored initial.
+    avatars: Map<String, ImageBitmap> = emptyMap(),
 ) {
     // Ranked players only, on both the podium and the table — a provisional player
     // shouldn't be crowned in an image that outlives the moment.
@@ -94,21 +99,21 @@ fun LeaderboardShareCard(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-        SharePodium(podium = podium)
+        SharePodium(podium = podium, avatars = avatars)
 
         Spacer(modifier = Modifier.height(24.dp))
-        ShareRankingsCard(rows = rows, minGamesToRank = minGamesToRank)
+        ShareRankingsCard(rows = rows, minGamesToRank = minGamesToRank, avatars = avatars)
     }
 }
 
 @Composable
-private fun SharePodium(podium: List<PlayerRanking>) {
+private fun SharePodium(podium: List<PlayerRanking>, avatars: Map<String, ImageBitmap>) {
     Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
     Spacer(modifier = Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-        SharePodiumSlot(entry = podium.getOrNull(1), isChampion = false, modifier = Modifier.weight(1f))
-        SharePodiumSlot(entry = podium.getOrNull(0), isChampion = true, modifier = Modifier.weight(1.2f))
-        SharePodiumSlot(entry = podium.getOrNull(2), isChampion = false, modifier = Modifier.weight(1f))
+        SharePodiumSlot(entry = podium.getOrNull(1), isChampion = false, avatars = avatars, modifier = Modifier.weight(1f))
+        SharePodiumSlot(entry = podium.getOrNull(0), isChampion = true, avatars = avatars, modifier = Modifier.weight(1.2f))
+        SharePodiumSlot(entry = podium.getOrNull(2), isChampion = false, avatars = avatars, modifier = Modifier.weight(1f))
     }
 }
 
@@ -121,7 +126,12 @@ private fun SharePodium(podium: List<PlayerRanking>) {
  * only the name and win rate.
  */
 @Composable
-private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier: Modifier = Modifier) {
+private fun SharePodiumSlot(
+    entry: PlayerRanking?,
+    isChampion: Boolean,
+    avatars: Map<String, ImageBitmap>,
+    modifier: Modifier = Modifier,
+) {
     if (entry == null) {
         Spacer(modifier = modifier)
         return
@@ -161,6 +171,7 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
                         shape = CircleShape,
                     ),
                     size = avatarSize,
+                    preloadedImage = avatars[entry.userId],
                 )
             }
             // Numbered rank badge, tucked at the bottom-center of the avatar. The outer ring
@@ -215,7 +226,7 @@ private fun SharePodiumSlot(entry: PlayerRanking?, isChampion: Boolean, modifier
 }
 
 @Composable
-private fun ShareRankingsCard(rows: List<PlayerRanking>, minGamesToRank: Int) {
+private fun ShareRankingsCard(rows: List<PlayerRanking>, minGamesToRank: Int, avatars: Map<String, ImageBitmap>) {
     // Same table as the Board, via the shared component — these were two hand-maintained
     // copies that had already drifted (WIN% 52dp here vs 56dp there, and a rank header
     // 6dp wider than its own cells).
@@ -231,8 +242,10 @@ private fun ShareRankingsCard(rows: List<PlayerRanking>, minGamesToRank: Int) {
                     entry = row,
                     minGamesToRank = minGamesToRank,
                     metric = RankingSortMetric.RATING,
-                    // The offscreen renderer can't fetch network images.
+                    // The offscreen renderer can't resolve photoUrl/avatarId through Coil's
+                    // AsyncImage; avatarBitmap is its preloaded substitute.
                     showPhoto = false,
+                    avatarBitmap = avatars[row.userId],
                 )
             }
         }

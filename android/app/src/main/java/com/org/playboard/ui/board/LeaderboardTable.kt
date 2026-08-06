@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,7 +94,12 @@ fun LeaderboardHeaderRow(
  * One player's row.
  *
  * @param minGamesToRank the group's threshold, used to render "N more to rank".
- * @param showPhoto false for the share card — the offscreen renderer can't load network images.
+ * @param showPhoto false for the share card — its offscreen software canvas can't draw the
+ *   hardware bitmaps AsyncImage decodes, for either an uploaded photo or a bundled avatarId.
+ *   [avatarBitmap] is the share card's own pre-decoded substitute.
+ * @param avatarBitmap a preloaded, non-hardware bitmap for this row's avatar (share card only,
+ *   see [com.org.playboard.ui.share.renderAndShareLeaderboard]); `null` falls back to the
+ *   colored initial.
  * @param onClick null makes the row inert (share card).
  */
 @Composable
@@ -103,6 +109,7 @@ fun LeaderboardRow(
     metric: RankingSortMetric,
     modifier: Modifier = Modifier,
     showPhoto: Boolean = true,
+    avatarBitmap: ImageBitmap? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val rowModifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier
@@ -122,9 +129,13 @@ fun LeaderboardRow(
         PlayerAvatar(
             displayName = entry.displayName,
             photoUrl = if (showPhoto) entry.photoUrl else null,
-            avatarId = entry.avatarId,
+            // Bundled default avatars route through the same AsyncImage/Coil path as
+            // uploaded photos and decode as hardware bitmaps, which the share card's
+            // offscreen software canvas can't draw — see showPhoto's kdoc.
+            avatarId = if (showPhoto) entry.avatarId else null,
             avatarColorHex = entry.avatarColor,
             size = 32.dp,
+            preloadedImage = avatarBitmap,
         )
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
             Text(

@@ -3,6 +3,7 @@ import com.org.playboard.ui.theme.DarkBrand
 import com.org.playboard.ui.theme.DarkOnBrand
 import com.org.playboard.ui.theme.PlayboardTheme
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -48,6 +50,11 @@ fun avatarAssetUrl(avatarId: String): String = "file:///android_asset/avatars/$a
  * and draws nothing on error, leaving the initial visible instead of a blank.
  * `photoUrl` and `avatarId` are mutually exclusive server-side, but photo wins
  * defensively if both are ever present.
+ *
+ * @param preloadedImage an already-decoded bitmap to draw directly instead of resolving
+ *   [photoUrl]/[avatarId] through [AsyncImage]. Used by the leaderboard share card, whose
+ *   offscreen capture can't wait on Coil's async load or draw the hardware bitmaps it decodes
+ *   by default — see [com.org.playboard.ui.share.renderAndShareLeaderboard].
  */
 @Composable
 fun PlayerAvatar(
@@ -57,6 +64,7 @@ fun PlayerAvatar(
     modifier: Modifier = Modifier,
     avatarId: String? = null,
     size: Dp = 40.dp,
+    preloadedImage: ImageBitmap? = null,
 ) {
     val color = avatarColor(avatarColorHex)
     val imageModel = photoUrl ?: avatarId?.let(::avatarAssetUrl)
@@ -78,7 +86,14 @@ fun PlayerAvatar(
                 fontSize = (size.value * 0.4).sp,
             ),
         )
-        if (imageModel != null) {
+        if (preloadedImage != null) {
+            Image(
+                bitmap = preloadedImage,
+                contentDescription = displayName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(size).clip(CircleShape),
+            )
+        } else if (imageModel != null) {
             AsyncImage(
                 model = imageModel,
                 contentDescription = displayName,
