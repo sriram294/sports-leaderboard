@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
  * Expands the relative avatar paths held in {@code users.photo_url} into absolute
  * URLs for API responses.
  *
- * <p>Avatar paths are stored host-free (e.g. {@code /avatars/<id>.jpg}) so that
+ * <p>Avatar paths are stored host-free (e.g. {@code /avatars/<id>-<upload-id>.jpg}) so that
  * moving the API to a different domain needs no data migration — the host is
  * applied here, at read time, from {@code PUBLIC_BASE_URL}. Storing the absolute
  * URL instead (as this originally did) froze the old host into every row and

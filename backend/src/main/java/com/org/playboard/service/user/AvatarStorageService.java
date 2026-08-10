@@ -41,13 +41,21 @@ public class AvatarStorageService {
                     HttpStatus.UNPROCESSABLE_ENTITY, "AVATAR_INVALID_FILE", "Photo must be a PNG, JPEG, or WebP image");
         }
 
-        removeExisting(userId);
-        String filename = userId + extensionFor(file.getContentType());
+        // A new public path on every upload is intentional. Image loaders and
+        // intermediary HTTP caches key by URL, so overwriting <userId>.png left
+        // other users seeing the previous bytes even after their API data was
+        // refreshed. The random suffix makes replacement photos immediately
+        // distinguishable without disabling useful avatar caching globally.
+        String filename = userId + "-" + UUID.randomUUID() + extensionFor(file.getContentType());
+        Path destination = avatarDir.resolve(filename);
         try {
-            file.transferTo(avatarDir.resolve(filename));
+            file.transferTo(destination);
         } catch (IOException e) {
             throw new UncheckedIOException("Could not store avatar for user " + userId, e);
         }
+        // Only remove the previous image after the new one was written, so a
+        // failed upload cannot erase the user's current photo.
+        removeExisting(userId, destination);
         // Host-free on purpose — AvatarUrlResolver applies PUBLIC_BASE_URL at read
         // time. "/avatars/**" is the URL path WebConfig maps onto this directory.
         return "/avatars/" + filename;
@@ -55,15 +63,22 @@ public class AvatarStorageService {
 
     /** Delete any stored photo for the user — called when they switch to a default avatar. */
     public void remove(UUID userId) {
-        removeExisting(userId);
+        removeExisting(userId, null);
     }
 
-    // A prior upload may have used a different extension (e.g. jpg -> png) —
-    // clear it so the new upload doesn't leave two files with only one referenced.
-    private void removeExisting(UUID userId) {
-        String prefix = userId + ".";
+    // Match both legacy <userId>.<ext> files and versioned
+    // <userId>-<uploadId>.<ext> files. A prior upload may also have used a
+    // different extension, so clean all variants except the file just written.
+    private void removeExisting(UUID userId, Path fileToKeep) {
+        String legacyPrefix = userId + ".";
+        String versionedPrefix = userId + "-";
         try (var files = Files.list(avatarDir)) {
-            files.filter(p -> p.getFileName().toString().startsWith(prefix)).forEach(this::deleteQuietly);
+            files.filter(path -> {
+                        String name = path.getFileName().toString();
+                        return (name.startsWith(legacyPrefix) || name.startsWith(versionedPrefix))
+                                && !path.equals(fileToKeep);
+                    })
+                    .forEach(this::deleteQuietly);
         } catch (IOException e) {
             throw new UncheckedIOException("Could not list avatar storage directory: " + avatarDir, e);
         }

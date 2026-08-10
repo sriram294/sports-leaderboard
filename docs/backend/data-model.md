@@ -70,7 +70,7 @@ create table users (
     google_sub    text unique,               -- nullable: room for other auth providers later
     email         text not null unique,
     display_name  text not null,
-    photo_url     text,                      -- host-free path ("/avatars/<id>.jpg"); PUBLIC_BASE_URL is
+    photo_url     text,                      -- versioned host-free path ("/avatars/<id>-<upload-id>.jpg"); PUBLIC_BASE_URL is
                                              -- prepended at read time by AvatarUrlResolver so the API can
                                              -- change domain without a data migration.
                                              -- null => client falls back to initial + avatar_color

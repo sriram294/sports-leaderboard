@@ -33,11 +33,11 @@ class UserRepository @Inject constructor(
             .onSuccess { tokenStore.updateUser(it) }
 
     /**
-     * Uploads [bytes] as the signed-in user's new avatar. The server reuses a
-     * per-user storage path, so a re-upload can return the *same* `photoUrl`; we
-     * append a version param so the URL-keyed image cache (Coil) reloads the new
-     * bytes rather than showing the old photo. Spring serves the static file
-     * ignoring the query string, so the busted URL still resolves.
+     * Uploads [bytes] as the signed-in user's new avatar. Current servers return
+     * a versioned path for each upload; the query parameter remains a defensive
+     * cache bust for older deployments that may reuse the same `photoUrl`.
+     * Spring serves the static file ignoring the query string, so the busted URL
+     * still resolves.
      */
     suspend fun updatePhoto(bytes: ByteArray, mimeType: String): Result<UserSession> =
         runCatching {
