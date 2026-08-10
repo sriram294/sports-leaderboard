@@ -45,30 +45,47 @@ class UserServiceIntegrationTest {
 
         MockMultipartFile png = new MockMultipartFile("file", "photo.png", "image/png", new byte[] {1, 2, 3});
         UserDto afterPng = userService.updatePhoto(user.getId(), png);
-        assertThat(afterPng.photoUrl()).endsWith("/avatars/" + user.getId() + ".png");
-        assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png"))).isTrue();
+        String firstFilename = avatarFilename(afterPng);
+        assertThat(firstFilename).startsWith(user.getId() + "-").endsWith(".png");
+        assertThat(Files.exists(Path.of(avatarDir, firstFilename))).isTrue();
+
+        // Re-uploading the same content type must still produce a different URL.
+        // Android image caches otherwise keep displaying the bytes from the first upload.
+        MockMultipartFile replacementPng =
+                new MockMultipartFile("file", "replacement.png", "image/png", new byte[] {4, 5, 6});
+        UserDto afterReplacementPng = userService.updatePhoto(user.getId(), replacementPng);
+        String replacementFilename = avatarFilename(afterReplacementPng);
+        assertThat(replacementFilename).startsWith(user.getId() + "-").endsWith(".png");
+        assertThat(afterReplacementPng.photoUrl()).isNotEqualTo(afterPng.photoUrl());
+        assertThat(Files.exists(Path.of(avatarDir, firstFilename)))
+                .as("previous upload should have been removed")
+                .isFalse();
+        assertThat(Files.exists(Path.of(avatarDir, replacementFilename))).isTrue();
 
         // Re-uploading with a different content type must replace, not accumulate, the stored file.
-        MockMultipartFile jpeg = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[] {4, 5, 6});
+        MockMultipartFile jpeg = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[] {7, 8, 9});
         UserDto afterJpeg = userService.updatePhoto(user.getId(), jpeg);
-        assertThat(afterJpeg.photoUrl()).endsWith("/avatars/" + user.getId() + ".jpg");
-        assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png")))
+        String jpegFilename = avatarFilename(afterJpeg);
+        assertThat(jpegFilename).startsWith(user.getId() + "-").endsWith(".jpg");
+        assertThat(Files.exists(Path.of(avatarDir, replacementFilename)))
                 .as("stale .png from the first upload should have been removed")
                 .isFalse();
+        assertThat(Files.exists(Path.of(avatarDir, jpegFilename))).isTrue();
     }
 
     @Test
     void selectingAvatarSetsIdAndClearsPhoto() throws Exception {
         User user = userRepository.save(newUser());
         MockMultipartFile png = new MockMultipartFile("file", "photo.png", "image/png", new byte[] {1, 2, 3});
-        userService.updatePhoto(user.getId(), png);
-        assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png"))).isTrue();
+        UserDto uploaded = userService.updatePhoto(user.getId(), png);
+        String uploadedFilename = avatarFilename(uploaded);
+        assertThat(Files.exists(Path.of(avatarDir, uploadedFilename))).isTrue();
 
         UserDto updated = userService.updateAvatar(user.getId(), "avatar0");
 
         assertThat(updated.avatarId()).isEqualTo("avatar0");
         assertThat(updated.photoUrl()).isNull();
-        assertThat(Files.exists(Path.of(avatarDir, user.getId() + ".png")))
+        assertThat(Files.exists(Path.of(avatarDir, uploadedFilename)))
                 .as("uploaded photo file should be removed when switching to a default avatar")
                 .isFalse();
     }
@@ -117,5 +134,9 @@ class UserServiceIntegrationTest {
         user.setDisplayName("User Test");
         user.setAvatarColor("#7ED321");
         return user;
+    }
+
+    private static String avatarFilename(UserDto user) {
+        return user.photoUrl().substring(user.photoUrl().lastIndexOf('/') + 1);
     }
 }
