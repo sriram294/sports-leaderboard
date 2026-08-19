@@ -14,6 +14,8 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 - Identity card: avatar, name, "N matches played", win rate %
 - Stat tiles (2x3 grid): Wins, Losses, Pts For, Streak (+ Best streak
   sub-label), Best Streak, Pts Against
+- **Monthly Finishes** line graph: up to 12 completed captured months, oldest
+  to newest. Rank #1 is highest; months with no qualified finish are gaps.
 - **Partners** card: collapsed by default; expanding fetches and shows every
   partner this player has had, ranked by games together (each row: avatar/name,
   "NW / M games together", win% with that partner)
@@ -37,6 +39,11 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 5. Recent Matches list — tapping an entry could deep-link to that match's
    expanded view on the Matches tab (not specified in prototype, natural
    extension — flag as open question).
+6. Monthly finishes are frozen when each month closes in Asia/Kolkata and are
+   scoped to the active group. Provisional results and months the player did
+   not play remain calendar gaps. Before the first qualified point, show
+   “Finishing positions are recorded after each month closes.” Historical
+   months from before snapshot capture launched are not backfilled.
 
 ## Data needed
 - Per player per group: matchesPlayed, wins, losses, ptsFor, ptsAgainst,
@@ -45,6 +52,8 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
   together first (tie-broken by win rate together), fetched from its own
   endpoint only when the card is expanded — not bundled into the stats above.
 - Recent matches: last N matches involving this player, most recent first.
+- Monthly finishes: up to 12 `{month, rank, qualifiedPlayers}` values in
+  chronological order; `rank` may be null.
 
 ## Open questions
 - Photo crop and remove-photo-to-revert-to-initial are not implemented.

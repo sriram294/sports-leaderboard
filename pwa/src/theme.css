@@ -2171,6 +2171,39 @@ h3 {
     text-align: center;
 }
 
+.monthly-finishes-card {
+    min-height: 72px;
+    padding: 12px;
+}
+
+.monthly-finishes-card > .muted {
+    margin: 4px;
+}
+
+.monthly-finishes-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.finish-grid {
+    stroke: var(--muted);
+    stroke-opacity: 0.16;
+    stroke-width: 1;
+}
+
+.finish-line {
+    stroke: var(--brand);
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+.finish-point-ring { fill: var(--surface); }
+.finish-point { fill: var(--brand); }
+.finish-rank { fill: var(--brand); font-size: 11px; font-weight: 700; text-anchor: middle; }
+.finish-month { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+
 /* Activity heatmap (GitHub-style). */
 .heatmap {
     display: flex;

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import type { MatchSet, Partner, PlayerStats } from '../../models';
+import { useId, useMemo, useRef, useState } from 'react';
+import type { MatchSet, MonthlyFinish, Partner, PlayerStats } from '../../models';
 import { Avatar } from '../../components';
 import { Icon } from '../../icons';
 import { usePartners } from '../../queries';
@@ -14,6 +14,7 @@ import {
   type HeatMonth,
   type RecentMatchRow,
 } from '../../domain';
+import { deriveFinishChart, finishDescription, finishesDescription, finishMonthLabel } from './monthly-finishes';
 
 /** The bundled default avatars available in the picker (`public/avatars/avatar0..15.png`). */
 const AVATAR_IDS = Array.from({ length: 16 }, (_, i) => `avatar${i}`);
@@ -103,6 +104,8 @@ export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onR
         <StatTile label="PTS AGNST" value={stats.pointsAgainst} />
       </div>
 
+      <MonthlyFinishesChart finishes={stats.monthlyFinishes ?? []} />
+
       {attendance && attendance.months.length > 0 && <ActivityHeatmap attendance={attendance} />}
 
       <PartnersCard groupId={groupId} userId={stats.userId} />
@@ -123,6 +126,63 @@ export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onR
         <RenameSheet current={identity.displayName} onClose={() => setRenaming(false)} onRename={onRename} />
       )}
     </div>
+  );
+}
+
+function MonthlyFinishesChart({ finishes }: { finishes: MonthlyFinish[] }) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const chart = useMemo(() => deriveFinishChart(finishes), [finishes]);
+  const width = 640;
+  const height = 210;
+  const left = 28;
+  const right = width - 28;
+  const top = 28;
+  const bottom = 168;
+  const position = (point: { x: number; y: number }) => ({
+    x: left + (right - left) * point.x,
+    y: top + (bottom - top) * point.y,
+  });
+
+  return (
+    <>
+      <p className="section-label">MONTHLY FINISHES</p>
+      <div
+        className="card monthly-finishes-card"
+        role={chart.points.length === 0 ? 'img' : undefined}
+        aria-label={chart.points.length === 0 ? finishesDescription(chart.finishes) : undefined}
+      >
+        {chart.points.length === 0 ? (
+          <p className="muted">Finishing positions are recorded after each month closes.</p>
+        ) : (
+          <svg className="monthly-finishes-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`${titleId} ${descriptionId}`}>
+            <title id={titleId}>Monthly finishing positions</title>
+            <desc id={descriptionId}>{chart.finishes.map(finishDescription).join('. ')}</desc>
+            {[0, .5, 1].map(fraction => {
+              const y = top + (bottom - top) * fraction;
+              return <line key={fraction} className="finish-grid" x1={left} x2={right} y1={y} y2={y} />;
+            })}
+            {chart.segments.map(segment => {
+              const from = position(segment.from);
+              const to = position(segment.to);
+              return <line key={`${segment.from.index}-${segment.to.index}`} className="finish-line" x1={from.x} y1={from.y} x2={to.x} y2={to.y} />;
+            })}
+            {chart.points.map(point => {
+              const p = position(point);
+              return <g key={point.index}>
+                <circle className="finish-point-ring" cx={p.x} cy={p.y} r="7" />
+                <circle className="finish-point" cx={p.x} cy={p.y} r="4" />
+                <text className="finish-rank" x={p.x} y={p.y - 11}>#{point.rank}</text>
+              </g>;
+            })}
+            {chart.finishes.map((finish, index) => {
+              const x = left + (right - left) * index / Math.max(1, chart.finishes.length - 1);
+              return <text className="finish-month" key={finish.month} x={x} y={198}>{finishMonthLabel(finish.month)}</text>;
+            })}
+          </svg>
+        )}
+      </div>
+    </>
   );
 }
 

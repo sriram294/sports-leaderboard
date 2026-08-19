@@ -40,11 +40,13 @@ product requirements this schema serves).
 | `match_sets` | Per-set scores |
 | `match_events` | Audit log: created / edited / deleted, by whom, when |
 | `member_stats` | Materialized per-group-per-player stats (leaderboard source) |
+| `monthly_trophy` | Immutable completed-month winner verdict; `standings_captured` identifies V14+ snapshots |
+| `monthly_standing` | Frozen rank/rating/games/wins/provisional row per group, month, and player |
 | `refresh_tokens` | Server-side record backing refresh-token rotation/revocation |
 | `device_tokens` | FCM registration tokens per user's device (push notifications) |
 
-`member_stats` is the only denormalized/derived table. Everything else is
-normalized; `member_stats` is rebuilt from `matches`/`match_teams`/
+`member_stats` and the immutable monthly snapshot tables are derived data.
+`member_stats` is rebuilt from `matches`/`match_teams`/
 `match_participants`/`match_sets` whenever those change (see
 [Recompute strategy](#recompute-strategy)).
 
@@ -55,6 +57,14 @@ leaderboard ("This Week" / "This Month") can't read it — it aggregates the raw
 `matches.played_at ∈ [from, to)` (single set-based query, keyed off the existing
 `idx_matches_group_played` index). Same PF/PA-by-team and win logic as the
 per-player recompute, but for the whole group at once and bounded by the window.
+
+At month close, `MonthlyStandingsWriter` inserts the `monthly_trophy` verdict
+with `standings_captured = true` and all active non-guest leaderboard rows into
+`monthly_standing` in one transaction. The unique group/month trophy key is the
+concurrency claim; a repeated writer loses the claim and writes nothing. Snapshot
+rows include provisional players, but clients expose their finish as a null rank.
+The rows are immutable, so later match edits do not rewrite history. V14 leaves
+existing trophy rows at the default `false`, deliberately preventing backfill.
 
 ## Schema (DDL)
 

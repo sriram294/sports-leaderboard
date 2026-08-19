@@ -2,7 +2,9 @@ package com.org.playboard.service.stats;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.entity.group.Group;
 import com.org.playboard.entity.sport.Sport;
 import com.org.playboard.entity.stats.MonthlyTrophy;
@@ -13,6 +15,10 @@ import com.org.playboard.repository.stats.MonthlyTrophyRepository;
 import com.org.playboard.repository.user.UserRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +49,7 @@ class MonthlyTrophyJobTransactionIntegrationTest {
 
     @Autowired private MonthlyTrophyJob job;
     @Autowired private MonthlyTrophyRepository trophyRepository;
+    @Autowired private MonthlyStandingsWriter standingsWriter;
     @Autowired private GroupRepository groupRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private SportRepository sportRepository;
@@ -96,5 +103,22 @@ class MonthlyTrophyJobTransactionIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(stored.hasWinner()).isFalse();
+    }
+
+    @Test
+    void aSnapshotFailureRollsBackTheTrophyClaim() {
+        // Rank zero violates V14's check constraint. flush() happens inside the writer's
+        // transaction, proving the earlier trophy insert cannot escape on its own.
+        LeaderboardEntryDto invalid = new LeaderboardEntryDto(
+                0, owner.getId(), "Owner", null, null, "#7ED321",
+                1, 1, 0, 21, 10, BigDecimal.ONE, 0, 0,
+                BigDecimal.TEN, false, List.of(true));
+        var standings = new LeaderboardRanker.Standings(List.of(invalid), 1);
+
+        assertThatThrownBy(() -> standingsWriter.capture(
+                group.getId(), YearMonth.of(2026, 6), standings, Optional.of(invalid)))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThat(trophyRepository.findDecidedMonths(group.getId())).isEmpty();
     }
 }

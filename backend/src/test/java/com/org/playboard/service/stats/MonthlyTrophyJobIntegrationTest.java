@@ -16,6 +16,7 @@ import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.sport.SportRepository;
 import com.org.playboard.repository.stats.MonthlyTrophyRepository;
+import com.org.playboard.repository.stats.MonthlyStandingRepository;
 import com.org.playboard.repository.user.UserRepository;
 import com.org.playboard.service.match.MatchService;
 import com.org.playboard.service.notification.NotificationLogService;
@@ -59,6 +60,7 @@ class MonthlyTrophyJobIntegrationTest {
 
     @Autowired private MonthlyTrophyJob job;
     @Autowired private MonthlyTrophyRepository trophyRepository;
+    @Autowired private MonthlyStandingRepository standingRepository;
     @Autowired private MatchService matchService;
     @Autowired private UserRepository userRepository;
     @Autowired private GroupRepository groupRepository;
@@ -83,6 +85,12 @@ class MonthlyTrophyJobIntegrationTest {
         assertThat(june.getGamesPlayed()).isEqualTo(6);
         assertThat(june.getWins()).isEqualTo(5);
         assertThat(june.getRating()).isNotNull();
+        assertThat(june.isStandingsCaptured()).isTrue();
+        assertThat(standingRepository.findByGroupIdAndMonthOrderByRank(
+                f.group.getId(), LocalDate.of(2026, 6, 1)))
+                .hasSize(4)
+                .extracting(com.org.playboard.entity.stats.MonthlyStanding::getRank)
+                .containsExactly(1, 2, 3, 4);
     }
 
     @Test

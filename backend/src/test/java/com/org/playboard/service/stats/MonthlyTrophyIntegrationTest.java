@@ -114,7 +114,7 @@ class MonthlyTrophyIntegrationTest {
     }
 
     private int award(UUID groupId, UUID userId, LocalDate month) {
-        return trophyRepository.awardIfAbsent(
+        return trophyRepository.captureIfAbsent(
                 groupId,
                 userId,
                 month,

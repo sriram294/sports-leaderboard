@@ -17,6 +17,8 @@ drill-down** for any other player (read-only). Both render the same component.
   **`{win%} win rate · 🏸 {N} matches`** (win% in brand).
 - **2×3 stat tiles** — WINS · LOSSES · PTS FOR / **CURRENT STREAK** (signed, brand) · BEST
   STREAK · PTS AGNST.
+- **MONTHLY FINISHES** — responsive semantic SVG over the latest 12 captured completed
+  months. Rank #1 is at the top; null/provisional months break the line.
 - **ACTIVITY** heatmap — GitHub-style, the last 3 calendar months, Mon-first weekday axis; a day
   the player was in a match is a filled brand square.
 - **BEST PARTNER** — avatar, name, `{winsTogether}W / {gamesTogether} games together`, and the
@@ -40,10 +42,13 @@ drill-down** for any other player (read-only). Both render the same component.
    edit shows at once), falling back to stats; a viewed player's comes from stats.
 6. **States** — full-screen spinner on first stats load; retry on failure; sections
    (heatmap / best partner / recent) render only when their data is present.
+7. The finishes graph is always present after the tiles. When no qualified point exists it
+   explains that positions are recorded after month close. Its accessible description names
+   every returned month and rank/gap; switching groups or viewed players replaces the series.
 
 ## Data needed
 - `GET /groups/{groupId}/members/{userId}/stats` (PlayerStatsDto: wins/losses/pointsFor/
-  pointsAgainst/winRate/currentStreak/bestStreak/matchesPlayed/bestPartner/recentMatches/trophies).
+  pointsAgainst/winRate/currentStreak/bestStreak/matchesPlayed/recentMatches/trophies/monthlyFinishes).
 - `GET /groups/{groupId}/members/{userId}/attendance?from&to` (PlayerAttendanceDto `{playedAt}`).
 - `PATCH /users/me` · `PATCH /users/me/avatar` · `POST /users/me/photo` (all → UserDto).
 

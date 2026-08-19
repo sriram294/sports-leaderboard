@@ -22,6 +22,8 @@ data class PlayerStats(
     val recentMatches: List<Match>,
     /** Months this player topped the group's leaderboard, newest first. */
     val trophies: List<MonthlyTrophy> = emptyList(),
+    /** Captured completed months, oldest first, including calendar gaps. */
+    val monthlyFinishes: List<MonthlyFinish> = emptyList(),
 ) {
     /** Win rate as a whole percentage for display (e.g. `0.5` → `50`). */
     val winRatePercent: Int get() = (winRate * 100).toInt()

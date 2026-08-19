@@ -53,6 +53,9 @@ public class MonthlyTrophy extends Auditable {
     @Column(name = "wins")
     private Integer wins;
 
+    @Column(name = "standings_captured", nullable = false)
+    private boolean standingsCaptured;
+
     protected MonthlyTrophy() {
         // for JPA
     }
@@ -83,6 +86,10 @@ public class MonthlyTrophy extends Auditable {
 
     public Integer getWins() {
         return wins;
+    }
+
+    public boolean isStandingsCaptured() {
+        return standingsCaptured;
     }
 
     /** False when the month closed with nobody clearing the games threshold. */

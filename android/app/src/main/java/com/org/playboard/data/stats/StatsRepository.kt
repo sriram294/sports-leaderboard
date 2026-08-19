@@ -4,6 +4,7 @@ import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
+import com.org.playboard.data.model.MonthlyFinish
 import com.org.playboard.data.model.Partner
 import com.org.playboard.data.model.PlayerStats
 import com.org.playboard.data.remote.PlayboardApi
@@ -12,6 +13,7 @@ import com.org.playboard.data.remote.dto.MatchSetDto
 import com.org.playboard.data.remote.dto.MatchSummaryDto
 import com.org.playboard.data.remote.dto.MatchTeamDto
 import com.org.playboard.data.remote.dto.MonthlyTrophyDto
+import com.org.playboard.data.remote.dto.MonthlyFinishDto
 import com.org.playboard.data.remote.dto.PartnerDto
 import com.org.playboard.data.remote.dto.PlayerStatsDto
 import com.org.playboard.data.trophy.toMonthlyTrophyOrNull
@@ -73,7 +75,16 @@ private fun PlayerStatsDto.toStats() = PlayerStats(
     recentMatches = recentMatches.map(MatchSummaryDto::toMatch),
     // mapNotNull so a malformed trophy row costs its own badge, not the whole profile.
     trophies = trophies.mapNotNull(MonthlyTrophyDto::toMonthlyTrophyOrNull),
+    monthlyFinishes = monthlyFinishes.mapNotNull(MonthlyFinishDto::toMonthlyFinishOrNull),
 )
+
+internal fun MonthlyFinishDto.toMonthlyFinishOrNull(): MonthlyFinish? = runCatching {
+    MonthlyFinish(
+        month = java.time.YearMonth.parse(month),
+        rank = rank?.takeIf { it > 0 },
+        qualifiedPlayers = qualifiedPlayers.coerceAtLeast(0),
+    )
+}.getOrNull()
 
 private fun PartnerDto.toPartner() = Partner(
     userId = userId,
