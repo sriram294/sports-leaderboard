@@ -67,6 +67,8 @@ export type MatchListResponse = { matches: Match[]; nextCursor?: string };
 export type Partner = { userId: string; displayName: string; avatarId?: string | null; photoUrl?: string | null; avatarColor: string; gamesTogether: number; winsTogether: number; winRate: number };
 /** A month the player topped the group leaderboard (MonthlyTrophyDto). */
 export type MonthlyTrophy = { month: string; userId: string; displayName: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string; rating: number; gamesPlayed: number; wins: number };
+/** One captured completed month; a null rank is a missing/provisional finish. */
+export type MonthlyFinish = { month: string; rank: number | null; qualifiedPlayers: number };
 /** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — the full player-stats payload. */
 export type PlayerStats = {
   userId: string;
@@ -84,6 +86,7 @@ export type PlayerStats = {
   matchesPlayed: number;
   recentMatches: Match[];
   trophies: MonthlyTrophy[];
+  monthlyFinishes?: MonthlyFinish[];
 };
 /** `GET /groups/{id}/members/{userId}/attendance?from&to` (PlayerAttendanceDto). */
 export type PlayerAttendance = { playedAt: string[] };

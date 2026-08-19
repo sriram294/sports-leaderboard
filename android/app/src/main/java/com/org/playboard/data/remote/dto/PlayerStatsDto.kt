@@ -26,6 +26,15 @@ data class PlayerStatsDto(
     val recentMatches: List<MatchSummaryDto> = emptyList(),
     /** Months this player topped the group, newest first. Empty on a pre-trophy backend. */
     val trophies: List<MonthlyTrophyDto> = emptyList(),
+    /** Captured completed months in chronological order; rank is null for a gap. */
+    val monthlyFinishes: List<MonthlyFinishDto> = emptyList(),
+)
+
+@Serializable
+data class MonthlyFinishDto(
+    val month: String,
+    val rank: Int? = null,
+    val qualifiedPlayers: Int,
 )
 
 /** `GET /groups/{groupId}/members/{userId}/stats/partners` — fetched separately, on expand. */

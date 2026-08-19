@@ -22,4 +22,6 @@ public record PlayerStatsDto(
         int bestStreak,
         List<MatchSummaryDto> recentMatches,
         /** Months this player topped the group, newest first; empty for everyone else. */
-        List<MonthlyTrophyDto> trophies) {}
+        List<MonthlyTrophyDto> trophies,
+        /** Up to 12 captured completed months, chronological (newest last). */
+        List<MonthlyFinishDto> monthlyFinishes) {}

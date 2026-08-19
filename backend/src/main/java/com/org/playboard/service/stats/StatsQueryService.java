@@ -4,6 +4,7 @@ import com.org.playboard.common.ApiException;
 import com.org.playboard.dto.match.MatchSummaryDto;
 import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import com.org.playboard.dto.stats.LeaderboardResponse;
+import com.org.playboard.dto.stats.MonthlyFinishDto;
 import com.org.playboard.dto.stats.PartnerDto;
 import com.org.playboard.dto.stats.PlayerAttendanceDto;
 import com.org.playboard.dto.stats.PlayerStatsDto;
@@ -18,6 +19,7 @@ import com.org.playboard.repository.match.MatchParticipantRepository.PartnerRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.RecentFormRow;
 import com.org.playboard.repository.match.MatchParticipantRepository.WindowedStatRow;
 import com.org.playboard.repository.stats.MemberStatsRepository;
+import com.org.playboard.repository.stats.MonthlyStandingRepository;
 import com.org.playboard.service.group.GroupMembershipGuard;
 import com.org.playboard.service.match.MatchService;
 import com.org.playboard.service.stats.LeaderboardRanker.RawStatRow;
@@ -26,7 +28,9 @@ import com.org.playboard.service.user.AvatarUrlResolver;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +55,7 @@ public class StatsQueryService {
     private final MatchService matchService;
     private final AvatarUrlResolver avatarUrls;
     private final MonthlyTrophyService monthlyTrophyService;
+    private final MonthlyStandingRepository monthlyStandingRepository;
 
     public StatsQueryService(
             GroupMembershipGuard membershipGuard,
@@ -59,7 +64,8 @@ public class StatsQueryService {
             MatchParticipantRepository matchParticipantRepository,
             MatchService matchService,
             AvatarUrlResolver avatarUrls,
-            MonthlyTrophyService monthlyTrophyService) {
+            MonthlyTrophyService monthlyTrophyService,
+            MonthlyStandingRepository monthlyStandingRepository) {
         this.membershipGuard = membershipGuard;
         this.groupMemberRepository = groupMemberRepository;
         this.memberStatsRepository = memberStatsRepository;
@@ -67,6 +73,7 @@ public class StatsQueryService {
         this.matchService = matchService;
         this.avatarUrls = avatarUrls;
         this.monthlyTrophyService = monthlyTrophyService;
+        this.monthlyStandingRepository = monthlyStandingRepository;
     }
 
     @Transactional(readOnly = true)
@@ -242,7 +249,18 @@ public class StatsQueryService {
                 stats.getCurrentStreak(),
                 stats.getBestStreak(),
                 recentMatches,
-                monthlyTrophyService.forPlayer(groupId, user));
+                monthlyTrophyService.forPlayer(groupId, user),
+                monthlyFinishes(groupId, targetUserId));
+    }
+
+    private List<MonthlyFinishDto> monthlyFinishes(UUID groupId, UUID userId) {
+        List<MonthlyFinishDto> finishes = monthlyStandingRepository
+                .findLatestFinishes(groupId, userId).stream()
+                .map(row -> new MonthlyFinishDto(
+                        YearMonth.from(row.getMonth()).toString(), row.getRank(), row.getQualifiedPlayers()))
+                .collect(Collectors.toCollection(ArrayList::new));
+        Collections.reverse(finishes);
+        return finishes;
     }
 
     /**

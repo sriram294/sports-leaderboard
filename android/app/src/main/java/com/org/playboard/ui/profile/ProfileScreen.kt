@@ -276,6 +276,7 @@ private fun StatsList(
             }
         }
         item { StatTilesGrid(stats = stats) }
+        item { MonthlyFinishesCard(stats.monthlyFinishes) }
         if (state.attendanceMonths.isNotEmpty()) {
             item { AttendanceCalendar(months = state.attendanceMonths, activeDays = state.attendanceDays) }
         }

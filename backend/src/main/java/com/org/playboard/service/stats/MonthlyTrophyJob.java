@@ -59,6 +59,7 @@ public class MonthlyTrophyJob {
     private final GroupMemberRepository groupMemberRepository;
     private final MonthlyTrophyRepository trophyRepository;
     private final StatsQueryService statsQueryService;
+    private final MonthlyStandingsWriter standingsWriter;
     private final NotificationLogService notificationLog;
     private final PushNotificationService pushNotificationService;
     private final ZoneId zone;
@@ -69,6 +70,7 @@ public class MonthlyTrophyJob {
             GroupMemberRepository groupMemberRepository,
             MonthlyTrophyRepository trophyRepository,
             StatsQueryService statsQueryService,
+            MonthlyStandingsWriter standingsWriter,
             NotificationLogService notificationLog,
             PushNotificationService pushNotificationService,
             // Nothing in the schema stores a per-group timezone, so the job owns the
@@ -80,6 +82,7 @@ public class MonthlyTrophyJob {
         this.groupMemberRepository = groupMemberRepository;
         this.trophyRepository = trophyRepository;
         this.statsQueryService = statsQueryService;
+        this.standingsWriter = standingsWriter;
         this.notificationLog = notificationLog;
         this.pushNotificationService = pushNotificationService;
         this.zone = zone;
@@ -116,10 +119,8 @@ public class MonthlyTrophyJob {
         }
     }
 
-    // The transaction that awardIfAbsent needs lives on MonthlyTrophyRepository itself, not
-    // here — this method is reached via self-invocation from awardCompletedMonths, which
-    // Spring's proxy-based @Transactional cannot intercept. See the Javadoc on
-    // MonthlyTrophyRepository.awardIfAbsent.
+    // The injected writer owns the transaction; this method is reached through self-invocation,
+    // so putting @Transactional here would not be intercepted by Spring.
     private void awardMonth(UUID groupId, YearMonth month) {
         Instant from = month.atDay(1).atStartOfDay(zone).toInstant();
         Instant to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
@@ -130,15 +131,7 @@ public class MonthlyTrophyJob {
         // A month with no qualifying player still gets a row, with a null user. Without that
         // verdict the month stays "undecided" and is re-evaluated on every run, forever.
         // See pickWinner for when that actually happens — it is rarer than it looks.
-        int claimed = trophyRepository.awardIfAbsent(
-                groupId,
-                winner.map(LeaderboardEntryDto::userId).orElse(null),
-                month.atDay(1),
-                winner.map(LeaderboardEntryDto::rating).orElse(null),
-                winner.map(LeaderboardEntryDto::gamesPlayed).orElse(null),
-                winner.map(LeaderboardEntryDto::wins).orElse(null));
-
-        if (claimed == 0) {
+        if (!standingsWriter.capture(groupId, month, standings, winner)) {
             // Another instance decided this month first; it owns the announcement.
             return;
         }

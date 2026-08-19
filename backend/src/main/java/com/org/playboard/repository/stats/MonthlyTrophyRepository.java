@@ -26,12 +26,8 @@ public interface MonthlyTrophyRepository extends JpaRepository<MonthlyTrophy, UU
      * <p>A null {@code userId} is a legitimate verdict, meaning the month was evaluated and
      * nobody qualified.
      *
-     * <p>{@code @Transactional} lives here rather than on {@code MonthlyTrophyJob}: the job
-     * calls this three levels deep through plain {@code this.} calls
-     * ({@code awardCompletedMonths -> processGroup -> awardMonth}), and Spring's proxy-based
-     * AOP does not intercept self-invocation, so an annotation up there would silently no-op.
-     * This repository method is always invoked through its own Spring-managed proxy no matter
-     * who calls it, so the transaction always actually opens.
+     * <p>The encompassing transaction lives on {@link MonthlyStandingsWriter}, which commits
+     * this claim and the complete standings snapshot together.
      */
     @Transactional
     @Modifying
@@ -39,13 +35,13 @@ public interface MonthlyTrophyRepository extends JpaRepository<MonthlyTrophy, UU
             value =
                     """
                     insert into monthly_trophy
-                        (id, group_id, user_id, month, rating, games_played, wins, created_at, updated_at)
+                        (id, group_id, user_id, month, rating, games_played, wins, standings_captured, created_at, updated_at)
                     values
-                        (gen_random_uuid(), :groupId, :userId, :month, :rating, :gamesPlayed, :wins, now(), now())
+                        (gen_random_uuid(), :groupId, :userId, :month, :rating, :gamesPlayed, :wins, true, now(), now())
                     on conflict (group_id, month) do nothing
                     """,
             nativeQuery = true)
-    int awardIfAbsent(
+    int captureIfAbsent(
             @Param("groupId") UUID groupId,
             @Param("userId") UUID userId,
             @Param("month") LocalDate month,

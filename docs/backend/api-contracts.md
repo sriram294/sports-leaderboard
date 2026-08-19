@@ -263,9 +263,19 @@ requirement #2) — same endpoint, different `userId`.
   "userId": "uuid", "displayName": "Raj", "photoUrl": null, "avatarColor": "#9ADE28",
   "matchesPlayed": 8, "wins": 4, "losses": 4, "pointsFor": 315, "pointsAgainst": 320,
   "winRate": 0.5, "currentStreak": 2, "bestStreak": 2,
-  "recentMatches": [ /* MatchSummaryDto, newest first, capped at 5 */ ]
+  "recentMatches": [ /* MatchSummaryDto, newest first, capped at 5 */ ],
+  "monthlyFinishes": [
+    { "month": "2026-08", "rank": null, "qualifiedPlayers": 7 },
+    { "month": "2026-09", "rank": 3, "qualifiedPlayers": 8 }
+  ]
 }
 ```
+`monthlyFinishes` contains at most the latest 12 captured completed months in
+chronological order (newest last). A provisional result or no player row produces
+`rank: null`, preserving the calendar gap. `qualifiedPlayers` is the number of
+non-provisional players in that frozen month. Months predating V14 have
+`standings_captured = false` and are excluded rather than reconstructed.
+
 Partner counts are **not** included here — they're their own on-demand
 endpoint below, so a client can defer the query until the player actually
 opens a "Partners" list rather than loading it eagerly with the rest of this
