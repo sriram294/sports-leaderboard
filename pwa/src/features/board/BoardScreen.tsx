@@ -27,7 +27,8 @@ type Props = {
   range: TimeRange;
   onRangeChange: (range: TimeRange) => void;
   onPlayer: (userId: string) => void;
-  onShare: () => void;
+  shareStatus?: string;
+  onShare: () => void | Promise<void>;
 };
 
 /**
@@ -36,7 +37,7 @@ type Props = {
  * shown, so an empty window still lets the user switch ranges; below it sit the podium and
  * the RANKINGS card (whose header cycles the sort metric; each row's form dots come with it).
  */
-export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, onPlayer, onShare }: Props) {
+export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, onPlayer, shareStatus, onShare }: Props) {
   const [metric, setMetric] = useState<RankingSortMetric>('rating');
   // A different group is a different board, so the metric resets to the default.
   useEffect(() => setMetric('rating'), [groupId]);
@@ -55,6 +56,7 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
           <Icon name="share" size={18} />
         </button>
       </div>
+      {shareStatus && <p className="share-status" role="status">{shareStatus}</p>}
 
       {rankings.length === 0 ? (
         <p className="board-empty">

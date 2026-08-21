@@ -17,6 +17,8 @@ export function getStoredTheme(): ThemeMode {
 /** Reflect the mode onto <html data-theme> so CSS token overrides apply. */
 export function applyTheme(mode: ThemeMode): void {
   document.documentElement.setAttribute('data-theme', mode);
+  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+    ?.setAttribute('content', mode === 'dark' ? '#0a0a0a' : '#fafafa');
 }
 
 /** Call once before first render to avoid a flash of the wrong theme. */

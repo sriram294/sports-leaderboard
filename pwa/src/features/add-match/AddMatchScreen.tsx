@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Member, RecordMatchRequest, User } from '../../models';
 import { ApiError } from '../../data';
-import { Avatar } from '../../components';
+import { Avatar, useDialogA11y } from '../../components';
 import { Icon } from '../../icons';
 import {
   TEAM_SIZE,
@@ -187,9 +187,10 @@ function PlayerPicker({ teamNo, players, onPick, onClose }: {
   onPick: (userId: string) => void;
   onClose: () => void;
 }) {
+  const dialogRef = useDialogA11y(onClose);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+      <div ref={dialogRef} className="sheet" role="dialog" aria-modal="true" aria-label={`Add to Team ${teamNo}`} tabIndex={-1} onClick={event => event.stopPropagation()}>
         <div className="sheet-head">
           <span>Add to Team {teamNo}</span>
           <button className="icon-button" onClick={onClose} aria-label="Close"><Icon name="close" size={20} /></button>

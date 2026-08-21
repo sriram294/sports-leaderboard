@@ -12,12 +12,13 @@ switch (see Theming). Exposed as CSS custom properties on `:root`.
 | Token | Dark | Light |
 |---|---|---|
 | `--brand` (lime accent) | `#9ADE28` | `#4E8C0A` |
+| `--brand-text` (small accent copy) | `#9ADE28` | `#427A08` |
 | `--on-brand` | `#0A0A0A` | `#FFFFFF` |
 | `--bg` | `#0A0A0A` | `#FAFAFA` |
 | `--surface` | `#141414` | `#FFFFFF` |
 | `--surface-2` | `#1D1D1D` | `#F0F0F0` |
 | `--text` | `#F5F5F5` | `#1A1A1A` |
-| `--muted` | `#9E9E9E` | `#6B6B6B` |
+| `--muted` | `#9E9E9E` | `#626262` |
 | `--line` | `#292929` | `#E4E4E4` |
 | `--stat-win` | `#4ADE80` | `#16A34A` |
 | `--stat-loss` | `#F87171` | `#DC2626` |
@@ -63,5 +64,5 @@ before first paint (no flash); `useTheme()` is the React binding used by the Set
 - **`FormPill`** — W/L result chip (Board form bar, Stats form rows).
 - **`Button` / `Card` / `Loading` / `ErrorState` / `GroupPicker`** — theme-aware primitives.
 
-Shared controls remain semantic `<button>`/`<input>`. Per-screen CSS is retokenized
-as each screen's slice lands; a few scaffold aliases (`--lime`, `--red`) remain until then.
+Shared controls remain semantic `<button>`/`<input>`. All screen CSS uses the canonical
+theme tokens directly; the former scaffold aliases (`--lime`, `--red`) have been retired.

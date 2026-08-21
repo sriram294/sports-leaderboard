@@ -1,18 +1,67 @@
 import type { Group, InviteResponse, LeaderboardResponse, Match, MatchDetail, MatchListResponse, Member, MembersResponse, MonthlyTrophy, Partner, PlayerAttendance, PlayerStats, RecordMatchRequest, Session, User } from './models';
 
 const API = import.meta.env.VITE_API_URL || '/api/v1';
+const SESSION_KEY = 'playboard.session';
 export class ApiError extends Error { constructor(public status: number, public code: string, message: string) { super(message); } }
-let session: Session | null = JSON.parse(localStorage.getItem('playboard.session') || 'null');
-export const auth = { get: () => session, set: (s: Session | null) => { session = s; s ? localStorage.setItem('playboard.session', JSON.stringify(s)) : localStorage.removeItem('playboard.session'); } };
+
+function storedSession(): Session | null {
+  try {
+    const value = localStorage.getItem(SESSION_KEY);
+    return value ? JSON.parse(value) as Session : null;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}
+
+let session: Session | null = storedSession();
+const authListeners = new Set<(value: Session | null) => void>();
+export const auth = {
+  get: () => session,
+  set: (value: Session | null) => {
+    session = value;
+    value ? localStorage.setItem(SESSION_KEY, JSON.stringify(value)) : localStorage.removeItem(SESSION_KEY);
+    authListeners.forEach(listener => listener(value));
+  },
+  subscribe: (listener: (value: Session | null) => void) => {
+    authListeners.add(listener);
+    return () => authListeners.delete(listener);
+  },
+};
+
+let refreshPromise: Promise<boolean> | null = null;
+function refreshSession(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  const current = session;
+  if (!current?.refreshToken) return Promise.resolve(false);
+  refreshPromise = fetch(`${API}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: current.refreshToken }),
+  }).then(async response => {
+    if (!response.ok) {
+      auth.set(null);
+      return false;
+    }
+    const tokens = await response.json();
+    // Do not restore a session that was explicitly cleared while refresh was in flight.
+    if (!session) return false;
+    auth.set({ ...session, ...tokens, user: tokens.user ?? session.user, expiresAt: Date.now() + tokens.expiresIn * 1000 });
+    return true;
+  }).catch(() => {
+    auth.set(null);
+    return false;
+  }).finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   // Let the browser set multipart boundaries; only JSON bodies get an explicit content type.
   const headers = new Headers(init.headers); if (!(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   if (session?.accessToken) headers.set('Authorization', `Bearer ${session.accessToken}`);
   const response = await fetch(`${API}${path}`, { ...init, headers });
   if (response.status === 401 && retry && session?.refreshToken) {
-    const refreshed = await fetch(`${API}/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: session.refreshToken }) });
-    if (refreshed.ok) { const tokens = await refreshed.json(); auth.set({ ...session, ...tokens, expiresAt: Date.now() + tokens.expiresIn * 1000 }); return request<T>(path, init, false); }
-    auth.set(null);
+    if (await refreshSession()) return request<T>(path, init, false);
   }
   if (!response.ok) { let body: { detail?: string; code?: string } = {}; try { body = await response.json(); } catch {} throw new ApiError(response.status, body.code || 'REQUEST_FAILED', body.detail || 'Something went wrong'); }
   return response.status === 204 ? undefined as T : response.json();

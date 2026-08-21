@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { api } from './data';
 import type { Group } from './models';
 
@@ -16,19 +17,22 @@ type GroupValue = {
   activeGroup?: Group;
   isLoading: boolean;
   error: unknown;
+  refetch: () => void;
   setActiveGroup: (id: string) => void;
 };
 
 const GroupContext = createContext<GroupValue | null>(null);
 
 export function GroupProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading, error } = useQuery({ queryKey: ['groups'], queryFn: () => api.groups() });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['groups'], queryFn: () => api.groups() });
   const groups = data?.groups ?? [];
   const [selectedId, setSelectedId] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
+  const linkedGroupId = searchParams.get('group');
 
   const activeGroup = useMemo(
-    () => groups.find(group => group.id === selectedId) ?? groups[0],
-    [groups, selectedId],
+    () => groups.find(group => group.id === linkedGroupId) ?? groups.find(group => group.id === selectedId) ?? groups[0],
+    [groups, linkedGroupId, selectedId],
   );
 
   // Keep the persisted id aligned with the resolved active group (covers first
@@ -43,10 +47,16 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const setActiveGroup = (id: string) => {
     setSelectedId(id);
     localStorage.setItem(STORAGE_KEY, id);
+    if (searchParams.has('group')) {
+      const next = new URLSearchParams(searchParams);
+      next.set('group', id);
+      next.delete('match');
+      setSearchParams(next, { replace: true });
+    }
   };
 
   return (
-    <GroupContext.Provider value={{ groups, activeGroup, isLoading, error, setActiveGroup }}>
+    <GroupContext.Provider value={{ groups, activeGroup, isLoading, error, refetch, setActiveGroup }}>
       {children}
     </GroupContext.Provider>
   );

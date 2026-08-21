@@ -1,12 +1,13 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { MatchSet, MonthlyFinish, Partner, PlayerStats } from '../../models';
-import { Avatar } from '../../components';
+import { Avatar, useDialogA11y } from '../../components';
 import { Icon } from '../../icons';
 import { usePartners } from '../../queries';
 import {
   WEEKDAYS,
   dateLabel,
   monthShortLabel,
+  monthlyTrophyLabel,
   percent,
   recentMatchRow,
   streakLabel,
@@ -106,6 +107,8 @@ export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onR
 
       <MonthlyFinishesChart finishes={stats.monthlyFinishes ?? []} />
 
+      {stats.trophies?.length > 0 && <TrophyShelf trophies={stats.trophies} />}
+
       {attendance && attendance.months.length > 0 && <ActivityHeatmap attendance={attendance} />}
 
       <PartnersCard groupId={groupId} userId={stats.userId} />
@@ -126,6 +129,25 @@ export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onR
         <RenameSheet current={identity.displayName} onClose={() => setRenaming(false)} onRename={onRename} />
       )}
     </div>
+  );
+}
+
+function TrophyShelf({ trophies }: { trophies: PlayerStats['trophies'] }) {
+  return (
+    <>
+      <p className="section-label">TROPHY SHELF</p>
+      <div className="card winners-row trophy-shelf">
+        {trophies.map(trophy => (
+          <div className="winner-tile" key={trophy.month}>
+            <span className="winner-avatar">
+              <Avatar person={trophy} size={56} />
+              <span className="winner-crown" aria-label="Monthly winner">👑</span>
+            </span>
+            <span className="winner-month">{monthlyTrophyLabel(trophy.month)}</span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -210,10 +232,11 @@ function StatTile({ label, value, accent = false }: { label: string; value: stri
 }
 
 function ActivityHeatmap({ attendance }: { attendance: ProfileAttendance }) {
+  const description = `${attendance.activeDays.size} active ${attendance.activeDays.size === 1 ? 'day' : 'days'} across ${attendance.months.map(month => monthShortLabel(month)).join(', ')}.`;
   return (
     <>
       <p className="section-label">ACTIVITY</p>
-      <div className="card heatmap">
+      <div className="card heatmap" role="img" aria-label={`Match activity. ${description}`}>
         <div className="heatmap-axis">
           <span className="heatmap-header-spacer" />
           {WEEKDAYS.map(day => <span key={day} className="heatmap-weekday">{day}</span>)}
@@ -302,9 +325,10 @@ const scoreLine = (sets: MatchSet[]) => sets.map(s => `${s.team1Score}-${s.team2
 
 function AvatarSheet({ onClose, onSelect, onUpload }: { onClose: () => void; onSelect: (avatarId: string) => void; onUpload: (file: File) => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const dialogRef = useDialogA11y(onClose);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+      <div ref={dialogRef} className="sheet" role="dialog" aria-modal="true" aria-label="Choose avatar" tabIndex={-1} onClick={event => event.stopPropagation()}>
         <div className="sheet-head">
           <span>Choose avatar</span>
           <button className="icon-button" onClick={onClose} aria-label="Close"><Icon name="close" size={20} /></button>
@@ -332,6 +356,7 @@ function RenameSheet({ current, onClose, onRename }: { current: string; onClose:
   const [name, setName] = useState(current);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const dialogRef = useDialogA11y(onClose);
   const submit = async () => {
     if (!name.trim() || saving) return;
     setSaving(true);
@@ -340,7 +365,7 @@ function RenameSheet({ current, onClose, onRename }: { current: string; onClose:
   };
   return (
     <div className="sheet-backdrop" onClick={() => !saving && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+      <div ref={dialogRef} className="sheet" role="dialog" aria-modal="true" aria-label="Edit name" tabIndex={-1} onClick={event => event.stopPropagation()}>
         <div className="sheet-head">
           <span>Edit name</span>
           <button className="icon-button" onClick={onClose} aria-label="Close"><Icon name="close" size={20} /></button>

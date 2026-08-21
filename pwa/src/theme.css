@@ -12,6 +12,7 @@
 :root[data-theme='dark'] {
     color-scheme: dark;
     --brand: #9ADE28;
+    --brand-text: #9ADE28;
     --on-brand: #0A0A0A;
     --bg: #0A0A0A;
     --surface: #141414;
@@ -28,20 +29,18 @@
     --rank-3: var(--rate-mid);
     --glow-warm: rgba(154, 222, 40, 0.149);
     --glow-cool: rgba(91, 140, 255, 0.102);
-    /* Legacy scaffold aliases — retired as each screen slice retokenizes. */
-    --lime: var(--brand);
-    --red: var(--stat-loss);
 }
 
 :root[data-theme='light'] {
     color-scheme: light;
     --brand: #4E8C0A;
+    --brand-text: #427A08;
     --on-brand: #FFFFFF;
     --bg: #FAFAFA;
     --surface: #FFFFFF;
     --surface-2: #F0F0F0;
     --text: #1A1A1A;
-    --muted: #6B6B6B;
+    --muted: #626262;
     --line: #E4E4E4;
     --stat-win: #16A34A;
     --stat-loss: #DC2626;
@@ -87,6 +86,7 @@ body {
     min-width: 320px;
     /* Transparent so the fixed glow layer shows through the app shell. */
     background: transparent;
+    overflow-x: hidden;
 }
 
 button,
@@ -102,6 +102,23 @@ button {
 button:disabled {
     cursor: wait;
     opacity: .6;
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--brand);
+    outline-offset: 3px;
+}
+
+.shell-state {
+    display: grid;
+    place-items: center;
+    padding: 32px 20px;
+}
+
+.share-status {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 13px;
 }
 
 .app-shell {
@@ -142,7 +159,7 @@ header {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--lime);
+    color: var(--brand);
     font-weight: 400;
     font-size: 14px;
 }
@@ -150,7 +167,7 @@ header {
 .group-picker select {
     appearance: none;
     border: 0;
-    color: #fff;
+    color: var(--text);
     background: transparent;
     font-weight: 400;
     outline: 0;
@@ -158,7 +175,7 @@ header {
 }
 
 .group-picker option {
-    background: #222;
+    background: var(--surface-2);
 }
 
 .group-dot {
@@ -173,8 +190,17 @@ header {
 .back {
     border: 0;
     background: none;
-    color: #fff;
+    color: var(--text);
     padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
 }
 
 .profile-button {
@@ -208,7 +234,7 @@ h1 {
 }
 
 h1 em {
-    color: var(--lime);
+    color: var(--brand);
     font-style: normal;
 }
 
@@ -246,8 +272,8 @@ h3 {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--lime);
-    box-shadow: 0 0 12px var(--lime);
+    background: var(--brand);
+    box-shadow: 0 0 12px var(--brand);
 }
 
 .card {
@@ -675,7 +701,7 @@ h3 {
 }
 
 .nav-item.active {
-    color: var(--brand);
+    color: var(--brand-text);
 }
 
 .nav-item.active::after {
@@ -710,8 +736,8 @@ h3 {
     border: 0;
     border-radius: 12px;
     padding: 14px 18px;
-    background: var(--lime);
-    color: #101010;
+    background: var(--brand);
+    color: var(--on-brand);
     font-weight: 400;
     transition: filter .2s;
 }
@@ -722,7 +748,7 @@ h3 {
 
 .button.ghost {
     background: var(--surface-2);
-    color: #fff;
+    color: var(--text);
     border: 1px solid var(--line);
 }
 
@@ -733,7 +759,7 @@ h3 {
 
 .text-button {
     border: 0;
-    color: var(--lime);
+    color: var(--brand);
     background: none;
     font-weight: 400;
     font-size: 12px;
@@ -1319,7 +1345,7 @@ h3 {
 }
 
 .segmented button.selected {
-    color: var(--lime);
+    color: var(--brand);
     border-color: #648c20;
 }
 
@@ -1331,11 +1357,11 @@ h3 {
     color: #fff;
     padding: 12px;
     margin-bottom: 10px;
-    outline-color: var(--lime);
+    outline-color: var(--brand);
 }
 
 .success {
-    color: var(--lime);
+    color: var(--brand);
     font-size: 13px;
 }
 
@@ -1369,7 +1395,7 @@ h3 {
 }
 
 .toggle.on {
-    color: var(--lime);
+    color: var(--brand);
 }
 
 .stat-grid {
@@ -1388,7 +1414,7 @@ h3 {
 
 .stat-grid strong {
     font-size: 26px;
-    color: var(--lime);
+    color: var(--brand);
 }
 
 .stat-grid span {
@@ -1411,12 +1437,12 @@ h3 {
 }
 
 .lime {
-    color: var(--lime);
+    color: var(--brand);
     font-weight: 400;
 }
 
 .back {
-    color: var(--lime);
+    color: var(--brand);
     margin-bottom: 22px;
 }
 
@@ -1544,7 +1570,7 @@ h3 {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--lime);
+    background: var(--brand);
     animation: pulse 1s infinite alternate;
 }
 
@@ -1566,12 +1592,12 @@ h3 {
 @media (min-width: 700px) {
     body {
         padding: 24px 0;
-        background: #050505;
+        background: color-mix(in srgb, var(--bg) 94%, #000);
     }
 
     .app-shell {
         min-height: calc(100dvh - 48px);
-        border: 1px solid #222;
+        border: 1px solid var(--line);
         border-radius: 22px;
         overflow: hidden;
     }

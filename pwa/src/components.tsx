@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import type { Group } from './models';
 
 /** Single first-letter initial, matching Android's `PlayerAvatar` (`displayName.take(1)`) —
@@ -58,7 +58,7 @@ export function GroupAvatar({ group, size = 36 }: { group: { name: string; avata
 /** Playboard wordmark — racket logo as the "P" + "layboard" in Paytone One. */
 export function Wordmark({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
   return (
-    <span className={`wordmark ${size}`} aria-label="Playboard">
+    <span className={`wordmark ${size}`} role="img" aria-label="Playboard">
       <img className="wordmark-racket" src={racketLogo} alt="" aria-hidden="true" />
       <span className="wordmark-text" aria-hidden="true">layboard</span>
     </span>
@@ -84,11 +84,38 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
 }
 
 export function Loading() {
-  return <div className="loading" aria-label="Loading"><span /><span /><span /></div>;
+  return <div className="loading" role="status" aria-label="Loading"><span /><span /><span /></div>;
 }
 
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }) {
-  return <div className="empty error"><strong>Couldn’t load this</strong><p>{message}</p>{retry && <Button variant="ghost" onClick={retry}>Try again</Button>}</div>;
+  return <div className="empty error" role="alert"><strong>Couldn’t load this</strong><p>{message}</p>{retry && <Button variant="ghost" onClick={retry}>Try again</Button>}</div>;
+}
+
+/** Focus trap, Escape dismissal, and focus restoration shared by modal sheets/dialogs. */
+export function useDialogA11y(onClose: () => void, active = true): RefObject<HTMLDivElement | null> {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!active) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const focusable = () => [...(dialog?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? [])];
+    queueMicrotask(() => (dialog?.querySelector<HTMLElement>('[autofocus]') ?? focusable()[0] ?? dialog)?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); return; }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) { event.preventDefault(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    dialog?.addEventListener('keydown', onKeyDown);
+    return () => { dialog?.removeEventListener('keydown', onKeyDown); previous?.focus(); };
+  }, [active]);
+  return dialogRef;
 }
 
 export function GroupPicker({ groups, active, onChange }: { groups: Group[]; active?: Group; onChange: (g: Group) => void }) {

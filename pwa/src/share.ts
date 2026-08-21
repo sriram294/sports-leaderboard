@@ -28,11 +28,41 @@ export async function leaderboardImage(group: Group | undefined, rankings: Ranki
 
 export async function shareLeaderboard(group: Group | undefined, rankings: Ranking[]) {
   const text = leaderboardText(group, rankings);
+  let image: File | undefined;
   try {
-    const image = await leaderboardImage(group, rankings);
-    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [image] }))) { await navigator.share({ title: 'Playboard leaderboard', text, files: [image] }); return 'shared' as const; }
-  } catch (error) { if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled' as const; }
-  if (navigator.share) { await navigator.share({ title: 'Playboard leaderboard', text }); return 'shared' as const; }
-  if (navigator.clipboard) { await navigator.clipboard.writeText(text); return 'copied' as const; }
-  const link = document.createElement('a'); link.href = URL.createObjectURL(await leaderboardImage(group, rankings)); link.download = 'playboard-leaderboard.png'; link.click(); URL.revokeObjectURL(link.href); return 'downloaded' as const;
+    image = await leaderboardImage(group, rankings);
+    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [image] }))) {
+      try {
+        await navigator.share({ title: 'Playboard leaderboard', text, files: [image] });
+        return 'shared' as const;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled' as const;
+      }
+    }
+  } catch { /* Continue through the capability fallbacks. */ }
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Playboard leaderboard', text });
+      return 'shared' as const;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled' as const;
+    }
+  }
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return 'copied' as const;
+    } catch { /* Download remains available when clipboard permission is denied. */ }
+  }
+  try {
+    image ??= await leaderboardImage(group, rankings);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(image);
+    link.download = 'playboard-leaderboard.png';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    return 'downloaded' as const;
+  } catch {
+    return 'failed' as const;
+  }
 }

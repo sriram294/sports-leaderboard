@@ -29,7 +29,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | undefined>(() => auth.get()?.user);
 
   useEffect(() => {
-    if (!auth.get()) return;
+    const unsubscribe = auth.subscribe(next => {
+      if (!next) {
+        setUser(undefined);
+        setStatus('anon');
+      }
+    });
+    if (!auth.get()) return unsubscribe;
     let active = true;
     api.me()
       .then(me => {
@@ -44,7 +50,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setUser(undefined);
         setStatus('anon');
       });
-    return () => { active = false; };
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   const login = (tokens: AuthTokens) => {

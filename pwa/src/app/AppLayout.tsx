@@ -3,6 +3,8 @@ import { Wordmark } from '../components';
 import { Icon } from '../icons';
 import { GroupSwitcher } from './GroupSwitcher';
 import { BottomNav } from './BottomNav';
+import { useGroups } from '../groups';
+import { ErrorState, Loading } from '../components';
 
 /**
  * Authenticated app frame: sticky header (wordmark + settings gear), the group
@@ -11,6 +13,9 @@ import { BottomNav } from './BottomNav';
  */
 export function AppLayout() {
   const navigate = useNavigate();
+  const groups = useGroups();
+  if (groups.isLoading) return <div className="app-shell shell-state"><Loading /></div>;
+  if (groups.error) return <div className="app-shell shell-state"><ErrorState message="Couldn’t load your groups." retry={groups.refetch} /></div>;
   return (
     <div className="app-shell">
       <header>

@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
   // Firebase Web app config + FCM Web Push VAPID key (all public). Set in Vercel to
   // enable web push; absent = push stays "unconfigured" and the UI hides the control.
   readonly VITE_FIREBASE_API_KEY?: string;

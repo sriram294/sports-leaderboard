@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Group, Match, MatchDetail, MatchTeam } from '../../models';
-import { Avatar } from '../../components';
+import { Avatar, useDialogA11y } from '../../components';
 import { useMatchDetail } from '../../queries';
 import {
   actionLabel,
@@ -15,12 +15,15 @@ type Props = {
   group: Group;
   groupId: string;
   matches: Match[];
+  initialExpandedId?: string;
+  targetError?: string;
   currentUserId?: string;
   canModerate: boolean;
   mine: boolean;
   onToggleMine: () => void;
   canLoadMore: boolean;
   isLoadingMore: boolean;
+  loadMoreError: boolean;
   onLoadMore: () => void;
   onDelete: (matchId: string) => Promise<void>;
   onEdit: (matchId: string) => void;
@@ -33,13 +36,14 @@ type Props = {
  * with edit/delete for the recorder or a group moderator.
  */
 export function MatchHistoryScreen(props: Props) {
-  const { matches, mine, onToggleMine, canLoadMore, isLoadingMore, onLoadMore } = props;
+  const { matches, mine, onToggleMine, canLoadMore, isLoadingMore, loadMoreError, onLoadMore } = props;
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
-  const [expandedId, setExpandedId] = useState<string>();
+  const [expandedId, setExpandedId] = useState<string | undefined>(props.initialExpandedId);
 
   const sections = groupMatchesByDate(matches);
   const newestDate = sections[0]?.date;
-  const isDateExpanded = (date: string) => expandedDates[date] ?? date === newestDate;
+  const isDateExpanded = (date: string) => expandedDates[date]
+    ?? (date === newestDate || sections.find(section => section.date === date)?.matches.some(match => match.id === props.initialExpandedId) === true);
   const toggleDate = (date: string) => setExpandedDates(prev => ({ ...prev, [date]: !isDateExpanded(date) }));
 
   return (
@@ -54,6 +58,8 @@ export function MatchHistoryScreen(props: Props) {
           My matches
         </button>
       </div>
+
+      {props.targetError && <p className="form-error" role="alert">{props.targetError}</p>}
 
       {matches.length === 0 ? (
         <p className="matches-empty">
@@ -88,7 +94,7 @@ export function MatchHistoryScreen(props: Props) {
 
           {canLoadMore && (
             <button className="load-older" onClick={onLoadMore} disabled={isLoadingMore}>
-              {isLoadingMore ? 'Loading…' : 'Load older matches'}
+              {isLoadingMore ? 'Loading…' : loadMoreError ? 'Retry loading older matches' : 'Load older matches'}
             </button>
           )}
         </>
@@ -126,7 +132,7 @@ function MatchCard({ match, groupId, expanded, currentUserId, canModerate, onTog
       {expanded && (
         <div className="match-detail">
           {detail.isLoading && <p className="muted">Loading…</p>}
-          {detail.error && <p className="muted">Couldn't load match details.</p>}
+          {detail.error && <button className="link-retry" onClick={() => detail.refetch()}>Couldn’t load match details. Retry</button>}
           {detail.data && (
             <ExpandedDetail
               detail={detail.data}
@@ -169,12 +175,20 @@ function ExpandedDetail({ detail, canModify, onEdit, onDelete }: {
 }) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>();
   const winner = winningTeamNo(detail);
   const winnerName = winner != null ? teamName(matchTeam(detail, winner)) : null;
+  const dialogRef = useDialogA11y(() => { if (!deleting) setConfirming(false); }, confirming);
 
   const confirmDelete = async () => {
     setDeleting(true);
-    try { await onDelete(detail.id); } finally { setDeleting(false); setConfirming(false); }
+    setDeleteError(undefined);
+    try {
+      await onDelete(detail.id);
+      setConfirming(false);
+    } catch {
+      setDeleteError('Couldn’t delete this match. Try again.');
+    } finally { setDeleting(false); }
   };
 
   return (
@@ -199,9 +213,10 @@ function ExpandedDetail({ detail, canModify, onEdit, onDelete }: {
 
       {confirming && (
         <div className="confirm-backdrop" onClick={() => !deleting && setConfirming(false)}>
-          <div className="confirm-dialog" role="alertdialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+          <div ref={dialogRef} className="confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Delete match" tabIndex={-1} onClick={event => event.stopPropagation()}>
             <h3>Delete match?</h3>
             <p className="muted">This permanently removes the match and updates the leaderboard.</p>
+            {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
             <div className="confirm-actions">
               <button className="confirm-cancel" onClick={() => setConfirming(false)} disabled={deleting}>Cancel</button>
               <button className="confirm-delete" onClick={confirmDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>

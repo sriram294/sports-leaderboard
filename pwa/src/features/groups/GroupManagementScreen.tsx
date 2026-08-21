@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGroups } from '../../groups';
 import { useSession } from '../../session';
-import { useMembers, membersKey } from '../../queries';
+import { invalidateGroupData, useMembers, membersKey } from '../../queries';
 import { api, ApiError } from '../../data';
 import { canChangeRoles, canManageGroup, canRemoveMember, groupErrorMessage, roleToggle, sessionValid, sessionWindowLabel } from '../../domain';
-import { Avatar, GroupAvatar, Loading } from '../../components';
+import { Avatar, GroupAvatar, Loading, useDialogA11y } from '../../components';
 import { Icon } from '../../icons';
 import type { Group, Member } from '../../models';
 import { AddMemberSheet, InviteSheet } from './GroupSheets';
@@ -64,6 +64,7 @@ function GroupDetail({ group, onBack }: { group: Group; onBack: () => void }) {
   const invalidate = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['groups'] }),
     queryClient.invalidateQueries({ queryKey: membersKey(group.id) }),
+    invalidateGroupData(queryClient, group.id),
   ]);
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
@@ -154,9 +155,10 @@ function SessionSheet({ group, busy, onClose, onSave }: { group: Group; busy: bo
   const [start, setStart] = useState(group.sessionStart ?? '19:00');
   const [end, setEnd] = useState(group.sessionEnd ?? '21:00');
   const valid = sessionValid(start, end);
+  const dialogRef = useDialogA11y(onClose);
   return (
     <div className="sheet-backdrop" onClick={() => !busy && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+      <div ref={dialogRef} className="sheet" role="dialog" aria-modal="true" aria-label="Session time" tabIndex={-1} onClick={event => event.stopPropagation()}>
         <div className="sheet-head"><span>Session time</span><button className="icon-button" onClick={onClose} aria-label="Close" disabled={busy}><Icon name="close" size={20} /></button></div>
         <label className="time-field"><span>Start</span><input type="time" value={start} onChange={event => setStart(event.target.value)} /></label>
         <label className="time-field"><span>End</span><input type="time" value={end} onChange={event => setEnd(event.target.value)} /></label>
@@ -171,9 +173,10 @@ function SessionSheet({ group, busy, onClose, onSave }: { group: Group; busy: bo
 }
 
 function ConfirmSheet({ title, body, confirmLabel, busy, onConfirm, onClose }: { title: string; body: string; confirmLabel: string; busy: boolean; onConfirm: () => void; onClose: () => void }) {
+  const dialogRef = useDialogA11y(onClose);
   return (
     <div className="sheet-backdrop" onClick={() => !busy && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+      <div ref={dialogRef} className="sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onClick={event => event.stopPropagation()}>
         <div className="sheet-head"><span>{title}</span></div>
         <p className="muted confirm-body">{body}</p>
         <div className="session-sheet-actions">

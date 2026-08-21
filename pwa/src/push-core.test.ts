@@ -29,8 +29,9 @@ describe('pushNotificationFrom', () => {
 
   it('routes a tap to the deep link the payload names', () => {
     expect(pushNotificationFrom({ data: { url: '/stats' } }).data.url).toBe('/stats');
-    expect(pushNotificationFrom({ data: { matchId: 'm1' } }).data.url).toBe('/matches');
-    expect(pushNotificationFrom({ data: { groupId: 'g1' } }).data.url).toBe('/board');
+    expect(pushNotificationFrom({ data: { matchId: 'm1' } }).data.url).toBe('/matches?match=m1');
+    expect(pushNotificationFrom({ data: { groupId: 'g1' } }).data.url).toBe('/board?group=g1');
+    expect(pushNotificationFrom({ data: { groupId: 'g 1', matchId: 'm/1' } }).data.url).toBe('/matches?group=g%201&match=m%2F1');
     expect(pushNotificationFrom({ notification: { title: 'x' } }).data.url).toBe('/');
   });
 });

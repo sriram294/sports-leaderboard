@@ -46,6 +46,9 @@ export function pushNotificationFrom(payload: PushPayload | null | undefined): P
   const data = payload?.data ?? {};
   const title = notification.title || data.title || 'Playboard';
   const body = notification.body || data.body || '';
-  const url = data.url || (data.matchId ? '/matches' : data.groupId ? '/board' : '/');
+  const group = data.groupId ? `group=${encodeURIComponent(data.groupId)}` : '';
+  const match = data.matchId ? `match=${encodeURIComponent(data.matchId)}` : '';
+  const query = [group, match].filter(Boolean).join('&');
+  const url = data.url || (data.matchId ? `/matches${query ? `?${query}` : ''}` : data.groupId ? `/board?${query}` : '/');
   return { title, body, data: { ...data, url } };
 }

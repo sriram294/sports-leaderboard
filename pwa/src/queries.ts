@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery, type QueryClient } from '@tanstack/react-query';
 import { api } from './data';
 import { rangeWindow, type TimeRange } from './domain';
 
@@ -84,3 +84,16 @@ export const useMatchDetail = (groupId?: string, matchId?: string) =>
     enabled: !!groupId && !!matchId,
   });
 
+/** Refresh every read whose result can change after a match or roster mutation. */
+export async function invalidateGroupData(queryClient: QueryClient, groupId: string): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['groups'] }),
+    queryClient.invalidateQueries({ queryKey: leaderboardKey(groupId) }),
+    queryClient.invalidateQueries({ queryKey: matchesKey(groupId) }),
+    queryClient.invalidateQueries({ queryKey: ['matchDetail', groupId] }),
+    queryClient.invalidateQueries({ queryKey: ['stats', groupId] }),
+    queryClient.invalidateQueries({ queryKey: ['partners', groupId] }),
+    queryClient.invalidateQueries({ queryKey: ['attendance', groupId] }),
+    queryClient.invalidateQueries({ queryKey: ['trophies', groupId] }),
+  ]);
+}

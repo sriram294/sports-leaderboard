@@ -42,4 +42,12 @@ test('leaderboard rows show per-player form dots, oldest first', async ({ page }
 
   const dineshRow = page.locator('.ranking-row', { hasText: 'Dinesh K' });
   await expect(dineshRow.locator('.form-dot')).toHaveCount(3);
+
+  // A rejected native share falls through to clipboard and reports the result.
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: () => Promise.reject(new Error('blocked')) });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.resolve() } });
+  });
+  await page.getByRole('button', { name: 'Share leaderboard' }).click();
+  await expect(page.getByRole('status')).toHaveText('Leaderboard copied.');
 });
