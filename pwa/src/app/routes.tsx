@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { leaderboardKey, matchesKey, statsKey, useAttendance, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
+import { invalidateGroupData, leaderboardKey, statsKey, useAttendance, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
 import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, winningTeamNo, type TimeRange } from '../domain';
 import type { RecordMatchRequest, User } from '../models';
 import { api } from '../data';
@@ -34,6 +34,7 @@ export function BoardRoute() {
   const navigate = useNavigate();
   // The window persists across group switches (mirrors Android's selectedTimeRange).
   const [range, setRange] = useState<TimeRange>('month');
+  const [shareStatus, setShareStatus] = useState<string>();
   const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id, range);
   if (!activeGroup) return <NoGroup />;
   // Only the very first load spins; range switches keep the previous table (keepPreviousData).
@@ -48,7 +49,11 @@ export function BoardRoute() {
       range={range}
       onRangeChange={setRange}
       onPlayer={userId => navigate(`/player/${userId}`)}
-      onShare={() => shareLeaderboard(activeGroup, rankings).catch(() => undefined)}
+      shareStatus={shareStatus}
+      onShare={async () => {
+        const result = await shareLeaderboard(activeGroup, rankings);
+        setShareStatus({ shared: 'Leaderboard shared.', copied: 'Leaderboard copied.', downloaded: 'Leaderboard image downloaded.', cancelled: '', failed: 'Sharing is unavailable in this browser.' }[result]);
+      }}
     />
   );
 }
@@ -59,31 +64,40 @@ export function MatchesRoute() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [mine, setMine] = useState(false);
+  const [searchParams] = useSearchParams();
+  const targetMatchId = searchParams.get('match') ?? undefined;
+  useEffect(() => setMine(false), [activeGroup?.id]);
   const query = useMatchesInfinite(activeGroup?.id, mine);
+  const targetDetail = useMatchDetail(activeGroup?.id, targetMatchId);
   if (!activeGroup) return <NoGroup />;
   // keepPreviousData keeps isLoading false after the first page, so a "My matches" toggle
   // updates the list in place rather than blanking to a spinner.
   if (query.isLoading) return <Loading />;
   if (query.error) return <ErrorState message={errorMessage(query.error)} retry={() => query.refetch()} />;
-  const matches = query.data?.pages.flatMap(page => page.matches) ?? [];
+  const loadedMatches = query.data?.pages.flatMap(page => page.matches) ?? [];
+  const matches = [...(targetDetail.data && !loadedMatches.some(match => match.id === targetDetail.data.id)
+    ? [targetDetail.data, ...loadedMatches]
+    : loadedMatches)].sort((a, b) => b.playedAt.localeCompare(a.playedAt));
   const canModerate = activeGroup.myRole === 'owner' || activeGroup.myRole === 'admin';
   const onDelete = async (matchId: string) => {
     await api.deleteMatch(activeGroup.id, matchId);
-    // Deleting a match changes the leaderboard (rankings + everyone's form dots), like recording one does.
-    queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
-    queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
+    await invalidateGroupData(queryClient, activeGroup.id);
   };
   return (
     <MatchHistoryScreen
+      key={activeGroup.id}
       group={activeGroup}
       groupId={activeGroup.id}
       matches={matches}
+      initialExpandedId={targetMatchId}
+      targetError={targetMatchId && targetDetail.error ? 'The linked match could not be loaded.' : undefined}
       currentUserId={user?.id}
       canModerate={canModerate}
       mine={mine}
       onToggleMine={() => setMine(value => !value)}
       canLoadMore={query.hasNextPage}
       isLoadingMore={query.isFetchingNextPage}
+      loadMoreError={query.isFetchNextPageError}
       onLoadMore={() => query.fetchNextPage()}
       onDelete={onDelete}
       onEdit={matchId => navigate('/add', { state: { editMatchId: matchId } })}
@@ -105,6 +119,7 @@ export function AddRoute() {
   if (!activeGroup) return <NoGroup />;
   if (members.isLoading || (editMatchId && detail.isLoading)) return <Loading />;
   if (members.error) return <ErrorState message={errorMessage(members.error)} retry={() => members.refetch()} />;
+  if (editMatchId && detail.error) return <ErrorState message="Couldn’t load this match for editing." retry={() => detail.refetch()} />;
 
   const roster = [...(members.data?.members ?? []), ...(members.data?.guests ?? [])];
   const editing = editMatchId && detail.data ? detail.data : undefined;
@@ -121,17 +136,14 @@ export function AddRoute() {
   const onSubmit = async (body: RecordMatchRequest) => {
     if (editMatchId) await api.editMatch(activeGroup.id, editMatchId, body);
     else await api.createMatch(activeGroup.id, body);
-    // A recorded/edited match changes Board (rankings + form dots) + Matches (+ Stats, which read them).
-    queryClient.invalidateQueries({ queryKey: leaderboardKey(activeGroup.id) });
-    queryClient.invalidateQueries({ queryKey: matchesKey(activeGroup.id) });
-    if (editMatchId) queryClient.invalidateQueries({ queryKey: ['matchDetail', activeGroup.id, editMatchId] });
+    await invalidateGroupData(queryClient, activeGroup.id);
     navigate(editMatchId ? '/matches' : '/board');
   };
 
   return (
     <AddMatchScreen
       // Remount when switching between create and a specific edit so form state re-seeds.
-      key={editMatchId ?? 'new'}
+      key={`${activeGroup.id}:${editMatchId ?? 'new'}`}
       user={user!}
       roster={roster}
       isEditing={!!editMatchId}
@@ -155,6 +167,7 @@ export function StatsRoute() {
   if (leaderboard.error) return <ErrorState message={errorMessage(leaderboard.error)} retry={() => leaderboard.refetch()} />;
   return (
     <StatsScreen
+      key={activeGroup.id}
       groupId={activeGroup.id}
       currentUserId={user?.id}
       rankings={leaderboard.data?.rankings ?? []}
@@ -193,6 +206,7 @@ export function ProfileRoute() {
   };
   return (
     <ProfileScreen
+      key={activeGroup.id}
       groupId={activeGroup.id}
       stats={stats.data}
       isOwn
@@ -212,6 +226,10 @@ export function PlayerRoute() {
   const { activeGroup } = useGroups();
   const { user } = useSession();
   const navigate = useNavigate();
+  const initialGroupId = useRef(activeGroup?.id);
+  useEffect(() => {
+    if (initialGroupId.current && activeGroup?.id && initialGroupId.current !== activeGroup.id) navigate('/board', { replace: true });
+  }, [activeGroup?.id, navigate]);
   const stats = usePlayerStats(activeGroup?.id, userId);
   const attendance = useProfileAttendance(activeGroup?.id, userId);
   // Viewing your own row from the Board just shows your (editable) profile.
@@ -220,6 +238,7 @@ export function PlayerRoute() {
   if (stats.error || !stats.data) return <ErrorState message="Player not found." retry={() => navigate('/board')} />;
   return (
     <ProfileScreen
+      key={`${activeGroup?.id ?? 'none'}:${userId}`}
       groupId={activeGroup?.id ?? ''}
       stats={stats.data}
       isOwn={false}

@@ -70,3 +70,9 @@ test('lists matches by day, expands a card, and filters to my matches', async ({
   await expect(page.getByText('22 Jul · 1 match')).toBeVisible();
   await expect(page.getByText('21 Jul', { exact: false })).not.toBeVisible();
 });
+
+test('opens a notification-linked match and its day', async ({ page }) => {
+  await page.goto('/matches?group=g1&match=m3', { waitUntil: 'networkidle' });
+  await expect(page.getByText('GAME BREAKDOWN')).toBeVisible();
+  await expect(page.getByText('Winner: Raja & Guest 1')).toBeVisible();
+});

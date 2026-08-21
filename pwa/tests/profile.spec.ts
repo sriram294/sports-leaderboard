@@ -6,7 +6,7 @@ const ref = (userId: string, displayName: string) => ({ userId, displayName, ava
 const stats = {
   userId: 'me', displayName: 'Sriram', avatarColor: '#F59E0B', avatarId: 'avatar3', photoUrl: null,
   wins: 23, losses: 18, pointsFor: 799, pointsAgainst: 740, winRate: 0.56, currentStreak: -2, bestStreak: 4, matchesPlayed: 41,
-  trophies: [],
+  trophies: [{ month: '2026-06', userId: 'me', displayName: 'Sriram', avatarColor: '#F59E0B', rating: 48.2, gamesPlayed: 8, wins: 6 }],
   recentMatches: [{
     id: 'r1', playedAt: '2026-07-22T10:00:00Z', sets: [{ setNo: 1, team1Score: 15, team2Score: 21 }],
     teams: [
@@ -54,6 +54,8 @@ test('renders own profile stats and renames via the edit sheet', async ({ page }
   await expect(page.getByText('56%')).toBeVisible();
   await expect(page.getByText('CURRENT STREAK')).toBeVisible();
   await expect(page.getByText('-2', { exact: true })).toBeVisible();
+  await expect(page.getByText('TROPHY SHELF')).toBeVisible();
+  await expect(page.getByText("JUN '26")).toBeVisible();
   // Partners: collapsed by default — no fetch until expanded.
   await expect(page.getByText("Tap to see who you've partnered with")).toBeVisible();
   await page.getByText('PARTNERS', { exact: true }).click();

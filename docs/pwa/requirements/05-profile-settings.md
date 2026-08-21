@@ -21,8 +21,8 @@ drill-down** for any other player (read-only). Both render the same component.
   months. Rank #1 is at the top; null/provisional months break the line.
 - **ACTIVITY** heatmap — GitHub-style, the last 3 calendar months, Mon-first weekday axis; a day
   the player was in a match is a filled brand square.
-- **BEST PARTNER** — avatar, name, `{winsTogether}W / {gamesTogether} games together`, and the
-  pair's win% (in the partner's avatar color).
+- **PARTNERS** — collapsed by default; expanding lazily loads every non-guest teammate,
+  ordered by games together, with wins/games and pair win%.
 - **RECENT MATCHES** — cards with a WIN/LOSS badge + date, `w/ {partners} vs {opponents}`, the
   set score(s), and a colored left edge (brand win / red loss).
 
@@ -40,9 +40,11 @@ drill-down** for any other player (read-only). Both render the same component.
    session (identity reflects immediately) and invalidate the stats + leaderboard queries.
 5. **Identity source** — own profile draws name/photo/avatar from the **live session** (so an
    edit shows at once), falling back to stats; a viewed player's comes from stats.
-6. **States** — full-screen spinner on first stats load; retry on failure; sections
+6. **Partners** use `GET .../stats/partners` only after expansion; failure remains local to
+   the card and can be retried without reloading the profile.
+7. **States** — full-screen spinner on first stats load; retry on failure; sections
    (heatmap / best partner / recent) render only when their data is present.
-7. The finishes graph is always present after the tiles. When no qualified point exists it
+8. The finishes graph is always present after the tiles. When no qualified point exists it
    explains that positions are recorded after month close. Its accessible description names
    every returned month and rank/gap; switching groups or viewed players replaces the series.
 
@@ -61,9 +63,8 @@ drill-down** for any other player (read-only). Both render the same component.
 - Android's `ModalBottomSheet` picker/rename → the shared `.sheet-*` bottom sheet.
 - Photo upload uses a hidden `<input type=file accept="image/*">`; the browser sets the multipart
   boundary (the fetch client omits its JSON content-type for `FormData` bodies).
-- **Transitional:** the gear routes to a Settings stub (account + sign-out) and the people icon
-  to a Groups stub (create/join) until Slices 9–10 build those out. The Android **trophy shelf**
-  renders only when `trophies` is non-empty (absent from the v4.4 profile screenshot).
+- Settings and Groups are complete routed screens. The Android **trophy shelf** renders only
+  when `trophies` is non-empty (absent from the v4.4 profile screenshot).
 
 ## Open questions
 - Client-side image type/size validation before upload is deferred to the server for now.

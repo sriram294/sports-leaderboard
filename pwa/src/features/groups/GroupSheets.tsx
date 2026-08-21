@@ -5,6 +5,7 @@ import { useGroups } from '../../groups';
 import { groupErrorMessage } from '../../domain';
 import { membersKey } from '../../queries';
 import { Icon } from '../../icons';
+import { useDialogA11y } from '../../components';
 import type { Group } from '../../models';
 
 /**
@@ -15,9 +16,10 @@ import type { Group } from '../../models';
  */
 
 function SheetShell({ title, onClose, busy, children }: { title: string; onClose: () => void; busy?: boolean; children: React.ReactNode }) {
+  const dialogRef = useDialogA11y(onClose);
   return (
     <div className="sheet-backdrop" onClick={() => !busy && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+      <div ref={dialogRef} className="sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onClick={event => event.stopPropagation()}>
         <div className="sheet-head">
           <span>{title}</span>
           <button className="icon-button" onClick={onClose} aria-label="Close" disabled={busy}><Icon name="close" size={20} /></button>

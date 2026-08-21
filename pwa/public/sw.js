@@ -1,7 +1,18 @@
-const CACHE = 'playboard-shell-v2';
+const CACHE = 'playboard-shell-v3';
+const CORE = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    const index = await fetch('/index.html', { cache: 'reload' });
+    await cache.put('/index.html', index.clone());
+    const html = await index.text();
+    const builtAssets = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)]
+      .map(match => match[1])
+      .filter(url => url.startsWith('/') && !url.startsWith('/api/'));
+    await Promise.all([...new Set([...CORE, ...builtAssets])].map(url => cache.add(url).catch(() => undefined)));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -37,11 +48,15 @@ self.addEventListener('push', event => {
   const data = payload.data || {};
   const title = n.title || data.title || 'Playboard';
   const body = n.body || data.body || '';
-  const url = data.url || (data.matchId ? '/matches' : data.groupId ? '/board' : '/');
+  const query = [
+    data.groupId ? `group=${encodeURIComponent(data.groupId)}` : '',
+    data.matchId ? `match=${encodeURIComponent(data.matchId)}` : '',
+  ].filter(Boolean).join('&');
+  const url = data.url || (data.matchId ? `/matches${query ? `?${query}` : ''}` : data.groupId ? `/board?${query}` : '/');
   event.waitUntil(self.registration.showNotification(title, {
     body,
-    icon: '/icons/icon.svg',
-    badge: '/icons/icon.svg',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     data: Object.assign({}, data, { url }),
   }));
 });

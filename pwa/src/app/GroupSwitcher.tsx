@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGroups } from '../groups';
 import { canInviteGroup, canManageGroup } from '../domain';
 import { GroupAvatar } from '../components';
@@ -23,6 +23,16 @@ export function GroupSwitcher() {
   const { groups, activeGroup, setActiveGroup } = useGroups();
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: MouseEvent) => { if (!switcherRef.current?.contains(event.target as Node)) setOpen(false); };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => { document.removeEventListener('mousedown', closeOutside); document.removeEventListener('keydown', closeOnEscape); };
+  }, [open]);
 
   const openSheet = (next: Sheet) => { setOpen(false); setSheet(next); };
 
@@ -38,7 +48,7 @@ export function GroupSwitcher() {
 
   if (!activeGroup) {
     return (
-      <div className="group-switcher">
+      <div className="group-switcher" ref={switcherRef}>
         <button className="group-switcher-pill empty accent" onClick={() => setSheet({ kind: 'createJoin' })}>
           <Icon name="add" size={18} /> Create or join a group
         </button>
@@ -48,8 +58,8 @@ export function GroupSwitcher() {
   }
 
   return (
-    <div className="group-switcher">
-      <button className="group-switcher-pill" onClick={() => setOpen(value => !value)} aria-expanded={open}>
+    <div className="group-switcher" ref={switcherRef}>
+      <button className="group-switcher-pill" onClick={() => setOpen(value => !value)} aria-haspopup="menu" aria-expanded={open}>
         <GroupAvatar group={activeGroup} size={34} />
         <span className="gs-name">{activeGroup.name}</span>
         <Icon name="expand" size={18} className="gs-caret" />
@@ -57,7 +67,7 @@ export function GroupSwitcher() {
       </button>
 
       {open && (
-        <div className="group-switcher-panel">
+        <div className="group-switcher-panel" role="menu">
           <p className="eyebrow">YOUR GROUPS</p>
           {groups.map(group => (
             <div key={group.id} className={`gs-row ${group.id === activeGroup.id ? 'active' : ''}`}>
