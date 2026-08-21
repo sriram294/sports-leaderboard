@@ -34,6 +34,7 @@ test('signs in through the Google credential exchange', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' });
   // Wait for the settled login screen (survives Vite's cold-start optimize reload).
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible({ timeout: 20000 });
+  await expect.poll(() => page.evaluate(() => typeof (window as any).__googleCallback)).toBe('function');
   // GIS delivers the credential via its callback (a real tap on the overlay button
   // ends here); invoke it directly to exercise the exchange → session → Board flow.
   await page.evaluate(() => (window as any).__googleCallback({ credential: 'test-google-id-token' }));
