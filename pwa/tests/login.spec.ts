@@ -4,19 +4,14 @@ const user = { id: 'user-1', displayName: 'Test Player', email: 'test@example.co
 const group = { id: 'group-1', name: 'Test Group', avatarColor: '#9ade28', sportCode: 'badminton_doubles', memberCount: 2, matchCount: 0, myRole: 'owner' };
 
 test('signs in through the Google credential exchange', async ({ page }) => {
-  await page.route('https://accounts.google.com/gsi/client', route => route.abort());
-  await page.addInitScript(() => {
-    (window as any).google = {
-      accounts: {
-        id: {
-          initialize: (options: { callback: (response: { credential: string }) => void }) => {
-            (window as any).__googleCallback = options.callback;
-          },
-          renderButton: () => undefined,
-          prompt: () => (window as any).__googleCallback({ credential: 'test-google-id-token' }),
-        },
-      },
-    };
+  // Fulfil the actual async GIS script request with a deterministic browser stub.
+  // This exercises LoginScreen's script-load path and survives Vite cold-start reloads.
+  await page.route('https://accounts.google.com/gsi/client', route => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: `window.google={accounts:{id:{initialize:function(options){window.__googleCallback=options.callback},renderButton:function(){}}}};`,
+    });
   });
 
   // Single catch-all mock — per-path globs intercept inconsistently under the dev server.
@@ -34,7 +29,7 @@ test('signs in through the Google credential exchange', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' });
   // Wait for the settled login screen (survives Vite's cold-start optimize reload).
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible({ timeout: 20000 });
-  await expect.poll(() => page.evaluate(() => typeof (window as any).__googleCallback)).toBe('function');
+  await expect.poll(() => page.evaluate(() => typeof (window as any).__googleCallback), { timeout: 20000 }).toBe('function');
   // GIS delivers the credential via its callback (a real tap on the overlay button
   // ends here); invoke it directly to exercise the exchange → session → Board flow.
   await page.evaluate(() => (window as any).__googleCallback({ credential: 'test-google-id-token' }));
