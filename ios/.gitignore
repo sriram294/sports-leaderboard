@@ -1,0 +1,19 @@
+# Xcode user and derived state
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+
+# Local provider and signing configuration
+Playboard/Resources/Configuration/*.xcconfig
+!Playboard/Resources/Configuration/*.xcconfig.example
+**/GoogleService-Info.plist
+*.mobileprovision
+*.cer
+*.p12
+*.p8
+*.key
+
+# SwiftPM workspace caches; the resolved graph remains committed
+.build/
+Playboard.xcodeproj/project.xcworkspace/xcuserdata/
