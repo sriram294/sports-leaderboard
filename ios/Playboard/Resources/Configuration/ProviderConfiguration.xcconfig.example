@@ -1,0 +1,5 @@
+// Copy this file outside source control or populate equivalent CI settings in S01+.
+// Values are intentionally empty. Never commit client secrets or provider plist files.
+GOOGLE_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID =
+API_BASE_URL =

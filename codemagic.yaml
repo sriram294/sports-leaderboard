@@ -1,0 +1,55 @@
+workflows:
+  ios-s00-unsigned:
+    name: iOS S00 unsigned foundation
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      xcode: 26.2
+      vars:
+        XCODE_SCHEME: Playboard
+        XCODE_PROJECT: Playboard.xcodeproj
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: feature/ios-foundation
+          include: true
+          source: true
+    scripts:
+      - name: Validate repository and non-secret build settings
+        script: |
+          set -euo pipefail
+          cd ios
+          ./scripts/verify-repository.sh
+          ./scripts/validate-build-settings.sh
+      - name: Resolve locked packages
+        script: |
+          set -euo pipefail
+          cd ios
+          ./scripts/resolve-packages.sh
+      - name: Build Debug with warnings as errors
+        script: |
+          set -euo pipefail
+          cd ios
+          ./scripts/build.sh
+      - name: Run unit and UI tests
+        script: |
+          set -euo pipefail
+          cd ios
+          ./scripts/test.sh
+        test_report: ios/build/junit.xml
+      - name: Archive unsigned Release
+        script: |
+          set -euo pipefail
+          cd ios
+          ./scripts/archive-unsigned.sh
+    artifacts:
+      - ios/build/Playboard.xcarchive
+      - ios/build/Playboard.xcarchive/dSYMs/**/*.dSYM
+      - ios/build/TestResults.xcresult
+      - ios/build/junit.xml
+      - ios/build/test-results.json
+      - ios/build/logs/*.log
+      - ios/build/gallery-light.png
+      - ios/build/gallery-dark.png
+      - ios/build/attachments/**/*.png
