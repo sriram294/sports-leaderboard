@@ -4,8 +4,8 @@ Base refreshed from `origin/master` on 2026-08-30: `57fb317902eb3198423f043aca45
 
 | Slice | Deliverable | Status | Branch | Depends on | PR | Merge commit | Started | Finished | Verification evidence |
 |---|---|---|---|---|---|---|---|---|---|
-| S00 | Foundation and delivery controls | `in_progress` | `feature/ios-foundation` | — | pending | pending | 2026-08-30 | — | 2026-08-30: repository/docs/secret checks, Swift 6.2 parse, strict-concurrency core type-check, and forced 11-pin lock resolution passed; Xcode 26.2 CI handoff pending |
-| S01 | Authentication and session | `not_started` | `feature/ios-auth` | S00 | — | — | — | — | — |
+| S00 | Foundation and delivery controls | `done` | `feature/ios-foundation` | — | [#99](https://github.com/sriram294/sports-leaderboard/pull/99) | `5395ccd0f159e0c627a669ff756025457ef5c7b7` | 2026-08-30 | 2026-08-30 | Repository/docs/secret checks, Swift 6.2 parse, strict-concurrency core type-check, and forced 11-pin lock resolution passed; PR #99 merged 2026-08-30; Vercel checks passed; no Codemagic result was reported |
+| S01 | Authentication and session | `in_progress` | `feature/ios-auth` | S00 | pending | pending | 2026-08-30 | — | Pending implementation |
 | S02 | Groups and app shell | `not_started` | `feature/ios-groups-shell` | S01 | — | — | — | — | — |
 | S03 | Leaderboard | `not_started` | `feature/ios-leaderboard` | S02 | — | — | — | — | — |
 | S04 | Matches and recording | `not_started` | `feature/ios-matches` | S03 | — | — | — | — | — |

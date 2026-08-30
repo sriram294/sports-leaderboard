@@ -1,12 +1,12 @@
 # iOS working memory
 
-- Active slice: S00 — Foundation and delivery controls
-- Active branch: `feature/ios-foundation`
-- Base: refreshed `origin/master` at `57fb317902eb3198423f043aca45977b9f46d2c6` (2026-08-30)
-- Current state: S00 implementation is complete in the worktree. Project controls, native source, gallery, assets, the 11-pin SPM lock graph, verification scripts, and unsigned Codemagic workflow passed repository/static validation; Xcode 26.2 execution remains outstanding.
-- Blockers: this checkout must be verified on macOS with Xcode 26.2; provider credentials are intentionally absent and are not an S00 blocker.
-- Known-good behavior: Android and PWA remain the parity references; S00 makes no backend or production API changes. Swift 6.2 parser validation passed for every Swift source, strict-concurrency type-checking passed for the platform-neutral environment/API/storage/model layer, the v2 lockfile resolved with forced pins, and repository/document/secret checks passed on 2026-08-30.
-- Verification commands: `cd ios && ./scripts/resolve-packages.sh && ./scripts/build.sh && ./scripts/test.sh && ./scripts/archive-unsigned.sh && ./scripts/verify-repository.sh`
-- Exact next action: run the full command chain on Xcode 26.2, attach `ios/build/TestResults.xcresult`, JUnit, gallery light/dark screenshots, archive, dSYMs, and logs to the S00 CI build, then record the evidence here and in `roadmap.md`.
+- Active slice: S01 — Authentication and session
+- Active branch: `feature/ios-auth`
+- Base: refreshed `origin/master` at merge commit `5395ccd0f159e0c627a669ff756025457ef5c7b7` (PR [#99](https://github.com/sriram294/sports-leaderboard/pull/99), merged 2026-08-30)
+- Current state: transition commit in progress; S00 is recorded `done`, S01 is the only `in_progress` slice, and S01 product implementation has not started.
+- Blockers: real Google, Apple, and Firebase configuration is not present. Implementation and deterministic tests can proceed with injected adapters; configured end-to-end provider verification will require externally supplied non-secret identifiers and authorized provider environments.
+- Known-good behavior: S00's project, controls, design foundation, 11-pin SPM graph, and scripts are present on `master`. Repository/docs/secret checks, Swift 6.2 parsing, strict-concurrency core type-checking, and forced lock resolution passed before PR #99 merged. GitHub reported passing Vercel checks and no Codemagic result.
+- Verification commands: `cd ios && ./scripts/resolve-packages.sh && ./scripts/build.sh && ./scripts/test.sh && ./scripts/verify-repository.sh`; `cd backend && ./mvnw test`
+- Exact next action: implement the S01 backend provider-neutral authentication contract and native injected auth/session boundaries described in `slices/S01.md`, beginning with focused failing tests and credential-free provider fakes.
 
-Do not add provider initialization or real configuration files during S00. Do not mark S00 `done` until S01's first transition commit after the S00 PR merges.
+Do not start group or app-shell work from S02. Do not mark S01 `done` until S02's first transition commit after the S01 PR merges.

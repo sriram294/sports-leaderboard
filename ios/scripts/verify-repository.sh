@@ -4,7 +4,9 @@ cd "$(dirname "$0")/.."
 
 readonly in_progress_count="$(awk -F'|' '$2 ~ /S0[0-8]/ && $0 ~ /`in_progress`/ { count++ } END { print count + 0 }' ../docs/ios/roadmap.md)"
 test "${in_progress_count}" -eq 1
-grep -Fq '| S00 | Foundation and delivery controls | `in_progress` |' ../docs/ios/roadmap.md
+readonly active_branch="$(awk -F'|' '$2 ~ /S0[0-8]/ && $4 ~ /`in_progress`/ { value = $5; gsub(/[`[:space:]]/, "", value); print value }' ../docs/ios/roadmap.md)"
+test -n "${active_branch}"
+grep -Fq -- "- Active branch: \`${active_branch}\`" ../docs/ios/memory.md
 
 for slice in $(seq -f '%02g' 0 8); do
   test -f "../docs/ios/slices/S${slice}.md"
