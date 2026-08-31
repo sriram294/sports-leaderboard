@@ -10,6 +10,7 @@ struct AppEnvironment {
     let googleAuthProvider: any GoogleAuthProviding
     let appleCredentialParser: any AppleCredentialParsing
     let groupRepositoryFactory: (String) -> any GroupRepository
+    let leaderboardRepositoryFactory: (String) -> any LeaderboardRepository
 
     /// Production dependencies are created exactly once for the app process.
     static let live: AppEnvironment = {
@@ -19,7 +20,14 @@ struct AppEnvironment {
             let groupScenario = arguments.firstIndex(of: "-ui-group-scenario")
                 .flatMap { arguments.indices.contains($0 + 1) ? UITestGroupScenario(rawValue: arguments[$0 + 1]) : nil }
                 ?? .standard
-            return uiTest(scenario: UITestAuthScenario(rawValue: arguments[marker + 1]) ?? .failure, groupScenario: groupScenario)
+            let leaderboardScenario = arguments.firstIndex(of: "-ui-leaderboard-scenario")
+                .flatMap { arguments.indices.contains($0 + 1) ? UITestLeaderboardScenario(rawValue: arguments[$0 + 1]) : nil }
+                ?? .standard
+            return uiTest(
+                scenario: UITestAuthScenario(rawValue: arguments[marker + 1]) ?? .failure,
+                groupScenario: groupScenario,
+                leaderboardScenario: leaderboardScenario
+            )
         }
         #endif
         let configuration = ProviderConfiguration.from()
@@ -48,6 +56,14 @@ struct AppEnvironment {
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
+            },
+            leaderboardRepositoryFactory: { accessToken in
+                LiveLeaderboardRepository(
+                    apiClient: apiClient,
+                    baseURL: configuration.apiBaseURL,
+                    accessToken: accessToken,
+                    refreshAccessToken: { try await authRepository.refreshSession().accessToken }
+                )
             }
         )
     }()
@@ -65,12 +81,17 @@ struct AppEnvironment {
             authRepository: PreviewAuthRepository(),
             googleAuthProvider: PreviewGoogleAuthProvider(),
             appleCredentialParser: AppleCredentialParser(),
-            groupRepositoryFactory: { _ in PreviewGroupRepository() }
+            groupRepositoryFactory: { _ in PreviewGroupRepository() },
+            leaderboardRepositoryFactory: { _ in PreviewLeaderboardRepository() }
         )
     }
 
     #if DEBUG
-    private static func uiTest(scenario: UITestAuthScenario, groupScenario: UITestGroupScenario) -> AppEnvironment {
+    private static func uiTest(
+        scenario: UITestAuthScenario,
+        groupScenario: UITestGroupScenario,
+        leaderboardScenario: UITestLeaderboardScenario
+    ) -> AppEnvironment {
         let configuration = ProviderConfiguration(
             apiBaseURL: URL(string: "https://example.invalid/api/v1"),
             googleClientID: "ui-test-client-id"
@@ -82,10 +103,20 @@ struct AppEnvironment {
             authRepository: UITestAuthRepository(scenario: scenario),
             googleAuthProvider: UITestGoogleAuthProvider(scenario: scenario),
             appleCredentialParser: AppleCredentialParser(),
-            groupRepositoryFactory: { _ in UITestGroupRepository(scenario: groupScenario) }
+            groupRepositoryFactory: { _ in UITestGroupRepository(scenario: groupScenario) },
+            leaderboardRepositoryFactory: { _ in UITestLeaderboardRepository(scenario: leaderboardScenario) }
         )
     }
     #endif
+}
+
+private actor PreviewLeaderboardRepository: LeaderboardRepository {
+    func leaderboard(groupID: String, window: DateInterval?) async throws -> Leaderboard {
+        Leaderboard(rankings: [
+            LeaderboardEntry(rank: 1, userID: "ui-user", displayName: "Test Player", photoURL: nil, avatarID: "avatar1", avatarColor: "#9ADE28", gamesPlayed: 12, wins: 9, losses: 3, pointsFor: 504, pointsAgainst: 420, winRate: 0.75, currentStreak: 3, bestStreak: 5, rating: 46.2, provisional: false, recentForm: [true, false, true, true]),
+            LeaderboardEntry(rank: 2, userID: "player-2", displayName: "Priya", photoURL: nil, avatarID: "avatar2", avatarColor: "#5B8CFF", gamesPlayed: 10, wins: 7, losses: 3, pointsFor: 420, pointsAgainst: 390, winRate: 0.7, currentStreak: 2, bestStreak: 4, rating: 41.0, provisional: false, recentForm: [true, true, false])
+        ], minGamesToRank: 3)
+    }
 }
 
 private actor PreviewGroupRepository: GroupRepository {
@@ -151,6 +182,13 @@ private enum UITestGroupScenario: String, Sendable {
     case empty
     case failure
     case twoGroups
+}
+
+private enum UITestLeaderboardScenario: String, Sendable {
+    case standard
+    case dense
+    case empty
+    case failure
 }
 
 private actor UITestAuthRepository: AuthRepository {
@@ -261,6 +299,39 @@ private actor UITestGroupRepository: GroupRepository {
         groups.append(group)
         selectedID = group.id
         return group
+    }
+}
+
+private actor UITestLeaderboardRepository: LeaderboardRepository {
+    private let scenario: UITestLeaderboardScenario
+    init(scenario: UITestLeaderboardScenario) { self.scenario = scenario }
+
+    func leaderboard(groupID: String, window: DateInterval?) async throws -> Leaderboard {
+        if scenario == .failure { throw GroupRepositoryError.offline }
+        if scenario == .empty { return Leaderboard(rankings: [], minGamesToRank: 3) }
+        let count = scenario == .dense ? 12 : 4
+        let rows = (1...count).map { rank in
+            LeaderboardEntry(
+                rank: rank,
+                userID: "player-\(rank)",
+                displayName: rank == 1 ? "Priya" : "Player \(rank)",
+                photoURL: rank == 2 ? "https://example.invalid/missing.png" : nil,
+                avatarID: "avatar\(rank % 16)",
+                avatarColor: rank.isMultiple(of: 2) ? "#5B8CFF" : "#9ADE28",
+                gamesPlayed: max(1, 14 - rank),
+                wins: max(1, 10 - rank / 2),
+                losses: rank / 2,
+                pointsFor: 500 - rank * 12,
+                pointsAgainst: 390 + rank * 5,
+                winRate: max(0.1, 0.82 - Double(rank) * 0.04),
+                currentStreak: max(0, 5 - rank),
+                bestStreak: max(1, 7 - rank / 2),
+                rating: max(8.0, 58.0 - Double(rank) * 3.2),
+                provisional: rank == count,
+                recentForm: [true, rank.isMultiple(of: 2), false, true]
+            )
+        }
+        return Leaderboard(rankings: rows, minGamesToRank: 3)
     }
 }
 #endif

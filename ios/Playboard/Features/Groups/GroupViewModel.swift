@@ -139,7 +139,7 @@ final class GroupViewModel: ObservableObject {
             } else {
                 try await repository.joinGroup(code: state.inviteCode)
             }
-            upsertAndSelect(group)
+            await upsertAndSelect(group)
             dismissSheet()
         } catch {
             state.actionMessage = message(for: error)
@@ -223,10 +223,10 @@ final class GroupViewModel: ObservableObject {
         } catch { state.actionMessage = message(for: error) }
     }
 
-    private func upsertAndSelect(_ group: PlayGroup) {
+    private func upsertAndSelect(_ group: PlayGroup) async {
         replace(group, appendIfMissing: true)
         state.selectedGroupID = group.id
-        Task { await repository.selectGroup(group.id) }
+        await repository.selectGroup(group.id)
         state.phase = .loaded
     }
 
