@@ -43,7 +43,7 @@ struct RootView: View {
         case .signedOut:
             LoginScreen(environment: environment, onAuthenticated: sessionViewModel.accept)
         case .signedIn(let session):
-            SignedInAccountScreen(session: session) {
+            AppShellScreen(environment: environment, session: session) {
                 Task { @MainActor in await sessionViewModel.signOut() }
             }
         case .recovery(let message):

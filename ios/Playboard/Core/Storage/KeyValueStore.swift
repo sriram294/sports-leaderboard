@@ -18,3 +18,24 @@ actor InMemoryKeyValueStore: KeyValueStore {
         values[key] = data
     }
 }
+
+/// UserDefaults-backed persistence for non-sensitive app preferences.
+actor UserDefaultsKeyValueStore: KeyValueStore {
+    private let defaults: UserDefaults
+
+    init(suiteName: String? = nil) {
+        if let suiteName, let suiteDefaults = UserDefaults(suiteName: suiteName) {
+            defaults = suiteDefaults
+        } else {
+            defaults = .standard
+        }
+    }
+
+    func data(forKey key: String) -> Data? {
+        defaults.data(forKey: key)
+    }
+
+    func set(_ data: Data?, forKey key: String) {
+        defaults.set(data, forKey: key)
+    }
+}
