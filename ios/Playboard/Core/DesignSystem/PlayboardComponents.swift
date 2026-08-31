@@ -71,6 +71,7 @@ struct PlayboardCard<Content: View>: View {
 struct PlayerAvatar: View {
     let displayName: String
     let avatarID: String?
+    var photoURL: String? = nil
     let color: Color
     var size: CGFloat = 48
 
@@ -86,6 +87,15 @@ struct PlayerAvatar: View {
                     .scaledToFill()
                     .frame(width: size, height: size)
                     .clipShape(Circle())
+            }
+            if let photoURL, let url = URL(string: photoURL) {
+                AsyncImage(url: url) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().scaledToFill()
+                    }
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
             }
         }
         .frame(width: size, height: size)

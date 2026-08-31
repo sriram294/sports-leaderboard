@@ -4,6 +4,7 @@ import SwiftUI
 struct AppShellScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: GroupViewModel
+    @StateObject private var boardViewModel: BoardViewModel
     private let session: AuthSession
     private let signOut: () -> Void
 
@@ -13,6 +14,9 @@ struct AppShellScreen: View {
         _viewModel = StateObject(wrappedValue: GroupViewModel(
             repository: environment.groupRepositoryFactory(session.accessToken),
             currentUserID: session.user.id
+        ))
+        _boardViewModel = StateObject(wrappedValue: BoardViewModel(
+            repository: environment.leaderboardRepositoryFactory(session.accessToken)
         ))
     }
 
@@ -33,6 +37,9 @@ struct AppShellScreen: View {
             }
         }
         .task { await viewModel.load() }
+        .onChange(of: viewModel.state.selectedGroup, initial: true) { _, group in
+            boardViewModel.select(group: group)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, viewModel.state.phase == .loaded {
                 Task { await viewModel.refresh() }
@@ -66,7 +73,7 @@ struct AppShellScreen: View {
                 Spacer()
             } else {
                 TabView {
-                    ShellPlaceholder(title: "Board", message: "Your group leaderboard arrives in the next slice.", symbol: "trophy")
+                    BoardScreen(viewModel: boardViewModel)
                         .tabItem { Label("Board", systemImage: "trophy") }
                     ShellPlaceholder(title: "Matches", message: "Match history is reserved for S04.", symbol: "list.bullet.rectangle")
                         .tabItem { Label("Matches", systemImage: "list.bullet.rectangle") }
