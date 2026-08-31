@@ -7,6 +7,7 @@ final class AuthenticationUITests: XCTestCase {
         app.descendants(matching: .any)["google-sign-in-button"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["signed-in-screen"].waitForExistence(timeout: 3))
 
+        app.buttons["Profile"].tap()
         app.buttons["sign-out-button"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["login-screen"].waitForExistence(timeout: 3))
     }
