@@ -3,6 +3,7 @@ import Testing
 @testable import Playboard
 
 @Suite("App environment")
+@MainActor
 struct AppEnvironmentTests {
     @Test("Preview storage is deterministic")
     func previewStorageRoundTrip() async {

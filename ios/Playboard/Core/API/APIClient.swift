@@ -3,38 +3,45 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Network boundary used by repositories in later slices.
-protocol APIClient: Sendable {
-    func data(for request: URLRequest) async throws -> Data
+/// HTTP result retained by repositories so they can map stable API errors.
+struct APIResponse: Sendable {
+    let data: Data
+    let statusCode: Int
 }
 
-/// URLSession-backed production API client. No endpoint or credential is configured in S00.
+/// Network boundary used by repositories.
+protocol APIClient: Sendable {
+    func response(for request: URLRequest) async throws -> APIResponse
+}
+
+/// URLSession-backed production API client.
 struct URLSessionAPIClient: APIClient {
-    func data(for request: URLRequest) async throws -> Data {
+    func response(for request: URLRequest) async throws -> APIResponse {
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200..<300).contains(httpResponse.statusCode) else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw APIClientError.invalidResponse
         }
-        return data
+        return APIResponse(data: data, statusCode: httpResponse.statusCode)
     }
 }
 
 /// Deterministic API client for previews and tests.
 struct StubAPIClient: APIClient {
     let data: Data
+    var statusCode: Int
     var error: APIClientError?
 
-    init(data: Data, error: APIClientError? = nil) {
+    init(data: Data, statusCode: Int = 200, error: APIClientError? = nil) {
         self.data = data
+        self.statusCode = statusCode
         self.error = error
     }
 
-    func data(for request: URLRequest) async throws -> Data {
+    func response(for request: URLRequest) async throws -> APIResponse {
         if let error {
             throw error
         }
-        return data
+        return APIResponse(data: data, statusCode: statusCode)
     }
 }
 

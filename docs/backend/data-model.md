@@ -30,6 +30,7 @@ product requirements this schema serves).
 | Table | Purpose |
 |---|---|
 | `users` | Account identity, avatar |
+| `user_auth_identities` | Provider-neutral Google/Apple subjects linked to accounts |
 | `sports` | Lookup: sport/format rules (team size, scoring) |
 | `groups` | A play group, tied to one sport |
 | `group_members` | Membership + role, many-to-many users↔groups |
@@ -77,7 +78,7 @@ create extension if not exists "pgcrypto"; -- gen_random_uuid()
 
 create table users (
     id            uuid primary key default gen_random_uuid(),
-    google_sub    text unique,               -- nullable: room for other auth providers later
+    google_sub    text unique,               -- retained for rolling Google-client compatibility
     email         text not null unique,
     display_name  text not null,
     photo_url     text,                      -- versioned host-free path ("/avatars/<id>-<upload-id>.jpg"); PUBLIC_BASE_URL is
@@ -88,6 +89,18 @@ create table users (
     created_at    timestamptz not null default now(),
     updated_at    timestamptz not null default now()
 );
+
+create table user_auth_identities (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references users(id) on delete cascade,
+    provider    text not null check (provider in ('google', 'apple')),
+    subject     text not null,
+    created_at  timestamptz not null default now(),
+    unique (provider, subject),
+    unique (user_id, provider)
+);
+
+create index idx_user_auth_identities_user on user_auth_identities(user_id);
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Sport / format lookup — makes team size & scoring configurable, not hardcoded

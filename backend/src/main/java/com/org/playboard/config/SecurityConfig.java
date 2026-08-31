@@ -25,7 +25,7 @@ public class SecurityConfig {
     @Value("${playboard.web-origin}")
     private String webOrigin;
 
-    // Every endpoint except POST /auth/google and POST /auth/refresh requires
+    // Every endpoint except provider sign-in and POST /auth/refresh requires
     // Authorization: Bearer <accessToken> — see api-contracts.md § Conventions.
     // (POST /auth/logout is NOT in that exclusion list — it still needs a
     // valid access token, on top of the refresh token in its body.)
@@ -43,7 +43,12 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(
                         new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/google", "/api/v1/auth/refresh", "/api/v1/app/update").permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/google",
+                                "/api/v1/auth/apple",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/app/update")
+                        .permitAll()
                         .requestMatchers("/avatars/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())

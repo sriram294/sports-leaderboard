@@ -7,12 +7,16 @@ import com.org.playboard.common.DefaultAvatars;
 import com.org.playboard.common.EmailNormalizer;
 import com.org.playboard.dto.auth.TokenResponse;
 import com.org.playboard.dto.user.UserSummaryDto;
+import com.org.playboard.entity.auth.AuthProvider;
 import com.org.playboard.entity.auth.RefreshToken;
+import com.org.playboard.entity.auth.UserAuthIdentity;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.auth.RefreshTokenRepository;
+import com.org.playboard.repository.auth.UserAuthIdentityRepository;
 import com.org.playboard.repository.user.UserRepository;
 import com.org.playboard.service.user.AvatarUrlResolver;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,19 +27,25 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserAuthIdentityRepository identityRepository;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final AppleTokenVerifier appleTokenVerifier;
     private final JwtService jwtService;
     private final AvatarUrlResolver avatarUrls;
 
     public AuthService(
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
+            UserAuthIdentityRepository identityRepository,
             GoogleTokenVerifier googleTokenVerifier,
+            AppleTokenVerifier appleTokenVerifier,
             JwtService jwtService,
             AvatarUrlResolver avatarUrls) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.identityRepository = identityRepository;
         this.googleTokenVerifier = googleTokenVerifier;
+        this.appleTokenVerifier = appleTokenVerifier;
         this.jwtService = jwtService;
         this.avatarUrls = avatarUrls;
     }
@@ -47,18 +57,24 @@ public class AuthService {
         // Normalize so the lookup agrees with any pre-created (add-by-email) row.
         String email = EmailNormalizer.normalize(payload.getEmail());
 
-        User user =
-                userRepository
-                        .findByGoogleSub(googleSub)
-                        .or(() -> userRepository.findByEmail(email).map(existing -> linkGoogleSub(existing, googleSub)))
-                        .orElseGet(() -> createUser(googleSub, email, (String) payload.get("name")));
+        User user = resolveUser(AuthProvider.GOOGLE, googleSub, email, (String) payload.get("name"));
+        if (user.getGoogleSub() == null) {
+            user.setGoogleSub(googleSub);
+        }
+        return authenticatedResponse(user);
+    }
 
-        TokenPair tokens = issueTokenPair(user.getId());
-        return new TokenResponse(
-                tokens.accessToken(),
-                tokens.refreshToken(),
-                JwtService.ACCESS_TOKEN_TTL.toSeconds(),
-                UserSummaryDto.from(user, avatarUrls));
+    /** Exchanges a verified native Apple identity credential for a Playboard session. */
+    @Transactional
+    public TokenResponse signInWithApple(
+            String identityToken, String givenName, String familyName) {
+        VerifiedIdentity identity = appleTokenVerifier.verify(identityToken, givenName, familyName);
+        User user = resolveUser(
+                AuthProvider.APPLE,
+                identity.subject(),
+                identity.email(),
+                identity.displayName());
+        return authenticatedResponse(user);
     }
 
     @Transactional
@@ -101,19 +117,63 @@ public class AuthService {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    private User linkGoogleSub(User user, String googleSub) {
-        user.setGoogleSub(googleSub);
-        return user;
+    private User resolveUser(
+            AuthProvider provider, String subject, String rawEmail, String displayName) {
+        return identityRepository
+                .findByProviderAndSubject(provider, subject)
+                .map(UserAuthIdentity::getUser)
+                .orElseGet(() -> {
+                    String email = rawEmail == null ? null : EmailNormalizer.normalize(rawEmail);
+                    User user = email == null
+                            ? null
+                            : userRepository.findByEmail(email).orElse(null);
+                    if (user == null) {
+                        if (email == null) {
+                            throw new ApiException(
+                                    HttpStatus.CONFLICT,
+                                    "AUTH_EMAIL_REQUIRED",
+                                    "The provider did not supply an email for a new Playboard account");
+                        }
+                        user = createUser(email, displayName);
+                    }
+                    linkIdentity(user, provider, subject);
+                    return user;
+                });
     }
 
-    private User createUser(String googleSub, String email, String displayName) {
+    private User createUser(String email, String displayName) {
         User user = new User();
-        user.setGoogleSub(googleSub);
         user.setEmail(email);
         user.setDisplayName(displayName != null ? displayName : email);
         user.setAvatarColor(AvatarColorPicker.pick(email));
         user.setAvatarId(DefaultAvatars.pickRandom());
         return userRepository.save(user);
+    }
+
+    private void linkIdentity(User user, AuthProvider provider, String subject) {
+        if (identityRepository.existsByUserIdAndProvider(user.getId(), provider)) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "AUTH_PROVIDER_ALREADY_LINKED",
+                    "This Playboard account is already linked to another " + provider.apiValue() + " identity");
+        }
+        UserAuthIdentity identity = new UserAuthIdentity();
+        identity.setUser(user);
+        identity.setProvider(provider);
+        identity.setSubject(subject);
+        identityRepository.save(identity);
+    }
+
+    private TokenResponse authenticatedResponse(User user) {
+        TokenPair tokens = issueTokenPair(user.getId());
+        List<String> providers = identityRepository.findAllByUserIdOrderByProvider(user.getId()).stream()
+                .map(identity -> identity.getProvider().apiValue())
+                .toList();
+        return new TokenResponse(
+                tokens.accessToken(),
+                tokens.refreshToken(),
+                JwtService.ACCESS_TOKEN_TTL.toSeconds(),
+                UserSummaryDto.from(user, avatarUrls, providers));
     }
 
     private record TokenPair(String accessToken, String refreshToken) {}
