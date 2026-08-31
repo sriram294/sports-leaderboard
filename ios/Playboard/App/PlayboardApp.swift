@@ -1,4 +1,5 @@
 import SwiftUI
+import GoogleSignIn
 
 /// Native Playboard application entry point.
 @main
@@ -9,6 +10,9 @@ struct PlayboardApp: App {
         WindowGroup {
             PlayboardTheme {
                 RootView(environment: environment)
+            }
+            .onOpenURL { url in
+                GIDSignIn.sharedInstance.handle(url)
             }
         }
     }

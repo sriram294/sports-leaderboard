@@ -6,7 +6,7 @@ against the schema in [data-model.md](data-model.md).
 
 ## Conventions
 
-- **Auth**: every endpoint except `GET /app/update`, `POST /auth/google`, and `POST /auth/refresh`
+- **Auth**: every endpoint except `GET /app/update`, `POST /auth/google`, `POST /auth/apple`, and `POST /auth/refresh`
   requires `Authorization: Bearer <accessToken>`.
 - **Google Sign-In flow**: Android gets a Google ID token via Credential
   Manager (`GetGoogleIdOption`, using a Web-application OAuth Client ID as
@@ -14,6 +14,11 @@ against the schema in [data-model.md](data-model.md).
   backend verifies it once with Google's `GoogleIdTokenVerifier`, then
   mints its own access/refresh tokens — the app never uses the Google ID
   token as an ongoing API credential.
+- **Apple Sign-In flow**: iOS gets an Apple identity token through
+  `AuthenticationServices`. The backend verifies its signature, issuer,
+  configured audience, and expiry before minting Playboard tokens. Apple
+  name/email values are used only on the first grant; returning users resolve
+  by the stable Apple subject.
 - **Group-scoped endpoints** (`/groups/{groupId}/...`) return `403` if the
   caller isn't an active member of that group.
 - **Errors**: [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) via Spring's
@@ -54,10 +59,24 @@ Response `200`:
   "refreshToken": "...",
   "expiresIn": 900,
   "user": { "id": "uuid", "displayName": "Raj", "email": "raj@gmail.com",
-            "photoUrl": null, "avatarColor": "#7ED321" }
+            "photoUrl": null, "avatarColor": "#7ED321",
+            "authProviders": ["google"] }
 }
 ```
 `401 GOOGLE_TOKEN_INVALID` if the Google token fails verification.
+
+### `POST /auth/apple`
+Exchange a native Sign in with Apple identity token for app tokens.
+
+Request:
+```json
+{ "identityToken": "<apple-identity-token>", "givenName": "Raj", "familyName": "Kumar" }
+```
+Names are optional because Apple normally returns them only on the first
+authorization. Response `200` matches `/auth/google`; `authProviders` contains
+every linked provider. `401 APPLE_TOKEN_INVALID` rejects invalid tokens, `503
+APPLE_AUTH_NOT_CONFIGURED` fails safely when `APPLE_CLIENT_IDS` is empty, and
+`409 AUTH_EMAIL_REQUIRED` applies when an unlinked identity supplies no email.
 
 ### `POST /auth/refresh`
 Request: `{ "refreshToken": "..." }`
@@ -184,8 +203,8 @@ Creates the person as a real member: they appear in the roster, are pickable for
 matches, and accrue stats (they join the leaderboard after their first match).
 The email is normalized (trimmed + lowercased); if a user with that email already
 exists it's reused (their existing identity wins). When that person later signs
-in with Google using the same email, their `google_sub` is linked to this
-pre-created row — membership and stats carry over, no duplicate. `409
+in with Google or Apple using the same email, the provider identity is linked
+to this pre-created row — membership and stats carry over, no duplicate. `409
 GROUP_MEMBER_EXISTS` if they're already an active member.
 
 ---
@@ -416,7 +435,8 @@ means an on-device issue; `failed > 0` surfaces the FCM error codes.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/auth/google` | Sign in |
+| POST | `/auth/google` | Sign in with Google |
+| POST | `/auth/apple` | Sign in with Apple |
 | POST | `/auth/refresh` | Refresh access token |
 | POST | `/auth/logout` | Revoke refresh token |
 | GET | `/app/update` | Public latest debug APK metadata |

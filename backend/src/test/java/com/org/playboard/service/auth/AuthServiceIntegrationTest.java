@@ -7,9 +7,11 @@ import static org.mockito.Mockito.when;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.org.playboard.common.ApiException;
 import com.org.playboard.dto.auth.TokenResponse;
+import com.org.playboard.entity.auth.AuthProvider;
 import com.org.playboard.entity.auth.RefreshToken;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.auth.RefreshTokenRepository;
+import com.org.playboard.repository.auth.UserAuthIdentityRepository;
 import com.org.playboard.repository.user.UserRepository;
 import java.time.Instant;
 import java.util.UUID;
@@ -30,11 +32,13 @@ class AuthServiceIntegrationTest {
     @Autowired private AuthService authService;
     @Autowired private JwtService jwtService;
     @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private UserAuthIdentityRepository identityRepository;
     @Autowired private UserRepository userRepository;
 
     // Can't obtain a real Google ID token in a test — stub the verifier so we
     // control the (email, sub, name) the sign-in resolves against.
     @MockitoBean private GoogleTokenVerifier googleTokenVerifier;
+    @MockitoBean private AppleTokenVerifier appleTokenVerifier;
 
     @Test
     void signInClaimsPreCreatedEmailUserAndLinksGoogleAccount() {
@@ -62,6 +66,71 @@ class AuthServiceIntegrationTest {
         assertThat(linked.getGoogleSub()).isEqualTo("google-sub-123");
         assertThat(linked.getEmail()).isEqualTo("iphone.user@gmail.com"); // unchanged, normalized
         assertThat(userRepository.findByEmail("iphone.user@gmail.com")).isPresent();
+        assertThat(response.user().authProviders()).containsExactly("google");
+        assertThat(identityRepository.findByProviderAndSubject(AuthProvider.GOOGLE, "google-sub-123"))
+                .get()
+                .extracting(identity -> identity.getUser().getId())
+                .isEqualTo(provisionalId);
+    }
+
+    @Test
+    void appleLinksTheExistingEmailAccountWithoutBreakingGoogleLogin() {
+        GoogleIdToken.Payload googlePayload = new GoogleIdToken.Payload();
+        googlePayload.setSubject("google-dual-provider");
+        googlePayload.setEmail("dual@example.com");
+        googlePayload.set("name", "Dual Provider");
+        when(googleTokenVerifier.verify("google-token")).thenReturn(googlePayload);
+        TokenResponse google = authService.signInWithGoogle("google-token");
+
+        when(appleTokenVerifier.verify("apple-token", "Dual", "Provider"))
+                .thenReturn(new VerifiedIdentity("apple-dual-provider", "DUAL@example.com", "Dual Provider"));
+        TokenResponse apple = authService.signInWithApple("apple-token", "Dual", "Provider");
+
+        assertThat(apple.user().id()).isEqualTo(google.user().id());
+        assertThat(apple.user().authProviders()).containsExactly("apple", "google");
+        assertThat(userRepository.findAll().stream()
+                        .filter(user -> "dual@example.com".equals(user.getEmail())))
+                .hasSize(1);
+    }
+
+    @Test
+    void returningAppleUserCanSignInWhenAppleNoLongerSharesEmail() {
+        when(appleTokenVerifier.verify("first-token", "First", "Login"))
+                .thenReturn(new VerifiedIdentity("apple-returning", "returning@privaterelay.appleid.com", "First Login"));
+        TokenResponse first = authService.signInWithApple("first-token", "First", "Login");
+
+        when(appleTokenVerifier.verify("later-token", null, null))
+                .thenReturn(new VerifiedIdentity("apple-returning", null, null));
+        TokenResponse returning = authService.signInWithApple("later-token", null, null);
+
+        assertThat(returning.user().id()).isEqualTo(first.user().id());
+        assertThat(returning.user().displayName()).isEqualTo("First Login");
+        assertThat(returning.user().authProviders()).containsExactly("apple");
+    }
+
+    @Test
+    void newAppleUserWithoutAnEmailFailsDeterministically() {
+        when(appleTokenVerifier.verify("no-email", null, null))
+                .thenReturn(new VerifiedIdentity("apple-new-no-email", null, null));
+
+        assertThatThrownBy(() -> authService.signInWithApple("no-email", null, null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(error -> assertThat(((ApiException) error).getCode()).isEqualTo("AUTH_EMAIL_REQUIRED"));
+    }
+
+    @Test
+    void aSecondAppleSubjectCannotReplaceTheAccountsExistingAppleIdentity() {
+        when(appleTokenVerifier.verify("first-apple", "First", "Identity"))
+                .thenReturn(new VerifiedIdentity("apple-subject-one", "unique-apple@example.com", "First Identity"));
+        authService.signInWithApple("first-apple", "First", "Identity");
+
+        when(appleTokenVerifier.verify("second-apple", null, null))
+                .thenReturn(new VerifiedIdentity("apple-subject-two", "unique-apple@example.com", null));
+
+        assertThatThrownBy(() -> authService.signInWithApple("second-apple", null, null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(error -> assertThat(((ApiException) error).getCode())
+                        .isEqualTo("AUTH_PROVIDER_ALREADY_LINKED"));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.org.playboard.controller.auth;
 
+import com.org.playboard.dto.auth.AppleSignInRequest;
 import com.org.playboard.dto.auth.GoogleSignInRequest;
 import com.org.playboard.dto.auth.RefreshRequest;
 import com.org.playboard.dto.auth.TokenResponse;
@@ -23,12 +24,19 @@ public class AuthController {
     }
 
     // Empty @SecurityRequirements overrides OpenApiConfig's global bearer
-    // requirement for just these two operations — they're the only ones
+    // requirement for these public authentication operations — they're the only ones
     // that don't need Authorization: Bearer (see SecurityConfig).
     @SecurityRequirements
     @PostMapping("/google")
     public TokenResponse signInWithGoogle(@Valid @RequestBody GoogleSignInRequest request) {
         return authService.signInWithGoogle(request.idToken());
+    }
+
+    @SecurityRequirements
+    @PostMapping("/apple")
+    public TokenResponse signInWithApple(@Valid @RequestBody AppleSignInRequest request) {
+        return authService.signInWithApple(
+                request.identityToken(), request.givenName(), request.familyName());
     }
 
     @SecurityRequirements

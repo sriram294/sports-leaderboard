@@ -35,6 +35,9 @@ playboard:
     # Web-application OAuth Client ID — must match the `serverClientId`
     # Android passes to GetGoogleIdOption, or the token's `aud` check fails.
     google-client-id: ${GOOGLE_CLIENT_ID}
+    # Comma-separated native/service identifiers accepted in Apple ID tokens.
+    # Empty means the Apple endpoint fails safely with APPLE_AUTH_NOT_CONFIGURED.
+    apple-client-ids: ${APPLE_CLIENT_IDS:}
     # HMAC signing secret for our own access/refresh JWTs. Must be at least
     # 32 bytes (256 bits) for HS256 — generate with e.g. `openssl rand -base64 32`.
     jwt-secret: ${JWT_SECRET}
