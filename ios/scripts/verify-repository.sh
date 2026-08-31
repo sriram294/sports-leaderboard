@@ -20,10 +20,6 @@ if find . -type f \( -name 'GoogleService-Info.plist' -o -name '*.mobileprovisio
   exit 1
 fi
 
-if rg -n --hidden -g '!build/**' -g '!*.example' \
-  '(-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AIza[0-9A-Za-z_-]{30,}|[A-Za-z0-9_]*SECRET[[:space:]]*=[[:space:]]*[^[:space:]]+)' . ../docs/ios ../codemagic.yaml; then
-  echo "Possible credential material found." >&2
-  exit 1
-fi
+python3 scripts/verify_no_secrets.py . ../docs/ios ../codemagic.yaml
 
 echo "Repository controls verified; inspect 'git status --short' before staging paths explicitly."

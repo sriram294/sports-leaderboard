@@ -4,7 +4,13 @@ cd "$(dirname "$0")/.."
 source scripts/common.sh
 require_xcode_26_2
 
-readonly settings="$(xcodebuild -project "${PROJECT}" -scheme "${SCHEME}" -configuration Release -showBuildSettings -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile)"
+settings=""
+if ! settings="$(xcodebuild -project "${PROJECT}" -scheme "${SCHEME}" -configuration Release -showBuildSettings -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile 2>&1)"; then
+  printf '%s\n' "${settings}" >&2
+  echo "Unable to read build settings; resolve the locked package graph first." >&2
+  exit 1
+fi
+readonly settings
 check_setting() {
   local key="$1"
   local expected="$2"
