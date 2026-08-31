@@ -1,12 +1,12 @@
 # iOS roadmap
 
-Base refreshed from `origin/master` on 2026-08-30: `57fb317902eb3198423f043aca45977b9f46d2c6`.
+Base refreshed from `origin/master` on 2026-08-31: `490fecba985f48d10c6ffc72b3d2014390f28c3f`.
 
 | Slice | Deliverable | Status | Branch | Depends on | PR | Merge commit | Started | Finished | Verification evidence |
 |---|---|---|---|---|---|---|---|---|---|
 | S00 | Foundation and delivery controls | `done` | `feature/ios-foundation` | — | [#99](https://github.com/sriram294/sports-leaderboard/pull/99) | `5395ccd0f159e0c627a669ff756025457ef5c7b7` | 2026-08-30 | 2026-08-30 | Repository/docs/secret checks, Swift 6.2 parse, strict-concurrency core type-check, and forced 11-pin lock resolution passed; PR #99 merged 2026-08-30; Vercel checks passed; no Codemagic result was reported |
-| S01 | Authentication and session | `in_progress` | `feature/ios-auth` | S00 | pending | pending | 2026-08-30 | — | 2026-08-31 partial: backend 147/147 tests passed on JDK 25 + PostgreSQL 16 with Flyway V1–V15; iOS repository/docs/secret + plist/shell checks passed; Xcode 26.2 evidence pending |
-| S02 | Groups and app shell | `not_started` | `feature/ios-groups-shell` | S01 | — | — | — | — | — |
+| S01 | Authentication and session | `done` | `feature/ios-auth` | S00 | [#100](https://github.com/sriram294/sports-leaderboard/pull/100) | `490fecba985f48d10c6ffc72b3d2014390f28c3f` | 2026-08-30 | 2026-08-31 | Backend `./mvnw test`: 147/147 passed on JDK 25 + PostgreSQL 16 with Flyway V1–V15; iOS repository/docs/secret + plist/shell/static checks passed in the Linux workspace; PR #100 merged 2026-08-31 with both Vercel checks passing; Xcode 26.2 execution remains unavailable in this workspace |
+| S02 | Groups and app shell | `in_progress` | `feature/ios-groups-shell` | S01 | pending | pending | 2026-08-31 | — | Transitioned from merged PR #100 at `490fecba985f48d10c6ffc72b3d2014390f28c3f`; implementation verification pending |
 | S03 | Leaderboard | `not_started` | `feature/ios-leaderboard` | S02 | — | — | — | — | — |
 | S04 | Matches and recording | `not_started` | `feature/ios-matches` | S03 | — | — | — | — | — |
 | S05 | Profile, stats, settings, sharing | `not_started` | `feature/ios-profile-stats` | S04 | — | — | — | — | — |
