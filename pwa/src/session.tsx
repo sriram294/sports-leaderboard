@@ -20,6 +20,8 @@ type SessionValue = {
   updateUser: (user: User) => void;
   /** Revoke the refresh token (best-effort) and clear local state. */
   signOut: () => void;
+  /** Permanently delete the remote account, then clear account-scoped browser state. */
+  deleteAccount: (confirmation: string) => Promise<void>;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -79,7 +81,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('anon');
   };
 
-  return <SessionContext.Provider value={{ status, user, login, updateUser, signOut }}>{children}</SessionContext.Provider>;
+  const deleteAccount = async (confirmation: string) => {
+    await api.deleteAccount(confirmation);
+    // The backend removed the registration. Drop the browser subscription and cached
+    // token afterward; its best-effort authenticated unregister is now expected to no-op.
+    await disablePush().catch(() => undefined);
+    auth.set(null);
+    localStorage.removeItem('playboard.group');
+    setUser(undefined);
+    setStatus('anon');
+  };
+
+  return <SessionContext.Provider value={{ status, user, login, updateUser, signOut, deleteAccount }}>{children}</SessionContext.Provider>;
 }
 
 export function useSession(): SessionValue {

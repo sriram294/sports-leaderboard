@@ -11,6 +11,8 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
 - Header: group switcher (same component as Board/Matches/Add)
 - Account row: "Signed in with Google", email, **Sign out** button
   (own profile only — hidden when viewing another player)
+- Settings includes **Delete account**. Its destructive confirmation explains anonymous
+  shared-history retention and requires the exact typed word `DELETE`.
 - Identity card: avatar, name, "N matches played", win rate %
 - Stat tiles (2x3 grid): Wins, Losses, Pts For, Streak (+ Best streak
   sub-label), Best Streak, Pts Against
@@ -44,6 +46,9 @@ tapped from the [Board](02-board-leaderboard.md) leaderboard.
    not play remain calendar gaps. Before the first qualified point, show
    “Finishing positions are recorded after each month closes.” Historical
    months from before snapshot capture launched are not backfilled.
+7. Successful account deletion clears the local session and returns to Login. Failure leaves
+   the confirmation open for retry. Owned groups transfer automatically; retained shared
+   records identify the account only as `Deleted player`.
 
 ## Data needed
 - Per player per group: matchesPlayed, wins, losses, ptsFor, ptsAgainst,

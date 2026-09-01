@@ -11,6 +11,7 @@ struct AppEnvironment {
     let appleCredentialParser: any AppleCredentialParsing
     let groupRepositoryFactory: (String) -> any GroupRepository
     let leaderboardRepositoryFactory: (String) -> any LeaderboardRepository
+    let matchRepositoryFactory: (String) -> any MatchRepository
 
     /// Production dependencies are created exactly once for the app process.
     static let live: AppEnvironment = {
@@ -23,10 +24,14 @@ struct AppEnvironment {
             let leaderboardScenario = arguments.firstIndex(of: "-ui-leaderboard-scenario")
                 .flatMap { arguments.indices.contains($0 + 1) ? UITestLeaderboardScenario(rawValue: arguments[$0 + 1]) : nil }
                 ?? .standard
+            let matchScenario = arguments.firstIndex(of: "-ui-match-scenario")
+                .flatMap { arguments.indices.contains($0 + 1) ? UITestMatchScenario(rawValue: arguments[$0 + 1]) : nil }
+                ?? .standard
             return uiTest(
                 scenario: UITestAuthScenario(rawValue: arguments[marker + 1]) ?? .failure,
                 groupScenario: groupScenario,
-                leaderboardScenario: leaderboardScenario
+                leaderboardScenario: leaderboardScenario,
+                matchScenario: matchScenario
             )
         }
         #endif
@@ -64,6 +69,14 @@ struct AppEnvironment {
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
+            },
+            matchRepositoryFactory: { accessToken in
+                LiveMatchRepository(
+                    apiClient: apiClient,
+                    baseURL: configuration.apiBaseURL,
+                    accessToken: accessToken,
+                    refreshAccessToken: { try await authRepository.refreshSession().accessToken }
+                )
             }
         )
     }()
@@ -82,7 +95,8 @@ struct AppEnvironment {
             googleAuthProvider: PreviewGoogleAuthProvider(),
             appleCredentialParser: AppleCredentialParser(),
             groupRepositoryFactory: { _ in PreviewGroupRepository() },
-            leaderboardRepositoryFactory: { _ in PreviewLeaderboardRepository() }
+            leaderboardRepositoryFactory: { _ in PreviewLeaderboardRepository() },
+            matchRepositoryFactory: { _ in PreviewMatchRepository() }
         )
     }
 
@@ -90,7 +104,8 @@ struct AppEnvironment {
     private static func uiTest(
         scenario: UITestAuthScenario,
         groupScenario: UITestGroupScenario,
-        leaderboardScenario: UITestLeaderboardScenario
+        leaderboardScenario: UITestLeaderboardScenario,
+        matchScenario: UITestMatchScenario
     ) -> AppEnvironment {
         let configuration = ProviderConfiguration(
             apiBaseURL: URL(string: "https://example.invalid/api/v1"),
@@ -104,7 +119,8 @@ struct AppEnvironment {
             googleAuthProvider: UITestGoogleAuthProvider(scenario: scenario),
             appleCredentialParser: AppleCredentialParser(),
             groupRepositoryFactory: { _ in UITestGroupRepository(scenario: groupScenario) },
-            leaderboardRepositoryFactory: { _ in UITestLeaderboardRepository(scenario: leaderboardScenario) }
+            leaderboardRepositoryFactory: { _ in UITestLeaderboardRepository(scenario: leaderboardScenario) },
+            matchRepositoryFactory: { _ in UITestMatchRepository(scenario: matchScenario) }
         )
     }
     #endif
@@ -117,6 +133,14 @@ private actor PreviewLeaderboardRepository: LeaderboardRepository {
             LeaderboardEntry(rank: 2, userID: "player-2", displayName: "Priya", photoURL: nil, avatarID: "avatar2", avatarColor: "#5B8CFF", gamesPlayed: 10, wins: 7, losses: 3, pointsFor: 420, pointsAgainst: 390, winRate: 0.7, currentStreak: 2, bestStreak: 4, rating: 41.0, provisional: false, recentForm: [true, true, false])
         ], minGamesToRank: 3)
     }
+}
+
+private actor PreviewMatchRepository: MatchRepository {
+    func matches(groupID: String, cursor: String?, mine: Bool) async throws -> MatchPage {
+        MatchPage(matches: [.preview], nextCursor: nil)
+    }
+    func detail(groupID: String, matchID: String) async throws -> MatchDetail { .preview }
+    func record(groupID: String, request: RecordMatchRequest, requestID: String) async throws -> MatchDetail { .preview }
 }
 
 private actor PreviewGroupRepository: GroupRepository {
@@ -148,8 +172,42 @@ private extension PlayGroup {
 private extension GroupRoster {
     static let preview = GroupRoster(members: [
         GroupMember(userID: "ui-user", displayName: "Test Player", photoURL: nil, avatarID: "avatar1", avatarColor: "#9ADE28", role: .owner),
-        GroupMember(userID: "player-2", displayName: "Priya", photoURL: nil, avatarID: "avatar2", avatarColor: "#5B8CFF", role: .member)
+        GroupMember(userID: "player-2", displayName: "Priya", photoURL: nil, avatarID: "avatar2", avatarColor: "#5B8CFF", role: .member),
+        GroupMember(userID: "player-3", displayName: "Dev", photoURL: nil, avatarID: "avatar3", avatarColor: "#FF9F43", role: .member),
+        GroupMember(userID: "player-4", displayName: "Kiran", photoURL: nil, avatarID: "avatar4", avatarColor: "#A78BFA", role: .member)
     ], guests: [])
+}
+
+private extension MatchSummary {
+    static let preview = MatchSummary(
+        id: "match-preview",
+        playedAt: Date(timeIntervalSince1970: 1_786_262_280),
+        teams: [.previewOne, .previewTwo],
+        sets: [MatchSet(setNo: 1, team1Score: 21, team2Score: 14), MatchSet(setNo: 2, team1Score: 21, team2Score: 18)]
+    )
+}
+
+private extension MatchDetail {
+    static let preview = MatchDetail(
+        id: MatchSummary.preview.id,
+        playedAt: MatchSummary.preview.playedAt,
+        teams: MatchSummary.preview.teams,
+        sets: MatchSummary.preview.sets,
+        recordedBy: MatchActor(userID: "ui-user", displayName: "Test Player"),
+        recordedAt: MatchSummary.preview.playedAt,
+        events: [MatchEvent(userID: "ui-user", displayName: "Test Player", action: "created", createdAt: MatchSummary.preview.playedAt)]
+    )
+}
+
+private extension MatchTeam {
+    static let previewOne = MatchTeam(teamNo: 1, isWinner: true, players: [
+        MatchPlayer(userID: "ui-user", displayName: "Test Player", avatarColor: "#9ADE28", photoURL: nil, avatarID: "avatar1"),
+        MatchPlayer(userID: "player-3", displayName: "Dev", avatarColor: "#FF9F43", photoURL: nil, avatarID: "avatar3")
+    ])
+    static let previewTwo = MatchTeam(teamNo: 2, isWinner: false, players: [
+        MatchPlayer(userID: "player-2", displayName: "Priya", avatarColor: "#5B8CFF", photoURL: nil, avatarID: "avatar2"),
+        MatchPlayer(userID: "player-4", displayName: "Kiran", avatarColor: "#A78BFA", photoURL: nil, avatarID: "avatar4")
+    ])
 }
 
 private actor PreviewAuthRepository: AuthRepository {
@@ -189,6 +247,13 @@ private enum UITestLeaderboardScenario: String, Sendable {
     case dense
     case empty
     case failure
+}
+
+private enum UITestMatchScenario: String, Sendable {
+    case standard
+    case empty
+    case failure
+    case retry
 }
 
 private actor UITestAuthRepository: AuthRepository {
@@ -332,6 +397,30 @@ private actor UITestLeaderboardRepository: LeaderboardRepository {
             )
         }
         return Leaderboard(rankings: rows, minGamesToRank: 3)
+    }
+}
+
+private actor UITestMatchRepository: MatchRepository {
+    private let scenario: UITestMatchScenario
+    private var recordAttempts = 0
+    init(scenario: UITestMatchScenario) { self.scenario = scenario }
+
+    func matches(groupID: String, cursor: String?, mine: Bool) async throws -> MatchPage {
+        if scenario == .failure { throw MatchRepositoryError.offline }
+        return MatchPage(matches: scenario == .empty ? [] : [.preview], nextCursor: nil)
+    }
+
+    func detail(groupID: String, matchID: String) async throws -> MatchDetail {
+        if scenario == .failure { throw MatchRepositoryError.offline }
+        return .preview
+    }
+
+    func record(groupID: String, request: RecordMatchRequest, requestID: String) async throws -> MatchDetail {
+        recordAttempts += 1
+        if scenario == .failure || (scenario == .retry && recordAttempts == 1) {
+            throw MatchRepositoryError.offline
+        }
+        return .preview
     }
 }
 #endif

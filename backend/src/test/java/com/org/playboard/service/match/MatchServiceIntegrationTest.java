@@ -146,6 +146,40 @@ class MatchServiceIntegrationTest {
     }
 
     @Test
+    void repeatedIdempotentRecordReturnsOriginalWithoutApplyingStatsTwice() {
+        Fixture f = newFixture();
+        RecordMatchRequest request = recordRequest(
+                1, List.of(new SetInput((short) 1, (short) 21, (short) 12)), f);
+
+        MatchDetailDto first = matchService.createMatch(f.group.getId(), f.raj.getId(), request, "ios-attempt-1");
+        MatchDetailDto retry = matchService.createMatch(f.group.getId(), f.raj.getId(), request, "ios-attempt-1");
+
+        assertThat(retry.id()).isEqualTo(first.id());
+        assertThat(matchService.listMatches(f.group.getId(), f.raj.getId(), null, 20, false).matches())
+                .extracting("id")
+                .containsExactly(first.id());
+        assertStats(f.group, f.raj, 1, 1, 0, 21, 12, 1, 1);
+    }
+
+    @Test
+    void rejectsIdempotencyKeyReusedForDifferentMatchInput() {
+        Fixture f = newFixture();
+        matchService.createMatch(
+                f.group.getId(),
+                f.raj.getId(),
+                recordRequest(1, List.of(new SetInput((short) 1, (short) 21, (short) 12)), f),
+                "ios-attempt-2");
+
+        assertThatThrownBy(() -> matchService.createMatch(
+                        f.group.getId(),
+                        f.raj.getId(),
+                        recordRequest(2, List.of(new SetInput((short) 1, (short) 12, (short) 21)), f),
+                        "ios-attempt-2"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).getCode()).isEqualTo("IDEMPOTENCY_KEY_REUSED"));
+    }
+
+    @Test
     void paginatesMatchesByCursor() {
         Fixture f = newFixture();
         for (int i = 0; i < 3; i++) {

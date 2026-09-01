@@ -230,6 +230,14 @@ class GroupRepository @Inject constructor(
         appScope.launch { selectedGroupStore.set(groupId) }
     }
 
+    /** Drops account-scoped in-memory data after permanent account deletion. */
+    fun clearSession() {
+        _groups.value = emptyList()
+        _groupsLoadState.value = GroupsLoadState.LOADING
+        _selectedGroupId.value = null
+        _dataRevision.value = 0
+    }
+
     /** Inserts [group] (or replaces the existing entry with the same id) and selects it. */
     private fun addAndSelect(group: Group) {
         _groups.update { current ->

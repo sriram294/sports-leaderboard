@@ -80,6 +80,10 @@ public class AuthService {
     @Transactional
     public TokenResponse refresh(String refreshTokenJwt) {
         JwtService.RefreshTokenClaims claims = jwtService.verifyRefreshToken(refreshTokenJwt);
+        if (!userRepository.existsByIdAndDeletedAtIsNull(claims.userId())) {
+            throw new ApiException(
+                    HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "Refresh token expired or revoked");
+        }
         RefreshToken stored =
                 refreshTokenRepository
                         .findByIdAndRevokedAtIsNull(claims.refreshTokenId())

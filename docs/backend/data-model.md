@@ -29,7 +29,7 @@ product requirements this schema serves).
 
 | Table | Purpose |
 |---|---|
-| `users` | Account identity, avatar |
+| `users` | Account identity/avatar, or anonymous deleted-account tombstone |
 | `user_auth_identities` | Provider-neutral Google/Apple subjects linked to accounts |
 | `sports` | Lookup: sport/format rules (team size, scoring) |
 | `groups` | A play group, tied to one sport |
@@ -40,6 +40,7 @@ product requirements this schema serves).
 | `match_participants` | Players on a team (1 for singles, 2 for doubles, …) |
 | `match_sets` | Per-set scores |
 | `match_events` | Audit log: created / edited / deleted, by whom, when |
+| `match_record_requests` | Caller-scoped idempotency keys and their created match |
 | `member_stats` | Materialized per-group-per-player stats (leaderboard source) |
 | `monthly_trophy` | Immutable completed-month winner verdict; `standings_captured` identifies V14+ snapshots |
 | `monthly_standing` | Frozen rank/rating/games/wins/provisional row per group, month, and player |
@@ -86,9 +87,15 @@ create table users (
                                              -- change domain without a data migration.
                                              -- null => client falls back to initial + avatar_color
     avatar_color  text not null,              -- persisted at creation so the fallback color is stable across devices
+    deleted_at    timestamptz,                 -- non-null => cannot authenticate; identity has been anonymized
     created_at    timestamptz not null default now(),
     updated_at    timestamptz not null default now()
 );
+
+Account deletion retains the row only because shared history has non-null user foreign keys.
+It replaces email/name/avatar with anonymous values, removes provider and credential rows,
+and sets `deleted_at`. Authentication accepts only rows where `deleted_at is null`; the
+original provider subject and email can therefore create a new unrelated account.
 
 create table user_auth_identities (
     id          uuid primary key default gen_random_uuid(),
@@ -220,6 +227,21 @@ create table match_events (
 );
 
 create index idx_match_events_match on match_events(match_id, created_at);
+
+-- Optional Idempotency-Key claims for duplicate-safe match recording.
+create table match_record_requests (
+    id              uuid primary key default gen_random_uuid(),
+    group_id        uuid not null references groups(id) on delete cascade,
+    requested_by    uuid not null references users(id) on delete cascade,
+    idempotency_key varchar(128) not null,
+    request_hash    varchar(64) not null,
+    match_id        uuid references matches(id) on delete cascade,
+    created_at      timestamptz not null default now(),
+    updated_at      timestamptz not null default now(),
+    unique (group_id, requested_by, idempotency_key)
+);
+
+create index idx_match_record_requests_match on match_record_requests(match_id);
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Materialized leaderboard stats — the hot-path read table
