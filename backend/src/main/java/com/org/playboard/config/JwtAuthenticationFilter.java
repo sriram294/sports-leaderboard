@@ -2,6 +2,7 @@ package com.org.playboard.config;
 
 import com.org.playboard.common.ApiException;
 import com.org.playboard.service.auth.JwtService;
+import com.org.playboard.repository.user.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,9 +28,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -40,6 +43,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             try {
                 UUID userId = jwtService.verifyAccessToken(header.substring(BEARER_PREFIX.length()));
+                if (!userRepository.existsByIdAndDeletedAtIsNull(userId)) {
+                    throw new ApiException(
+                            org.springframework.http.HttpStatus.UNAUTHORIZED,
+                            "ACCESS_TOKEN_INVALID",
+                            "Token failed verification");
+                }
                 SecurityContextHolder.getContext()
                         .setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, List.of()));
             } catch (ApiException ignored) {

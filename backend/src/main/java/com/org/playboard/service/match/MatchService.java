@@ -20,12 +20,14 @@ import com.org.playboard.entity.match.Match;
 import com.org.playboard.entity.match.MatchAction;
 import com.org.playboard.entity.match.MatchEvent;
 import com.org.playboard.entity.match.MatchParticipant;
+import com.org.playboard.entity.match.MatchRecordRequest;
 import com.org.playboard.entity.match.MatchSet;
 import com.org.playboard.entity.match.MatchTeam;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
 import com.org.playboard.repository.match.MatchEventRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
+import com.org.playboard.repository.match.MatchRecordRequestRepository;
 import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.repository.match.MatchSetRepository;
 import com.org.playboard.repository.match.MatchTeamRepository;
@@ -36,6 +38,8 @@ import com.org.playboard.service.notification.events.MatchRecordedEvent;
 import com.org.playboard.service.notification.events.MatchUpdatedEvent;
 import com.org.playboard.service.stats.StatsRecalculationService;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
@@ -63,6 +67,7 @@ public class MatchService {
     private final MatchRepository matchRepository;
     private final MatchTeamRepository matchTeamRepository;
     private final MatchParticipantRepository matchParticipantRepository;
+    private final MatchRecordRequestRepository matchRecordRequestRepository;
     private final MatchSetRepository matchSetRepository;
     private final MatchEventRepository matchEventRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -76,6 +81,7 @@ public class MatchService {
             MatchRepository matchRepository,
             MatchTeamRepository matchTeamRepository,
             MatchParticipantRepository matchParticipantRepository,
+            MatchRecordRequestRepository matchRecordRequestRepository,
             MatchSetRepository matchSetRepository,
             MatchEventRepository matchEventRepository,
             GroupMemberRepository groupMemberRepository,
@@ -87,6 +93,7 @@ public class MatchService {
         this.matchRepository = matchRepository;
         this.matchTeamRepository = matchTeamRepository;
         this.matchParticipantRepository = matchParticipantRepository;
+        this.matchRecordRequestRepository = matchRecordRequestRepository;
         this.matchSetRepository = matchSetRepository;
         this.matchEventRepository = matchEventRepository;
         this.groupMemberRepository = groupMemberRepository;
@@ -145,6 +152,41 @@ public class MatchService {
 
     @Transactional
     public MatchDetailDto createMatch(UUID groupId, UUID callerId, RecordMatchRequest request) {
+        return createMatch(groupId, callerId, request, null);
+    }
+
+    /**
+     * Creates a match once for a caller-scoped idempotency key. Reusing the key with the
+     * same request returns the original detail; reusing it for different input is rejected.
+     */
+    @Transactional
+    public MatchDetailDto createMatch(
+            UUID groupId, UUID callerId, RecordMatchRequest request, String idempotencyKey) {
+        String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        MatchRecordRequest requestRecord = null;
+        if (normalizedKey != null) {
+            matchRecordRequestRepository.lock(groupId + ":" + callerId + ":" + normalizedKey);
+            String requestHash = requestHash(request);
+            var previous = matchRecordRequestRepository
+                    .findByGroupIdAndRequestedByAndIdempotencyKey(groupId, callerId, normalizedKey);
+            if (previous.isPresent()) {
+                MatchRecordRequest existing = previous.get();
+                if (!existing.getRequestHash().equals(requestHash)) {
+                    throw new ApiException(
+                            HttpStatus.CONFLICT,
+                            "IDEMPOTENCY_KEY_REUSED",
+                            "Idempotency-Key was already used for a different match request");
+                }
+                if (existing.getMatchId() != null) {
+                    return toDetail(findMatch(groupId, existing.getMatchId()));
+                }
+                requestRecord = existing;
+            } else {
+                requestRecord = matchRecordRequestRepository.save(
+                        new MatchRecordRequest(groupId, callerId, normalizedKey, requestHash));
+            }
+        }
+
         GroupMember caller = membershipGuard.requireActiveMember(groupId, callerId);
         Group group = caller.getGroup();
         validateRequest(group, request);
@@ -155,6 +197,10 @@ public class MatchService {
         match.setRecordedBy(caller.getUser());
         match = matchRepository.save(match);
 
+        if (requestRecord != null) {
+            requestRecord.setMatchId(match.getId());
+        }
+
         Set<UUID> affectedPlayers = applyRoster(match, request);
         recordEvent(match, caller.getUser(), MatchAction.CREATED);
         statsRecalculationService.recompute(group, affectedPlayers);
@@ -163,6 +209,27 @@ public class MatchService {
                 group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
 
         return toDetail(match);
+    }
+
+    private String normalizeIdempotencyKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > 128) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "IDEMPOTENCY_KEY_INVALID", "Idempotency-Key is too long");
+        }
+        return normalized;
+    }
+
+    private String requestHash(RecordMatchRequest request) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(request.toString().getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is required by the Java runtime", exception);
+        }
     }
 
     @Transactional

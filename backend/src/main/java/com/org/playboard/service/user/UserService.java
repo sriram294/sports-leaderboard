@@ -65,7 +65,7 @@ public class UserService {
 
     private User findUser(UUID userId) {
         return userRepository
-                .findById(userId)
+                .findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
     }
 }

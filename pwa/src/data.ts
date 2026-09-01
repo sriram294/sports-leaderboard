@@ -96,6 +96,10 @@ export const api = {
   renameUser: (displayName: string) => request<User>('/users/me', { method: 'PATCH', body: JSON.stringify({ displayName }) }),
   selectAvatar: (avatarId: string) => request<User>('/users/me/avatar', { method: 'PATCH', body: JSON.stringify({ avatarId }) }),
   uploadPhoto: (file: File) => { const form = new FormData(); form.append('file', file); return request<User>('/users/me/photo', { method: 'POST', body: form }); },
+  deleteAccount: (confirmation: string) => request<void>('/users/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ confirmation }),
+  }),
   stats: (groupId: string, userId: string) => request<PlayerStats>(`/groups/${groupId}/members/${userId}/stats`),
   partners: (groupId: string, userId: string) => request<Partner[]>(`/groups/${groupId}/members/${userId}/stats/partners`),
   attendance: (groupId: string, userId: string, from: string, to: string) =>
