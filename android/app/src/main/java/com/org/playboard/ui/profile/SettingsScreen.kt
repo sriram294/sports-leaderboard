@@ -33,14 +33,12 @@ import com.org.playboard.BuildConfig
 import com.org.playboard.R
 import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
-import com.org.playboard.ui.update.AppUpdateViewModel
 
 /** Account and application settings opened from the signed-in user's profile. */
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onSignOut: (() -> Unit)? = null,
-    updateViewModel: AppUpdateViewModel? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -53,7 +51,6 @@ fun SettingsScreen(
         isDarkTheme = isDarkTheme,
         onBack = onBack,
         onSignOut = { (onSignOut ?: viewModel::onSignOutClicked)() },
-        onCheckForUpdates = { updateViewModel?.checkForUpdate(showResult = true) },
         onDarkThemeChange = settingsViewModel::setDarkTheme,
     )
 }
@@ -65,7 +62,6 @@ private fun SettingsScreenContent(
     isDarkTheme: Boolean,
     onBack: () -> Unit,
     onSignOut: () -> Unit,
-    onCheckForUpdates: () -> Unit,
     onDarkThemeChange: (Boolean) -> Unit,
 ) {
     Column(
@@ -107,19 +103,7 @@ private fun SettingsScreenContent(
             }
         }
         HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.25f))
-        TextButton(
-            onClick = onCheckForUpdates,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    "Check for updates",
-                    color = PlayboardTheme.colors.brand,
-                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-                )
-                Text("›", color = PlayboardTheme.colors.textMuted, fontSize = 28.sp)
-            }
-        }
+        
         HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.25f))
         TextButton(
             onClick = onSignOut,
@@ -227,7 +211,6 @@ private fun SettingsScreenPreview() {
                 isDarkTheme = true,
                 onBack = {},
                 onSignOut = {},
-                onCheckForUpdates = {},
                 onDarkThemeChange = {},
             )
         }
@@ -245,7 +228,6 @@ private fun SettingsScreenLightPreview() {
                 isDarkTheme = false,
                 onBack = {},
                 onSignOut = {},
-                onCheckForUpdates = {},
                 onDarkThemeChange = {},
             )
         }

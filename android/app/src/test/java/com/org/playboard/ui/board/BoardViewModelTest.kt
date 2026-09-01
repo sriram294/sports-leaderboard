@@ -44,8 +44,7 @@ private class FakePlayboardApi(
     var groupsResult: suspend () -> GroupsResponseDto = { GroupsResponseDto(emptyList()) },
     var leaderboardResult: suspend (String) -> LeaderboardResponseDto = { LeaderboardResponseDto(emptyList()) },
 ) : PlayboardApi {
-    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
-    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
+    
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, UserSummaryDto("u1", "Raj", "raj@example.com", null, null, "#9ADE28"))
 

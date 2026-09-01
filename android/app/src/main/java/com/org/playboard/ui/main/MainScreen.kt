@@ -58,7 +58,6 @@ import com.org.playboard.ui.profile.ProfileScreen
 import com.org.playboard.ui.profile.SettingsScreen
 import com.org.playboard.ui.stats.StatsScreen
 import com.org.playboard.ui.switcher.GroupSwitcher
-import com.org.playboard.ui.update.AppUpdateViewModel
 
 /**
  * Side gutter for the shared header. This is the app-wide page gutter every screen
@@ -73,7 +72,7 @@ private val HeaderGutter = 10.dp
  * Stats provides the group Insights dashboard.
  */
 @Composable
-fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppUpdateViewModel? = null) {
+fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Board) }
     // Set when the user taps "Edit" on a match → the Add tab opens pre-filled in
     // edit mode; null means a fresh "record a match" form.
@@ -244,7 +243,6 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel(), updateViewModel: AppU
                     MainTab.Stats -> StatsScreen()
                     MainTab.Profile -> when {
                         showingProfileSettings -> SettingsScreen(
-                            updateViewModel = updateViewModel,
                             onBack = closeSettings,
                         )
                         showingGroupManagement -> GroupManagementScreen(

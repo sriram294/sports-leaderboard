@@ -47,12 +47,9 @@ import okhttp3.ResponseBody
 /** Mirrors `docs/backend/api-contracts.md`. Grows with each page slice. */
 interface PlayboardApi {
 
-    @GET("api/v1/app/update")
-    suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto
+  
 
-    @Streaming
-    @GET
-    suspend fun downloadApk(@Url url: String): ResponseBody
+    
 
     @POST("api/v1/auth/google")
     suspend fun signInWithGoogle(@Body request: GoogleSignInRequestDto): TokenResponseDto
