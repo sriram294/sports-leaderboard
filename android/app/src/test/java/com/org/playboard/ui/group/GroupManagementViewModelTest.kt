@@ -208,8 +208,7 @@ private open class FakeApi(
     override suspend fun createInvite(groupId: String, request: com.org.playboard.data.remote.dto.CreateInviteRequestDto): com.org.playboard.data.remote.dto.InviteResponseDto =
         com.org.playboard.data.remote.dto.InviteResponseDto("ABC123", null)
 
-    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("unused")
-    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("unused")
+    
     override suspend fun refresh(request: com.org.playboard.data.remote.dto.RefreshRequestDto): TokenResponseDto = error("unused")
     override suspend fun createGroup(request: com.org.playboard.data.remote.dto.CreateGroupRequestDto): GroupDto = error("unused")
     override suspend fun joinGroup(request: com.org.playboard.data.remote.dto.JoinGroupRequestDto): GroupDto = error("unused")

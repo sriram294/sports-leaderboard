@@ -20,8 +20,6 @@ import com.org.playboard.ui.components.playboardGlow
 import com.org.playboard.ui.theme.PlayboardTheme
 import com.org.playboard.ui.login.LoginScreen
 import com.org.playboard.ui.main.MainScreen
-import com.org.playboard.ui.update.AppUpdatePrompt
-import com.org.playboard.ui.update.AppUpdateViewModel
 
 /**
  * Start destination is a splash gate, not Login directly — otherwise a
@@ -34,7 +32,6 @@ import com.org.playboard.ui.update.AppUpdateViewModel
 fun PlayboardNavHost(
     navController: NavHostController = rememberNavController(),
     sessionViewModel: SessionViewModel = hiltViewModel(),
-    updateViewModel: AppUpdateViewModel = hiltViewModel(),
 ) {
     val sessionState by sessionViewModel.sessionState.collectAsState()
 
@@ -44,6 +41,7 @@ fun PlayboardNavHost(
             SessionState.SignedOut -> PlayboardDestination.Login.route
             SessionState.Loading -> return@LaunchedEffect
         }
+
         if (navController.currentDestination?.route != target) {
             navController.navigate(target) {
                 popUpTo(navController.graph.id) { inclusive = true }
@@ -52,16 +50,14 @@ fun PlayboardNavHost(
         }
     }
 
-    LaunchedEffect(sessionState) {
-        if (sessionState is SessionState.SignedIn) updateViewModel.checkForUpdate()
-    }
-
-    NavHost(navController = navController, startDestination = PlayboardDestination.Splash.route) {
+    NavHost(
+        navController = navController,
+        startDestination = PlayboardDestination.Splash.route
+    ) {
         composable(PlayboardDestination.Splash.route) { SplashScreen() }
         composable(PlayboardDestination.Login.route) { LoginScreen() }
-        composable(PlayboardDestination.Home.route) { MainScreen(updateViewModel = updateViewModel) }
+        composable(PlayboardDestination.Home.route) { MainScreen() }
     }
-    AppUpdatePrompt(viewModel = updateViewModel)
 }
 
 @Composable

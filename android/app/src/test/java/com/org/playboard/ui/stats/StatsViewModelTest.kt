@@ -64,8 +64,7 @@ private open class FakePlayboardApi(
     var signedInUserId: String = "priya",
 ) : PlayboardApi {
     var partnersCalls = 0
-    override suspend fun getAppUpdate(): com.org.playboard.data.remote.dto.AppUpdateDto = error("not used in this test")
-    override suspend fun downloadApk(url: String): okhttp3.ResponseBody = error("not used in this test")
+    
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, UserSummaryDto(signedInUserId, signedInUserId, "$signedInUserId@example.com", null, null, "#9ADE28"))
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")
