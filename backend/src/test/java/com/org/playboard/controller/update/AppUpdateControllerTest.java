@@ -11,7 +11,7 @@ class AppUpdateControllerTest {
     void exposesTheServiceResponseWithoutAuthenticationConcerns() {
         var controller = new AppUpdateController(
                 new AppUpdateService("2", "1.1", "https://github.com/org/repo/releases/download/v1.1/app.apk"));
-        AppUpdateResponse result = controller.getUpdate();
+        AppUpdateResponse result = controller.getUpdate("android");
         assertEquals(2, result.versionCode());
         assertEquals("1.1", result.versionName());
         assertEquals(true, result.available());

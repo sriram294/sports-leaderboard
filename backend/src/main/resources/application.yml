@@ -77,3 +77,7 @@ playboard:
       version-code: ${PLAYBOARD_UPDATE_DEBUG_VERSION_CODE:}
       version-name: ${PLAYBOARD_UPDATE_DEBUG_VERSION_NAME:}
       download-url: ${PLAYBOARD_UPDATE_DEBUG_DOWNLOAD_URL:}
+      ios:
+        version-code: ${PLAYBOARD_UPDATE_IOS_VERSION_CODE:}
+        version-name: ${PLAYBOARD_UPDATE_IOS_VERSION_NAME:}
+        download-url: ${PLAYBOARD_UPDATE_IOS_DOWNLOAD_URL:}

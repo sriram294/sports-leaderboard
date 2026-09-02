@@ -13,6 +13,7 @@ struct AppEnvironment {
     let leaderboardRepositoryFactory: (String) -> any LeaderboardRepository
     let matchRepositoryFactory: (String) -> any MatchRepository
     let profileRepositoryFactory: (String) -> any ProfileRepository
+    let updateRepository: any UpdateRepository
 
     /// Production dependencies are created exactly once for the app process.
     static let live: AppEnvironment = {
@@ -47,6 +48,10 @@ struct AppEnvironment {
         )
         let keyValueStore = UserDefaultsKeyValueStore()
         let selectedGroupStore = KeyValueSelectedGroupStore(store: keyValueStore)
+        let updateRepository = LiveUpdateRepository(
+            apiClient: apiClient,
+            baseURL: configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!
+        )
         return AppEnvironment(
             configuration: configuration,
             apiClient: apiClient,
@@ -86,7 +91,8 @@ struct AppEnvironment {
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
-            }
+            },
+            updateRepository: updateRepository
         )
     }()
 
@@ -107,6 +113,7 @@ struct AppEnvironment {
             leaderboardRepositoryFactory: { _ in PreviewLeaderboardRepository() },
             matchRepositoryFactory: { _ in PreviewMatchRepository() }
             ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
+            ,updateRepository: PreviewUpdateRepository()
         )
     }
 
@@ -132,6 +139,7 @@ struct AppEnvironment {
             leaderboardRepositoryFactory: { _ in UITestLeaderboardRepository(scenario: leaderboardScenario) },
             matchRepositoryFactory: { _ in UITestMatchRepository(scenario: matchScenario) }
             ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
+            ,updateRepository: PreviewUpdateRepository()
         )
     }
     #endif
@@ -160,6 +168,12 @@ private actor PreviewProfileRepository: ProfileRepository {
     }
     func partners(groupID: String, userID: String) async throws -> [PartnerStats] { [PartnerStats(userID: "player-3", displayName: "Dev", avatarColor: "#FF9F43", gamesTogether: 4, winsTogether: 3, winRate: 0.75)] }
     func updateDisplayName(_ name: String) async throws -> AuthenticatedUser { AuthenticatedUser(id: "ui-user", displayName: name, email: "player@example.com", photoURL: nil, avatarID: "avatar1", avatarColor: "#9ADE28", authProviders: [.google]) }
+}
+
+private actor PreviewUpdateRepository: UpdateRepository {
+    func latest() async throws -> AppUpdate {
+        AppUpdate(versionCode: nil, versionName: nil, downloadURL: nil, available: false)
+    }
 }
 
 private actor PreviewGroupRepository: GroupRepository {

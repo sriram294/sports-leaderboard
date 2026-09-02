@@ -18,6 +18,24 @@ class AppUpdateServiceTest {
     }
 
     @Test
+    void selectsIosMetadataWithoutChangingAndroidDefaults() {
+        var service = new AppUpdateService(
+                "3", "1.2", "https://github.com/org/repo/releases/download/v1.2/app.apk",
+                "8", "2.0", "https://example.com/Playboard.ipa");
+
+        var ios = service.getLatest("ios");
+        assertEquals(8, ios.versionCode());
+        assertEquals("2.0", ios.versionName());
+        assertEquals(true, ios.available());
+        assertEquals(3, service.getLatest().versionCode());
+    }
+
+    @Test
+    void rejectsUnknownPlatform() {
+        assertThrows(ApiException.class, () -> new AppUpdateService("", "", "").getLatest("web"));
+    }
+
+    @Test
     void returnsUnavailableWhenUnset() {
         var result = new AppUpdateService("", "", "").getLatest();
         assertFalse(result.available());
