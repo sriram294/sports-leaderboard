@@ -12,6 +12,7 @@ struct AppEnvironment {
     let groupRepositoryFactory: (String) -> any GroupRepository
     let leaderboardRepositoryFactory: (String) -> any LeaderboardRepository
     let matchRepositoryFactory: (String) -> any MatchRepository
+    let profileRepositoryFactory: (String) -> any ProfileRepository
 
     /// Production dependencies are created exactly once for the app process.
     static let live: AppEnvironment = {
@@ -77,6 +78,14 @@ struct AppEnvironment {
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
+            },
+            profileRepositoryFactory: { accessToken in
+                LiveProfileRepository(
+                    apiClient: apiClient,
+                    baseURL: configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!,
+                    accessToken: accessToken,
+                    refreshAccessToken: { try await authRepository.refreshSession().accessToken }
+                )
             }
         )
     }()
@@ -97,6 +106,7 @@ struct AppEnvironment {
             groupRepositoryFactory: { _ in PreviewGroupRepository() },
             leaderboardRepositoryFactory: { _ in PreviewLeaderboardRepository() },
             matchRepositoryFactory: { _ in PreviewMatchRepository() }
+            ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
         )
     }
 
@@ -121,6 +131,7 @@ struct AppEnvironment {
             groupRepositoryFactory: { _ in UITestGroupRepository(scenario: groupScenario) },
             leaderboardRepositoryFactory: { _ in UITestLeaderboardRepository(scenario: leaderboardScenario) },
             matchRepositoryFactory: { _ in UITestMatchRepository(scenario: matchScenario) }
+            ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
         )
     }
     #endif
@@ -141,6 +152,14 @@ private actor PreviewMatchRepository: MatchRepository {
     }
     func detail(groupID: String, matchID: String) async throws -> MatchDetail { .preview }
     func record(groupID: String, request: RecordMatchRequest, requestID: String) async throws -> MatchDetail { .preview }
+}
+
+private actor PreviewProfileRepository: ProfileRepository {
+    func stats(groupID: String, userID: String) async throws -> PlayerStats {
+        PlayerStats(userID: userID, displayName: "Test Player", photoURL: nil, avatarColor: "#9ADE28", matchesPlayed: 12, wins: 9, losses: 3, pointsFor: 504, pointsAgainst: 420, winRate: 0.75, currentStreak: 3, bestStreak: 5, recentMatches: [.preview], monthlyFinishes: [PlayerStats.MonthlyFinish(month: "2026-08", rank: 2, qualifiedPlayers: 6)])
+    }
+    func partners(groupID: String, userID: String) async throws -> [PartnerStats] { [PartnerStats(userID: "player-3", displayName: "Dev", avatarColor: "#FF9F43", gamesTogether: 4, winsTogether: 3, winRate: 0.75)] }
+    func updateDisplayName(_ name: String) async throws -> AuthenticatedUser { AuthenticatedUser(id: "ui-user", displayName: name, email: "player@example.com", photoURL: nil, avatarID: "avatar1", avatarColor: "#9ADE28", authProviders: [.google]) }
 }
 
 private actor PreviewGroupRepository: GroupRepository {
