@@ -3,10 +3,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 readonly in_progress_count="$(awk -F'|' '$2 ~ /S0[0-8]/ && $0 ~ /`in_progress`/ { count++ } END { print count + 0 }' ../docs/ios/roadmap.md)"
-test "${in_progress_count}" -eq 1
-readonly active_branch="$(awk -F'|' '$2 ~ /S0[0-8]/ && $4 ~ /`in_progress`/ { value = $5; gsub(/[`[:space:]]/, "", value); print value }' ../docs/ios/roadmap.md)"
-test -n "${active_branch}"
-grep -Fq -- "- Active branch: \`${active_branch}\`" ../docs/ios/memory.md
+if [[ "${in_progress_count}" -eq 0 ]]; then
+  # S08 closure intentionally leaves no active slice and clears working memory.
+  test ! -s ../docs/ios/memory.md
+elif [[ "${in_progress_count}" -eq 1 ]]; then
+  readonly active_branch="$(awk -F'|' '$2 ~ /S0[0-8]/ && $4 ~ /`in_progress`/ { value = $5; gsub(/[`[:space:]]/, "", value); print value }' ../docs/ios/roadmap.md)"
+  test -n "${active_branch}"
+  grep -Fq -- "- Active branch: \`${active_branch}\`" ../docs/ios/memory.md
+else
+  echo "Roadmap must contain zero or one in_progress slice; found ${in_progress_count}." >&2
+  exit 1
+fi
 
 for slice in $(seq -f '%02g' 0 8); do
   test -f "../docs/ios/slices/S${slice}.md"
