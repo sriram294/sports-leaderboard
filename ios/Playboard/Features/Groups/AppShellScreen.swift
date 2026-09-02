@@ -13,7 +13,7 @@ struct AppShellScreen: View {
     private let session: AuthSession
     private let signOut: () -> Void
 
-    init(environment: AppEnvironment, session: AuthSession, signOut: @escaping () -> Void) {
+    init(environment: AppEnvironment, session: AuthSession, deleteAccount: @escaping () async throws -> Void, signOut: @escaping () -> Void) {
         self.session = session
         self.signOut = signOut
         let groupRepository = environment.groupRepositoryFactory(session.accessToken)
@@ -123,7 +123,7 @@ struct AppShellScreen: View {
                     StatsScreen(boardViewModel: boardViewModel, matchesViewModel: matchesViewModel)
                         .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
                         .tag(AppTab.stats)
-                    ProfileScreen(viewModel: profileViewModel, email: session.user.email, signOut: signOut)
+                    ProfileScreen(viewModel: profileViewModel, email: session.user.email, signOut: signOut, deleteAccount: deleteAccount)
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                         .tag(AppTab.profile)
                 }

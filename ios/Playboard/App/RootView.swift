@@ -43,9 +43,13 @@ struct RootView: View {
         case .signedOut:
             LoginScreen(environment: environment, onAuthenticated: sessionViewModel.accept)
         case .signedIn(let session):
-            AppShellScreen(environment: environment, session: session) {
-                Task { @MainActor in await sessionViewModel.signOut() }
-            }
+                AppShellScreen(environment: environment, session: session, deleteAccount: {
+                    try await environment.accountRepositoryFactory(session.accessToken).deleteAccount()
+                    await environment.keyValueStore.set(nil, forKey: "selected-group-id")
+                    await sessionViewModel.signOut()
+                }) {
+                    Task { @MainActor in await sessionViewModel.signOut() }
+                }
         case .recovery(let message):
             PlayboardBackground {
                 PlayboardErrorView(message: message) {
