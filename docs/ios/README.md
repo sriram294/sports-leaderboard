@@ -28,7 +28,7 @@ Run these from `ios/` using Xcode 26.2:
 ./scripts/verify-repository.sh
 ```
 
-`test.sh` writes `.xcresult`, JUnit, and light/dark Design Gallery screenshots beneath `ios/build/`. `archive-unsigned.sh` creates an unsigned `.xcarchive`; it never exports an IPA.
+`test.sh` writes `.xcresult`, JUnit, and light/dark Design Gallery screenshots beneath `ios/build/`. `archive-unsigned.sh` creates an unsigned `.xcarchive` and packages its device app as `ios/build/Playboard-unsigned.ipa`. The IPA is not installable until Sideloadly or another authorized tool signs it.
 
 ## Codemagic setup
 
@@ -39,8 +39,9 @@ with its YAML configuration set to `codemagic.yaml`; enable the repository webho
 for push and pull-request events. The workflow needs no signing credentials or
 provider secrets.
 
-After a successful run, download the unsigned archive, dSYMs, `.xcresult`, JUnit
-report, logs, and gallery screenshots from the build's Artifacts tab. Start a
+After a successful run, download `Playboard-unsigned.ipa` for Sideloadly, plus
+the unsigned archive, dSYMs, `.xcresult`, JUnit report, logs, and gallery
+screenshots from the build's Artifacts tab. Start a
 manual build from the Codemagic app when an immediate artifact is needed; select
 `ios-native-unsigned` and the desired branch.
 
