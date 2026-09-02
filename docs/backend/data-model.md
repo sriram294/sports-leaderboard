@@ -29,7 +29,7 @@ product requirements this schema serves).
 
 | Table | Purpose |
 |---|---|
-| `users` | Account identity, avatar |
+| `users` | Account identity/avatar, or anonymous deleted-account tombstone |
 | `user_auth_identities` | Provider-neutral Google/Apple subjects linked to accounts |
 | `sports` | Lookup: sport/format rules (team size, scoring) |
 | `groups` | A play group, tied to one sport |
@@ -87,9 +87,15 @@ create table users (
                                              -- change domain without a data migration.
                                              -- null => client falls back to initial + avatar_color
     avatar_color  text not null,              -- persisted at creation so the fallback color is stable across devices
+    deleted_at    timestamptz,                 -- non-null => cannot authenticate; identity has been anonymized
     created_at    timestamptz not null default now(),
     updated_at    timestamptz not null default now()
 );
+
+Account deletion retains the row only because shared history has non-null user foreign keys.
+It replaces email/name/avatar with anonymous values, removes provider and credential rows,
+and sets `deleted_at`. Authentication accepts only rows where `deleted_at is null`; the
+original provider subject and email can therefore create a new unrelated account.
 
 create table user_auth_identities (
     id          uuid primary key default gen_random_uuid(),

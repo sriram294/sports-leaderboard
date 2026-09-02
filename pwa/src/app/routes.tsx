@@ -259,5 +259,10 @@ export function GroupsRoute() {
 export function SettingsRoute() {
   const navigate = useNavigate();
   const { user, signOut } = useSession();
-  return <SettingsScreen email={user?.email ?? ''} onBack={() => navigate('/profile')} onSignOut={signOut} />;
+  return <SettingsScreen
+    email={user?.email ?? ''}
+    onBack={() => navigate('/profile')}
+    onSignOut={signOut}
+    onDeleteAccount={() => navigate('/delete-account')}
+  />;
 }

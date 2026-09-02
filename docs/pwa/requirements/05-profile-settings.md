@@ -47,6 +47,10 @@ drill-down** for any other player (read-only). Both render the same component.
 8. The finishes graph is always present after the tiles. When no qualified point exists it
    explains that positions are recorded after month close. Its accessible description names
    every returned month and rank/gap; switching groups or viewed players replaces the series.
+9. **Account deletion** — Settings links to public `/delete-account`, which remains available
+   without a session. Google verification plus exact `DELETE` confirmation calls
+   `DELETE /users/me`; success clears session, group, push, and query state. `/privacy`
+   discloses the anonymous shared-history retention policy.
 
 ## Data needed
 - `GET /groups/{groupId}/members/{userId}/stats` (PlayerStatsDto: wins/losses/pointsFor/

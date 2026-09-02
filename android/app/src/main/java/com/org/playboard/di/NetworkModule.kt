@@ -3,6 +3,7 @@ package com.org.playboard.di
 import com.org.playboard.BuildConfig
 import com.org.playboard.data.remote.AuthInterceptor
 import com.org.playboard.data.remote.PlayboardApi
+import com.org.playboard.data.remote.AccountApi
 import com.org.playboard.data.remote.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
@@ -99,4 +100,10 @@ object NetworkModule {
     @AuthenticatedApi
     fun provideAuthenticatedApi(@AuthenticatedApi retrofit: Retrofit): PlayboardApi =
         retrofit.create(PlayboardApi::class.java)
+
+    @Provides
+    @Singleton
+    @AuthenticatedApi
+    fun provideAccountApi(@AuthenticatedApi retrofit: Retrofit): AccountApi =
+        retrofit.create(AccountApi::class.java)
 }

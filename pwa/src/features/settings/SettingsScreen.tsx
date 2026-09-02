@@ -17,7 +17,12 @@ const PUSH_MESSAGE: Record<Exclude<PushEnableResult, 'enabled'>, string> = {
  * sign out) and APPEARANCE (dark-theme switch), with an app-info footer. The APK self-update
  * flow is replaced by a service-worker refresh — the web analog of "check for updates".
  */
-export function SettingsScreen({ email, onBack, onSignOut }: { email: string; onBack: () => void; onSignOut: () => void }) {
+export function SettingsScreen({ email, onBack, onSignOut, onDeleteAccount }: {
+  email: string;
+  onBack: () => void;
+  onSignOut: () => void;
+  onDeleteAccount: () => void;
+}) {
   const [theme, setTheme] = useTheme();
   const [updateStatus, setUpdateStatus] = useState<string>();
   const showNotifications = isPushSupported() && isPushConfigured();
@@ -79,6 +84,12 @@ export function SettingsScreen({ email, onBack, onSignOut }: { email: string; on
       <div className="settings-divider" />
       <button className="settings-link" onClick={onSignOut}>
         <span>Sign out</span>
+        <span className="settings-chevron">›</span>
+      </button>
+
+      <div className="settings-divider" />
+      <button className="settings-link danger-link" onClick={onDeleteAccount}>
+        <span>Delete account</span>
         <span className="settings-chevron">›</span>
       </button>
 

@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "users")
@@ -36,6 +37,9 @@ public class User extends Auditable {
 
     @Column(name = "avatar_color", nullable = false)
     private String avatarColor;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     public UUID getId() {
         return id;
@@ -87,5 +91,13 @@ public class User extends Auditable {
 
     public void setAvatarColor(String avatarColor) {
         this.avatarColor = avatarColor;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

@@ -128,6 +128,16 @@ Request: `{ "displayName": "Raj K" }` → `UserDto`
 object storage; a pre-signed-URL upload flow is a drop-in optimization
 later if photo volume grows — doesn't change this contract's shape.)
 
+### `DELETE /users/me`
+Request: `{ "confirmation": "DELETE" }` → `204`.
+
+Immediately invalidates every access/refresh credential, removes provider identities,
+device registrations and active memberships, and anonymizes shared match/group history
+as `Deleted player`. Owned groups transfer to the oldest active admin, then oldest active
+member; a group with nobody remaining is archived. A later provider sign-in creates a new
+unrelated account. `422 ACCOUNT_DELETE_CONFIRMATION_INVALID` rejects any confirmation
+other than the exact uppercase value.
+
 ---
 
 ## Groups
@@ -449,6 +459,7 @@ means an on-device issue; `failed > 0` surfaces the FCM error codes.
 | GET | `/users/me` | Own profile identity |
 | PATCH | `/users/me` | Update display name |
 | POST | `/users/me/photo` | Upload avatar photo |
+| DELETE | `/users/me` | Permanently delete and anonymize own account |
 | GET | `/groups` | List my groups (group switcher) |
 | POST | `/groups` | Create a group |
 | POST | `/groups/join` | Join via invite code |

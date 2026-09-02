@@ -1,9 +1,11 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSession } from '../session';
 import { GroupProvider } from '../groups';
 import { LoginScreen } from '../features/auth/LoginScreen';
 import { Splash } from '../features/auth/Splash';
 import { AppLayout } from './AppLayout';
+import { DeleteAccountPage } from '../features/account/DeleteAccountPage';
+import { PrivacyPage } from '../features/account/PrivacyPage';
 import {
   AddRoute,
   BoardRoute,
@@ -17,6 +19,11 @@ import {
 
 export function App() {
   const { status } = useSession();
+  const location = useLocation();
+
+  // These routes must remain reachable without an installed app or an existing session.
+  if (location.pathname === '/delete-account') return <DeleteAccountPage />;
+  if (location.pathname === '/privacy') return <PrivacyPage />;
 
   if (status === 'loading') return <Splash />;
   if (status !== 'authed') return <LoginScreen />;

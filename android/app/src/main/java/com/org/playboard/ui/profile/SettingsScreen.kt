@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Icon
@@ -43,16 +47,26 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    val isDarkTheme by settingsViewModel.isDarkTheme.collectAsState()
+    val settingsState by settingsViewModel.uiState.collectAsState()
 
     SettingsScreenContent(
         email = state.email.orEmpty(),
         versionName = BuildConfig.VERSION_NAME,
-        isDarkTheme = isDarkTheme,
+        isDarkTheme = settingsState.isDarkTheme,
         onBack = onBack,
         onSignOut = { (onSignOut ?: viewModel::onSignOutClicked)() },
         onDarkThemeChange = settingsViewModel::setDarkTheme,
+        onDeleteAccount = settingsViewModel::openDeleteDialog,
     )
+
+    if (settingsState.isDeleteDialogOpen) {
+        DeleteAccountDialog(
+            state = settingsState,
+            onConfirmationChange = settingsViewModel::setDeleteConfirmation,
+            onDismiss = settingsViewModel::closeDeleteDialog,
+            onConfirm = settingsViewModel::deleteAccount,
+        )
+    }
 }
 
 @Composable
@@ -63,6 +77,7 @@ private fun SettingsScreenContent(
     onBack: () -> Unit,
     onSignOut: () -> Unit,
     onDarkThemeChange: (Boolean) -> Unit,
+    onDeleteAccount: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -116,6 +131,20 @@ private fun SettingsScreenContent(
                     modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
                 )
                 Text("›", color = PlayboardTheme.colors.textMuted, fontSize = 28.sp)
+            }
+        }
+        HorizontalDivider(color = PlayboardTheme.colors.textMuted.copy(alpha = 0.25f))
+        TextButton(
+            onClick = onDeleteAccount,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Delete account",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+                )
+                Text("›", color = MaterialTheme.colorScheme.error, fontSize = 28.sp)
             }
         }
         Text(
@@ -180,6 +209,61 @@ private fun SettingsScreenContent(
 }
 
 @Composable
+private fun DeleteAccountDialog(
+    state: SettingsUiState,
+    onConfirmationChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete account?") },
+        text = {
+            Column {
+                Text(
+                    "This permanently removes your profile and sign-in credentials. " +
+                        "Shared match results remain only as anonymous history. Groups you own " +
+                        "will transfer to another member or be archived.",
+                )
+                Spacer(Modifier.size(16.dp))
+                Text("Type DELETE to confirm.", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.size(8.dp))
+                OutlinedTextField(
+                    value = state.deleteConfirmation,
+                    onValueChange = onConfirmationChange,
+                    enabled = !state.isDeletingAccount,
+                    singleLine = true,
+                    label = { Text("Confirmation") },
+                    isError = state.deleteError != null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                state.deleteError?.let { error ->
+                    Spacer(Modifier.size(8.dp))
+                    Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = state.canDeleteAccount) {
+                if (state.isDeletingAccount) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("Delete permanently", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !state.isDeletingAccount) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
 private fun BackRowForSettings(onBack: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -212,6 +296,7 @@ private fun SettingsScreenPreview() {
                 onBack = {},
                 onSignOut = {},
                 onDarkThemeChange = {},
+                onDeleteAccount = {},
             )
         }
     }
@@ -229,6 +314,7 @@ private fun SettingsScreenLightPreview() {
                 onBack = {},
                 onSignOut = {},
                 onDarkThemeChange = {},
+                onDeleteAccount = {},
             )
         }
     }
