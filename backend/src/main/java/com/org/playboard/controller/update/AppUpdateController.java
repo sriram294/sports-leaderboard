@@ -5,6 +5,7 @@ import com.org.playboard.service.update.AppUpdateService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -18,7 +19,8 @@ public class AppUpdateController {
 
     @SecurityRequirements
     @GetMapping("/update")
-    public AppUpdateResponse getUpdate() {
-        return appUpdateService.getLatest();
+    public AppUpdateResponse getUpdate(
+            @RequestParam(defaultValue = "android") String platform) {
+        return appUpdateService.getLatest(platform);
     }
 }

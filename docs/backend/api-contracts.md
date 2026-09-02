@@ -88,14 +88,15 @@ Revokes the refresh token. `204`.
 
 ## App updates
 
-### `GET /app/update`
+### `GET /app/update?platform=android|ios`
 
-Public endpoint used by distributed debug builds. When no release is configured,
+Public endpoint used by distributed debug builds. `platform` defaults to `android`
+for backward compatibility. When no release is configured for the selected platform,
 it returns `{ "versionCode": null, "versionName": null, "downloadUrl": null,
 "available": false }`. A configured response contains the integer `versionCode`,
-display `versionName`, and an HTTPS GitHub Release asset `downloadUrl`, with
-`available: true`. Invalid or partial server configuration returns `500` rather
-than advertising an unusable APK.
+display `versionName`, and an HTTPS release asset `downloadUrl`, with `available:
+true`. Invalid or partial server configuration returns `500` rather than
+advertising an unusable package. Unsupported platforms return `400`.
 
 Configure the current debug release with:
 
@@ -103,6 +104,9 @@ Configure the current debug release with:
 PLAYBOARD_UPDATE_DEBUG_VERSION_CODE=2
 PLAYBOARD_UPDATE_DEBUG_VERSION_NAME=1.1
 PLAYBOARD_UPDATE_DEBUG_DOWNLOAD_URL=https://github.com/<owner>/<repo>/releases/download/v1.1/Playboard-debug.apk
+PLAYBOARD_UPDATE_IOS_VERSION_CODE=2
+PLAYBOARD_UPDATE_IOS_VERSION_NAME=1.1
+PLAYBOARD_UPDATE_IOS_DOWNLOAD_URL=https://github.com/<owner>/<repo>/releases/download/v1.1/Playboard.ipa
 ```
 
 Release sequence: increment Android `versionCode` and set `versionName`, build
