@@ -1,6 +1,6 @@
 # iOS roadmap
 
-Base refreshed from `origin/master` on 2026-09-01: `4e37d309faadfc047bf89ef6a129b704780c5e76`.
+Base refreshed from `origin/master` on 2026-09-02: `33c3d7a27c1f4fc4b4441c8f9540035116e7add4` (Android publishing PR #103).
 
 | Slice | Deliverable | Status | Branch | Depends on | PR | Merge commit | Started | Finished | Verification evidence |
 |---|---|---|---|---|---|---|---|---|---|
