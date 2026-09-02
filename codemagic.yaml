@@ -50,6 +50,7 @@ workflows:
           cd ios
           ./scripts/archive-unsigned.sh
     artifacts:
+      - ios/build/Playboard-unsigned.ipa
       - ios/build/Playboard.xcarchive
       - ios/build/Playboard.xcarchive/dSYMs/**/*.dSYM
       - ios/build/TestResults.xcresult
