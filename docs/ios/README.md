@@ -30,6 +30,20 @@ Run these from `ios/` using Xcode 26.2:
 
 `test.sh` writes `.xcresult`, JUnit, and light/dark Design Gallery screenshots beneath `ios/build/`. `archive-unsigned.sh` creates an unsigned `.xcarchive`; it never exports an IPA.
 
+## Codemagic setup
+
+The repository-root `codemagic.yaml` defines the `ios-native-unsigned` workflow.
+It runs for iOS feature pull requests and pushes to `master`, using Xcode 26.2
+on a macOS M2 runner. A Codemagic app must be connected to this GitHub repository,
+with its YAML configuration set to `codemagic.yaml`; enable the repository webhook
+for push and pull-request events. The workflow needs no signing credentials or
+provider secrets.
+
+After a successful run, download the unsigned archive, dSYMs, `.xcresult`, JUnit
+report, logs, and gallery screenshots from the build's Artifacts tab. Start a
+manual build from the Codemagic app when an immediate artifact is needed; select
+`ios-native-unsigned` and the desired branch.
+
 ## Operating protocol
 
 - Exactly one slice may be `in_progress`; all unfinished peers are `not_started`.
