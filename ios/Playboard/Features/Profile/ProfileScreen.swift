@@ -5,12 +5,17 @@ struct ProfileScreen: View {
     @ObservedObject var viewModel: ProfileViewModel
     let email: String
     let signOut: () -> Void
+    let deleteAccount: () async throws -> Void
     @Environment(\.playboardPalette) private var palette
+    @State private var showsDeleteAccount = false
 
     var body: some View {
         ScrollView { content.padding(PlayboardSpacing.extraLarge) }
             .refreshable { viewModel.retry() }
             .accessibilityIdentifier("profile-screen")
+            .sheet(isPresented: $showsDeleteAccount) {
+                AccountDeletionSheet(deleteAccount: deleteAccount, onDeleted: {})
+            }
     }
 
     @ViewBuilder private var content: some View {
@@ -29,5 +34,5 @@ struct ProfileScreen: View {
     private func stat(_ title: String, _ value: String) -> some View { PlayboardCard { VStack(alignment: .leading, spacing: 4) { Text(value).font(PlayboardTypography.title()).foregroundStyle(palette.brand); Text(title).font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted) } } }
     private func finishes(_ stats: PlayerStats) -> some View { PlayboardCard { VStack(alignment: .leading, spacing: PlayboardSpacing.small) { Text("Monthly finishes").font(PlayboardTypography.title()).foregroundStyle(palette.textPrimary); if stats.monthlyFinishes.isEmpty { Text("Finishing positions are recorded after each month closes.").font(PlayboardTypography.body()).foregroundStyle(palette.textMuted) } else { ForEach(stats.monthlyFinishes) { finish in HStack { Text(finish.month); Spacer(); Text(finish.rank.map { "#\($0) / \(finish.qualifiedPlayers)" } ?? "—") }.font(PlayboardTypography.body()).foregroundStyle(palette.textPrimary).accessibilityLabel("\(finish.month), \(finish.rank.map(String.init) ?? "no finish")") } } } } }
     private var partners: some View { PlayboardCard { VStack(alignment: .leading, spacing: PlayboardSpacing.small) { Button { viewModel.togglePartners() } label: { Label("Partners", systemImage: viewModel.state.partnersExpanded ? "chevron.up" : "chevron.down").font(PlayboardTypography.title()).foregroundStyle(palette.textPrimary) }.accessibilityIdentifier("profile-partners-toggle"); if viewModel.state.partnersExpanded { if viewModel.state.isLoadingPartners { ProgressView() } else if let error = viewModel.state.partnersError { Text(error).foregroundStyle(palette.textMuted) } else if viewModel.state.partners.isEmpty { Text("No partners yet.").foregroundStyle(palette.textMuted) } else { ForEach(viewModel.state.partners) { partner in HStack { Text(partner.displayName); Spacer(); Text("\(partner.winsTogether)/\(partner.gamesTogether) · \(partner.winRate, format: .percent.precision(.fractionLength(0)))") }.font(PlayboardTypography.body()).foregroundStyle(palette.textPrimary) } } } } } }
-    private var account: some View { PlayboardCard { VStack(alignment: .leading, spacing: PlayboardSpacing.small) { Text("Signed in with Google").font(PlayboardTypography.label()).foregroundStyle(palette.textPrimary); Text(email).font(PlayboardTypography.body()).foregroundStyle(palette.textMuted); Button(role: .destructive, action: signOut) { Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityIdentifier("sign-out-button") } } }
+    private var account: some View { PlayboardCard { VStack(alignment: .leading, spacing: PlayboardSpacing.small) { Text("Signed in with Google").font(PlayboardTypography.label()).foregroundStyle(palette.textPrimary); Text(email).font(PlayboardTypography.body()).foregroundStyle(palette.textMuted); Button(role: .destructive, action: signOut) { Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityIdentifier("sign-out-button"); Button(role: .destructive) { showsDeleteAccount = true } label: { Label("Delete account", systemImage: "person.crop.circle.badge.xmark").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered).accessibilityIdentifier("delete-account-button") } } }
 }

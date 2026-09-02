@@ -13,6 +13,7 @@ struct AppEnvironment {
     let leaderboardRepositoryFactory: (String) -> any LeaderboardRepository
     let matchRepositoryFactory: (String) -> any MatchRepository
     let profileRepositoryFactory: (String) -> any ProfileRepository
+    let accountRepositoryFactory: (String) -> any AccountRepository
     let updateRepository: any UpdateRepository
 
     /// Production dependencies are created exactly once for the app process.
@@ -92,6 +93,13 @@ struct AppEnvironment {
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
             },
+            accountRepositoryFactory: { accessToken in
+                LiveAccountRepository(
+                    apiClient: apiClient,
+                    baseURL: configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!,
+                    accessToken: accessToken
+                )
+            },
             updateRepository: updateRepository
         )
     }()
@@ -113,6 +121,7 @@ struct AppEnvironment {
             leaderboardRepositoryFactory: { _ in PreviewLeaderboardRepository() },
             matchRepositoryFactory: { _ in PreviewMatchRepository() }
             ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
+            ,accountRepositoryFactory: { _ in PreviewAccountRepository() }
             ,updateRepository: PreviewUpdateRepository()
         )
     }
@@ -139,6 +148,7 @@ struct AppEnvironment {
             leaderboardRepositoryFactory: { _ in UITestLeaderboardRepository(scenario: leaderboardScenario) },
             matchRepositoryFactory: { _ in UITestMatchRepository(scenario: matchScenario) }
             ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
+            ,accountRepositoryFactory: { _ in PreviewAccountRepository() }
             ,updateRepository: PreviewUpdateRepository()
         )
     }
@@ -174,6 +184,10 @@ private actor PreviewUpdateRepository: UpdateRepository {
     func latest() async throws -> AppUpdate {
         AppUpdate(versionCode: nil, versionName: nil, downloadURL: nil, available: false)
     }
+}
+
+private actor PreviewAccountRepository: AccountRepository {
+    func deleteAccount() async throws {}
 }
 
 private actor PreviewGroupRepository: GroupRepository {
