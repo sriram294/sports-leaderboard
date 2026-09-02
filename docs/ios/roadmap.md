@@ -1,6 +1,6 @@
 # iOS roadmap
 
-Base refreshed from `origin/master` on 2026-09-02: `a3ddb7b17cab788895cb68d865495e4e2ef7fd7e` (iOS notifications PR #107).
+Base refreshed from `origin/master` on 2026-09-02: `9740414b8cc83623b2b6f81c39878ebea22aa1ab` (iOS account lifecycle PR #108).
 
 | Slice | Deliverable | Status | Branch | Depends on | PR | Merge commit | Started | Finished | Verification evidence |
 |---|---|---|---|---|---|---|---|---|---|
@@ -11,8 +11,8 @@ Base refreshed from `origin/master` on 2026-09-02: `a3ddb7b17cab788895cb68d86549
 | S04 | Matches and recording | `done` | `feature/ios-matches` | S03 | [#105](https://github.com/sriram294/sports-leaderboard/pull/105) | unavailable in local refs (PR #105 merged) | 2026-09-01 | 2026-09-02 | Transition recorded on S05 branch; PR #105 was reported merged; merge SHA and macOS/PostgreSQL artifacts still need to be copied from the PR/CI record |
 | S05 | Profile, stats, settings, sharing | `done` | `feature/ios-profile-stats` | S04 | [#106](https://github.com/sriram294/sports-leaderboard/pull/106) | `317dbff99d45234d3417b92ecc17407858cacf3e` | 2026-09-02 | 2026-09-02 | Profile/stats repositories, group-scoped Profile and Insights screens, independent partner loading, editable display name, and deterministic preview dependencies implemented; Xcode 26.2 validation remains pending |
 | S06 | Notifications and app updates | `done` | `feature/ios-notifications` | S05 | [#107](https://github.com/sriram294/sports-leaderboard/pull/107) | `a3ddb7b17cab788895cb68d865495e4e2ef7fd7e` | 2026-09-02 | 2026-09-02 | PR #107 merged 2026-09-02; backend compile and targeted AppUpdate service/controller tests, iOS repository verification, and `git diff --check` passed; Xcode 26.2 execution remains unavailable |
-| S07 | Account lifecycle and hardening | `in_progress` | `feature/ios-account-lifecycle` | S06 | pending | pending | 2026-09-02 | — | Transitioned after PR #107 merged at `a3ddb7b17cab788895cb68d865495e4e2ef7fd7e`; account deletion, credential revocation, unlinking/anonymization, local purge, and hardening are pending |
-| S08 | Release readiness and parity closure | `not_started` | `feature/ios-release` | S07 | — | — | — | — | — |
+| S07 | Account lifecycle and hardening | `done` | `feature/ios-account-lifecycle` | S06 | [#108](https://github.com/sriram294/sports-leaderboard/pull/108) | `9740414b8cc83623b2b6f81c39878ebea22aa1ab` | 2026-09-02 | 2026-09-02 | PR #108 merged 2026-09-02; iOS repository verification and `git diff --check` passed; Xcode 26.2 build, UI, and screenshot evidence remains pending |
+| S08 | Release readiness and parity closure | `in_progress` | `feature/ios-release` | S07 | pending | pending | 2026-09-02 | — | Transitioned after PR #108 merged at `9740414b8cc83623b2b6f81c39878ebea22aa1ab`; parity closure, full regression/accessibility/performance/privacy audits, release artifacts, and evidence bundle are pending |
 
 ## Status invariants
 
