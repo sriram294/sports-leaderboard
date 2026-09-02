@@ -5,18 +5,29 @@ struct AppShellScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: GroupViewModel
     @StateObject private var boardViewModel: BoardViewModel
+    @StateObject private var matchesViewModel: MatchesViewModel
+    @StateObject private var addMatchViewModel: AddMatchViewModel
+    @State private var selectedTab = AppTab.board
+    @State private var pendingTab: AppTab?
     private let session: AuthSession
     private let signOut: () -> Void
 
     init(environment: AppEnvironment, session: AuthSession, signOut: @escaping () -> Void) {
         self.session = session
         self.signOut = signOut
+        let groupRepository = environment.groupRepositoryFactory(session.accessToken)
+        let matchRepository = environment.matchRepositoryFactory(session.accessToken)
         _viewModel = StateObject(wrappedValue: GroupViewModel(
-            repository: environment.groupRepositoryFactory(session.accessToken),
+            repository: groupRepository,
             currentUserID: session.user.id
         ))
         _boardViewModel = StateObject(wrappedValue: BoardViewModel(
             repository: environment.leaderboardRepositoryFactory(session.accessToken)
+        ))
+        _matchesViewModel = StateObject(wrappedValue: MatchesViewModel(repository: matchRepository))
+        _addMatchViewModel = StateObject(wrappedValue: AddMatchViewModel(
+            matchRepository: matchRepository,
+            groupRepository: groupRepository
         ))
     }
 
@@ -39,6 +50,18 @@ struct AppShellScreen: View {
         .task { await viewModel.load() }
         .onChange(of: viewModel.state.selectedGroup, initial: true) { _, group in
             boardViewModel.select(group: group)
+            matchesViewModel.select(group: group)
+            addMatchViewModel.select(group: group)
+        }
+        .onChange(of: addMatchViewModel.state.successfulMatchID) { _, matchID in
+            guard matchID != nil else { return }
+            Task {
+                await viewModel.refresh()
+                await matchesViewModel.refresh()
+                boardViewModel.retry()
+                selectedTab = .matches
+                addMatchViewModel.resetAfterSuccess()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, viewModel.state.phase == .loaded {
@@ -50,6 +73,16 @@ struct AppShellScreen: View {
                 .presentationDragIndicator(.visible)
         }
         .accessibilityIdentifier("signed-in-screen")
+        .alert("Discard this match?", isPresented: discardAlertBinding) {
+            Button("Keep editing", role: .cancel) { pendingTab = nil }
+            Button("Discard", role: .destructive) {
+                addMatchViewModel.discardChanges()
+                if let pendingTab { selectedTab = pendingTab }
+                pendingTab = nil
+            }
+        } message: {
+            Text("Your selected players and scores have not been recorded.")
+        }
     }
 
     private var shell: some View {
@@ -72,17 +105,22 @@ struct AppShellScreen: View {
                 .accessibilityIdentifier("first-group-action")
                 Spacer()
             } else {
-                TabView {
+                TabView(selection: tabBinding) {
                     BoardScreen(viewModel: boardViewModel)
                         .tabItem { Label("Board", systemImage: "trophy") }
-                    ShellPlaceholder(title: "Matches", message: "Match history is reserved for S04.", symbol: "list.bullet.rectangle")
+                        .tag(AppTab.board)
+                    MatchesScreen(viewModel: matchesViewModel)
                         .tabItem { Label("Matches", systemImage: "list.bullet.rectangle") }
-                    ShellPlaceholder(title: "Add match", message: "Match recording is reserved for S04.", symbol: "plus.circle.fill")
+                        .tag(AppTab.matches)
+                    AddMatchScreen(viewModel: addMatchViewModel, recorder: session.user)
                         .tabItem { Label("Add", systemImage: "plus.circle.fill") }
+                        .tag(AppTab.add)
                     ShellPlaceholder(title: "Stats", message: "Player insights are reserved for S05.", symbol: "chart.xyaxis.line")
                         .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
+                        .tag(AppTab.stats)
                     accountTab
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                        .tag(AppTab.profile)
                 }
                 .accessibilityIdentifier("app-tab-shell")
             }
@@ -119,6 +157,31 @@ struct AppShellScreen: View {
         Binding(get: { viewModel.state.presentedSheet }, set: { if $0 == nil { viewModel.dismissSheet() } })
     }
 
+    private var tabBinding: Binding<AppTab> {
+        Binding(
+            get: { selectedTab },
+            set: { requested in
+                if selectedTab == .add, requested != .add, addMatchViewModel.state.isDirty {
+                    pendingTab = requested
+                } else {
+                    selectedTab = requested
+                }
+            }
+        )
+    }
+
+    private var discardAlertBinding: Binding<Bool> {
+        Binding(get: { pendingTab != nil }, set: { if !$0 { pendingTab = nil } })
+    }
+
+}
+
+private enum AppTab: Hashable {
+    case board
+    case matches
+    case add
+    case stats
+    case profile
 }
 
 private struct GroupSwitcherHeader: View {

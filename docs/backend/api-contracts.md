@@ -374,6 +374,12 @@ payload light (mirrors the schema's list/detail split).
 ```
 
 ### `POST /groups/{groupId}/matches`
+Clients may send an `Idempotency-Key` header (maximum 128 characters). Repeating
+the same caller/group/key with the same body returns the originally created match
+without applying stats twice. Reusing a key with a different body returns
+`409 IDEMPOTENCY_KEY_REUSED`. Callers that omit the header retain the original
+non-idempotent behavior.
+
 Request:
 ```json
 {
