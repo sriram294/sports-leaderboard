@@ -7,6 +7,7 @@ struct AppShellScreen: View {
     @StateObject private var boardViewModel: BoardViewModel
     @StateObject private var matchesViewModel: MatchesViewModel
     @StateObject private var addMatchViewModel: AddMatchViewModel
+    @StateObject private var profileViewModel: ProfileViewModel
     @State private var selectedTab = AppTab.board
     @State private var pendingTab: AppTab?
     private let session: AuthSession
@@ -28,6 +29,9 @@ struct AppShellScreen: View {
         _addMatchViewModel = StateObject(wrappedValue: AddMatchViewModel(
             matchRepository: matchRepository,
             groupRepository: groupRepository
+        ))
+        _profileViewModel = StateObject(wrappedValue: ProfileViewModel(
+            repository: environment.profileRepositoryFactory(session.accessToken), user: session.user
         ))
     }
 
@@ -52,6 +56,7 @@ struct AppShellScreen: View {
             boardViewModel.select(group: group)
             matchesViewModel.select(group: group)
             addMatchViewModel.select(group: group)
+            profileViewModel.select(group: group)
         }
         .onChange(of: addMatchViewModel.state.successfulMatchID) { _, matchID in
             guard matchID != nil else { return }
@@ -115,30 +120,15 @@ struct AppShellScreen: View {
                     AddMatchScreen(viewModel: addMatchViewModel, recorder: session.user)
                         .tabItem { Label("Add", systemImage: "plus.circle.fill") }
                         .tag(AppTab.add)
-                    ShellPlaceholder(title: "Stats", message: "Player insights are reserved for S05.", symbol: "chart.xyaxis.line")
+                    StatsScreen(boardViewModel: boardViewModel, matchesViewModel: matchesViewModel)
                         .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
                         .tag(AppTab.stats)
-                    accountTab
+                    ProfileScreen(viewModel: profileViewModel, email: session.user.email, signOut: signOut)
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                         .tag(AppTab.profile)
                 }
                 .accessibilityIdentifier("app-tab-shell")
             }
-        }
-    }
-
-    private var accountTab: some View {
-        ScrollView {
-            VStack(spacing: PlayboardSpacing.large) {
-                ShellPlaceholder(title: session.user.displayName, message: session.user.email, symbol: "person.crop.circle.fill")
-                Button(role: .destructive, action: signOut) {
-                    Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("sign-out-button")
-            }
-            .padding(PlayboardSpacing.extraLarge)
         }
     }
 
