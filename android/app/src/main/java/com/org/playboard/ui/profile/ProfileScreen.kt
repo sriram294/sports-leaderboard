@@ -132,6 +132,7 @@ private fun ProfileContent(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var cropPayload by remember { mutableStateOf<Pair<ByteArray, String>?>(null) }
     // Modern photo picker — no storage permission needed. Reads the picked image's
     // bytes off the main thread, then hands them to the ViewModel to upload.
     val photoPicker = rememberLauncherForActivityResult(
@@ -146,7 +147,7 @@ private fun ProfileContent(
                         bytes?.let { it to mime }
                     }.getOrNull()
                 }
-                payload?.let { (bytes, mime) -> onPhotoSelected(bytes, mime) }
+                payload?.let { cropPayload = it }
             }
         }
     }
@@ -229,6 +230,17 @@ private fun ProfileContent(
                 pickPhoto()
             },
             onDismiss = { showAvatarSheet = false },
+        )
+    }
+
+    cropPayload?.let { (bytes, _) ->
+        AvatarCropSheet(
+            bytes = bytes,
+            onCancel = { cropPayload = null },
+            onConfirm = { cropped ->
+                cropPayload = null
+                onPhotoSelected(cropped, "image/jpeg")
+            },
         )
     }
 
@@ -388,11 +400,7 @@ private fun HeroAvatar(
                 avatarId = avatarId,
                 avatarColorHex = avatarColorHex,
                 size = size,
-                modifier = if (editable && !isUploading) {
-                    Modifier.clip(CircleShape).clickable(onClick = onEdit)
-                } else {
-                    Modifier
-                },
+                modifier = Modifier,
             )
         }
         if (isUploading) {

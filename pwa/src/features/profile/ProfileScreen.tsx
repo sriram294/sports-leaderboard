@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { MatchSet, MonthlyFinish, Partner, PlayerStats } from '../../models';
 import { Avatar, useDialogA11y } from '../../components';
 import { Icon } from '../../icons';
@@ -48,12 +48,18 @@ export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onR
   const [renaming, setRenaming] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string>();
+  const [cropFile, setCropFile] = useState<File>();
 
   const rows = useMemo(() => stats.recentMatches.map(m => recentMatchRow(m, stats.userId)), [stats]);
 
   const uploadPhoto = async (file: File) => {
     if (!onUploadPhoto) return;
     setAvatarSheet(false);
+    setCropFile(file);
+  };
+  const uploadCroppedPhoto = async (file: File) => {
+    if (!onUploadPhoto) return;
+    setCropFile(undefined);
     setUploading(true);
     setError(undefined);
     try { await onUploadPhoto(file); } catch { setError('Could not upload the photo.'); } finally { setUploading(false); }
@@ -125,6 +131,7 @@ export function ProfileScreen({ groupId, stats, isOwn, identity, attendance, onR
       {avatarSheet && (
         <AvatarSheet onClose={() => setAvatarSheet(false)} onSelect={selectAvatar} onUpload={uploadPhoto} />
       )}
+      {cropFile && <CropPhotoSheet file={cropFile} onCancel={() => setCropFile(undefined)} onCrop={uploadCroppedPhoto} />}
       {renaming && onRename && (
         <RenameSheet current={identity.displayName} onClose={() => setRenaming(false)} onRename={onRename} />
       )}
@@ -218,6 +225,41 @@ function HeroAvatar({ identity, editable, uploading, onEdit }: { identity: Profi
       {editable && (
         <button className="edit-badge" onClick={onEdit} aria-label="Change avatar"><Icon name="add" size={16} /></button>
       )}
+    </div>
+  );
+}
+
+function CropPhotoSheet({ file, onCancel, onCrop }: { file: File; onCancel: () => void; onCrop: (file: File) => void }) {
+  const [source, setSource] = useState<string>();
+  const [zoom, setZoom] = useState(1);
+  const dialogRef = useDialogA11y(onCancel);
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSource(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const crop = async () => {
+    if (!source) return;
+    const image = new Image();
+    image.src = source;
+    await image.decode();
+    const side = Math.min(image.naturalWidth, image.naturalHeight) / zoom;
+    const canvas = document.createElement('canvas');
+    canvas.width = 640; canvas.height = 640;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, 640, 640);
+    canvas.toBlob(blob => { if (blob) onCrop(new File([blob], 'avatar.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.9);
+  };
+  return (
+    <div className="sheet-backdrop" onClick={onCancel}>
+      <div ref={dialogRef} className="sheet crop-sheet" role="dialog" aria-modal="true" aria-label="Crop profile photo" tabIndex={-1} onClick={event => event.stopPropagation()}>
+        <div className="sheet-head"><span>Crop profile photo</span><button className="icon-button" onClick={onCancel} aria-label="Close">×</button></div>
+        <div className="crop-viewport">{source && <img src={source} alt="Crop preview" style={{ transform: `scale(${zoom})` }} />}</div>
+        <label className="crop-zoom">Zoom <input type="range" min="1" max="3" step="0.05" value={zoom} onChange={event => setZoom(Number(event.target.value))} /></label>
+        <div className="crop-actions"><button className="button ghost" onClick={onCancel}>Cancel</button><button className="button primary" onClick={crop} disabled={!source}>Use photo</button></div>
+      </div>
     </div>
   );
 }

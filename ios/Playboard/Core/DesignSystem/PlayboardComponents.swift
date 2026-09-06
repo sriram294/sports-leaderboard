@@ -74,6 +74,7 @@ struct PlayerAvatar: View {
     var photoURL: String? = nil
     let color: Color
     var size: CGFloat = 48
+    @State private var showsPreview = false
 
     var body: some View {
         ZStack {
@@ -100,8 +101,22 @@ struct PlayerAvatar: View {
         }
         .frame(width: size, height: size)
         .overlay(Circle().stroke(color, lineWidth: max(2, size / 18)))
+        .contentShape(Circle())
+        .onTapGesture { showsPreview = true }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Avatar for \(displayName)")
+        .accessibilityLabel("View \(displayName)'s profile image")
+        .accessibilityAddTraits(.isButton)
+        .sheet(isPresented: $showsPreview) {
+            VStack(spacing: PlayboardSpacing.large) {
+                PlayerAvatar(displayName: displayName, avatarID: avatarID, photoURL: photoURL, color: color, size: 260)
+                Text(displayName).font(PlayboardTypography.title())
+                Button("Close") { showsPreview = false }.frame(minWidth: 44, minHeight: 44)
+            }
+            .padding(PlayboardSpacing.extraLarge)
+            .presentationDetents([.medium])
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("\(displayName)'s profile image")
+        }
     }
 }
 
