@@ -8,11 +8,11 @@ import com.org.playboard.ui.board.LeaderboardTimeRange
 
 /**
  * Immutable state for the Stats/Insights tab (docs/requirements/06-stats.md): a
- * group-level analytics dashboard scoped to the active group. Records are all-time
- * (from the leaderboard + `Group.matchCount`); [biggestWin] is computed from the
- * recent window `MatchRepository.getMatches` returns (first page), so the UI labels
- * it as recent. The Partners card lets the user pick any player from [players] and
- * fetches that player's partner list on demand.
+ * group-level analytics dashboard scoped to the active group. Records and partners use
+ * [selectedTimeRange]; [biggestWin] is computed from the recent window
+ * `MatchRepository.getMatches` returns (first page), so the UI labels it as recent.
+ * The Partners card lets the user pick any player from [players] and fetches that player's
+ * partner list on demand.
  */
 data class StatsUiState(
     val isLoading: Boolean = true,
@@ -47,7 +47,7 @@ data class StatsUiState(
     val partners: List<Partner> = emptyList(),
     val isPartnersLoading: Boolean = false,
     val partnersLoadFailed: Boolean = false,
-    /** Calendar window used for records and the biggest-win insight. */
+    /** Calendar window used for records, partners, and the biggest-win insight. */
     val selectedTimeRange: LeaderboardTimeRange = LeaderboardTimeRange.MONTH,
 )
 

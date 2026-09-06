@@ -24,8 +24,8 @@ scoped to the selected window.
   - Longest streak and current hot streak
 - **Partners** — collapsed by default; expanding reveals a player picker
   (avatar + name dropdown of everyone on the leaderboard, defaulting to the
-  signed-in user) and fetches and shows that one player's partners, all-time
-  accurate, ranked by games together (ties broken by win rate together), same
+  signed-in user) and fetches and shows that one player's partners within the
+  selected range, ranked by games together (ties broken by win rate together), same
   row style as Profile's Partners card. Picking a different player refetches
   for them.
 - **Biggest win** — the match with the largest total-points margin (teams + score).
@@ -53,11 +53,11 @@ each player's name), so it's visible without switching tabs.
   [03-matches.md](03-matches.md)).
 - **Partners reuses the same per-player endpoint as Profile** (`GET
   /groups/{groupId}/members/{userId}/stats/partners`, see
-  [api-contracts.md](../backend/api-contracts.md)) — there is no separate
+  [api-contracts.md](../backend/api-contracts.md)) with optional `from`/`to` bounds — there is no separate
   group-wide "every pair" endpoint. The picker's roster comes from the
   leaderboard response already fetched for Records (everyone with at least
   one game — a player with zero games can't have partners either), so no
-  extra request is needed just to populate the dropdown. All-time accurate
+  extra request is needed just to populate the dropdown. Range-aware
   and fetched only for the selected player, only when the card is expanded —
   see [data-model.md](../backend/data-model.md) for why this isn't
   materialized.

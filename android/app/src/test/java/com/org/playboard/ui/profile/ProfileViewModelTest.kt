@@ -113,7 +113,7 @@ private open class FakePlayboardApi(
         statsCalls++
         return stats[userId] ?: error("no stats for $userId")
     }
-    override suspend fun getPartners(groupId: String, userId: String): List<PartnerDto> {
+    override suspend fun getPartners(groupId: String, userId: String, from: String?, to: String?): List<PartnerDto> {
         partnersCalls++
         return partners[userId].orEmpty()
     }

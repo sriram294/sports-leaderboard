@@ -64,6 +64,8 @@ private open class FakePlayboardApi(
     var signedInUserId: String = "priya",
 ) : PlayboardApi {
     var partnersCalls = 0
+    var lastPartnersFrom: String? = null
+    var lastPartnersTo: String? = null
     
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, UserSummaryDto(signedInUserId, signedInUserId, "$signedInUserId@example.com", null, null, "#9ADE28"))
@@ -83,8 +85,10 @@ private open class FakePlayboardApi(
     override suspend fun changeMemberRole(groupId: String, userId: String, request: com.org.playboard.data.remote.dto.UpdateRoleRequestDto): com.org.playboard.data.remote.dto.MemberDto = error("unused")
     override suspend fun updateSession(groupId: String, request: com.org.playboard.data.remote.dto.UpdateSessionRequestDto): com.org.playboard.data.remote.dto.GroupDto = error("unused")
     override suspend fun getPlayerStats(groupId: String, userId: String): PlayerStatsDto = error("unused")
-    override suspend fun getPartners(groupId: String, userId: String): List<PartnerDto> {
+    override suspend fun getPartners(groupId: String, userId: String, from: String?, to: String?): List<PartnerDto> {
         partnersCalls++
+        lastPartnersFrom = from
+        lastPartnersTo = to
         return partners[userId].orEmpty()
     }
     override suspend fun getPlayerAttendance(groupId: String, userId: String, from: String, to: String): com.org.playboard.data.remote.dto.PlayerAttendanceDto = com.org.playboard.data.remote.dto.PlayerAttendanceDto()
@@ -234,6 +238,30 @@ class StatsViewModelTest {
         assertTrue(state.partnersExpanded)
         assertEquals("priya", state.selectedPlayerId) // defaulted to the signed-in user
         assertEquals("Dev", state.partners.single().displayName)
+        assertTrue(api.lastPartnersFrom != null)
+        assertTrue(api.lastPartnersTo != null)
+    }
+
+    @Test
+    fun `monthly records include longest and current win streaks`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groupsResult = { GroupsResponseDto(listOf(groupDto(matchCount = 12))) },
+            leaderboardResult = {
+                LeaderboardResponseDto(
+                    listOf(entry(1, "priya", 3, 3, 126, 1.0, currentStreak = 3, bestStreak = 3)),
+                )
+            },
+            matchesResult = { MatchListResponseDto(emptyList(), null) },
+        )
+        val (vm, groups) = viewModel(api)
+        groups.refreshGroups()
+        advanceUntilIdle()
+
+        val records = vm.uiState.value.records
+        assertEquals("priya", records?.longestStreak?.userId)
+        assertEquals("priya", records?.currentStreak?.userId)
+        assertEquals(3, records?.longestStreak?.bestStreak)
+        assertEquals(3, records?.currentStreak?.currentStreak)
     }
 
     @Test

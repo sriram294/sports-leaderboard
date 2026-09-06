@@ -319,7 +319,9 @@ Every partner this player has had in the group, most games together first
 (ties broken by win rate together, descending). Same access rules as `/stats`
 (caller must be an active member; target must be an active non-guest member,
 else `404 MEMBER_NOT_FOUND`). Guests are excluded as partners. Empty array if
-the player has no completed matches with a teammate yet. The Stats screen's
+the player has no completed matches with a teammate yet. Optional `from` and
+`to` ISO-8601 query parameters restrict the result to the half-open `[from, to)`
+window. The Stats screen's
 group-wide "Partners" card calls this once per selected player (via a picker),
 rather than a separate group-wide endpoint.
 ```json

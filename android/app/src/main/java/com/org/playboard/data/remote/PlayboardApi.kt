@@ -149,6 +149,8 @@ interface PlayboardApi {
     suspend fun getPartners(
         @Path("groupId") groupId: String,
         @Path("userId") userId: String,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
     ): List<PartnerDto>
 
     @GET("api/v1/groups/{groupId}/members/{userId}/attendance")
