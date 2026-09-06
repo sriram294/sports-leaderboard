@@ -45,7 +45,7 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 43
+        versionCode = 44
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
