@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { Group } from './models';
 
 /** Single first-letter initial, matching Android's `PlayerAvatar` (`displayName.take(1)`) —
@@ -20,17 +20,20 @@ export type AvatarPerson = {
  * initials circle is always drawn as the base, so a missing/broken image still
  * shows a graceful fallback.
  */
-export function Avatar({ person, size = 'md', ring = false }: { person: AvatarPerson; size?: 'sm' | 'md' | 'lg' | number; ring?: boolean }) {
+export function Avatar({ person, size = 'md', ring = false, onClick }: { person: AvatarPerson; size?: 'sm' | 'md' | 'lg' | number; ring?: boolean; onClick?: () => void }) {
   const src = person.photoUrl || (person.avatarId ? `/avatars/${person.avatarId}.png` : undefined);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const px = typeof size === 'number';
+  const openPreview = onClick ?? (() => setPreviewOpen(true));
   return (
-    <span
+    <div
       className={px ? 'avatar' : `avatar ${size}`}
       style={{
         background: person.avatarColor,
         ...(px ? { width: size, height: size, fontSize: Math.round(size * 0.34) } : {}),
         ...(ring ? { boxShadow: `0 0 0 2px ${person.avatarColor}` } : {}),
       }}
+      onClick={openPreview}
     >
       {avatarInitial(person.displayName)}
       {src && (
@@ -42,7 +45,25 @@ export function Avatar({ person, size = 'md', ring = false }: { person: AvatarPe
           onError={event => { event.currentTarget.style.display = 'none'; }}
         />
       )}
-    </span>
+      {onClick == null && previewOpen && <AvatarPreview person={person} onClose={() => setPreviewOpen(false)} />}
+    </div>
+  );
+}
+
+function AvatarPreview({ person, onClose }: { person: AvatarPerson; onClose: () => void }) {
+  const src = person.photoUrl || (person.avatarId ? `/avatars/${person.avatarId}.png` : undefined);
+  const ref = useDialogA11y(onClose);
+  return (
+    <div className="avatar-preview-backdrop" onClick={onClose}>
+      <div ref={ref} className="avatar-preview" role="dialog" aria-modal="true" aria-label={`${person.displayName}'s profile image`} onClick={event => event.stopPropagation()}>
+        <button className="icon-button avatar-preview-close" onClick={onClose} aria-label="Close image">×</button>
+        <div className="avatar-preview-image" style={{ background: person.avatarColor }}>
+          {avatarInitial(person.displayName)}
+          {src && <img src={src} alt={`${person.displayName}'s profile`} onError={event => { event.currentTarget.style.display = 'none'; }} />}
+        </div>
+        <strong>{person.displayName}</strong>
+      </div>
+    </div>
   );
 }
 
