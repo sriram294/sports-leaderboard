@@ -11,8 +11,10 @@ import {
   teamName,
   winRatePercent,
   winningTeamNo,
+  RANGE_LABEL,
   type BiggestWin,
   type Records,
+  type TimeRange,
 } from '../../domain';
 
 type Props = {
@@ -22,6 +24,8 @@ type Props = {
   matchCount: number;
   matches: Match[];
   trophies: MonthlyTrophy[];
+  range: TimeRange;
+  onRangeChange: (range: TimeRange) => void;
 };
 
 /**
@@ -31,20 +35,51 @@ type Props = {
  * just their partner list on demand), and BIGGEST WIN derived client-side from the first
  * page of matches — no new endpoints beyond the per-player partners one Profile also uses.
  */
-export function StatsScreen({ groupId, currentUserId, rankings, matchCount, matches, trophies }: Props) {
+export function StatsScreen({ groupId, currentUserId, rankings, matchCount, matches, trophies, range, onRangeChange }: Props) {
   const records = useMemo(() => computeRecords(rankings, matchCount), [rankings, matchCount]);
   const biggestWin = useMemo(() => computeBiggestWin(matches), [matches]);
 
-  if (matchCount === 0 && matches.length === 0) {
-    return <p className="stats-empty">Play some matches to see insights.</p>;
-  }
-
   return (
     <div className="stats">
-      <RecordsCard records={records} />
-      {trophies.length > 0 && <MonthlyWinnersCard winners={trophies} />}
-      <PartnersCard groupId={groupId} rankings={rankings} currentUserId={currentUserId} />
-      {biggestWin && <BiggestWinCard biggestWin={biggestWin} />}
+      <div className="stats-head">
+        <span className="eyebrow">INSIGHTS</span>
+        <RangeSelector range={range} onChange={onRangeChange} />
+      </div>
+      {matchCount === 0 && matches.length === 0 ? (
+        <p className="stats-empty">Play some matches to see insights.</p>
+      ) : (
+        <>
+          <RecordsCard records={records} />
+          {trophies.length > 0 && <MonthlyWinnersCard winners={trophies} />}
+          <PartnersCard groupId={groupId} rankings={rankings} currentUserId={currentUserId} />
+          {biggestWin && <BiggestWinCard biggestWin={biggestWin} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function RangeSelector({ range, onChange }: { range: TimeRange; onChange: (range: TimeRange) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+  return (
+    <div className="range-selector" ref={ref}>
+      <button className="range-trigger" onClick={() => setOpen(value => !value)} aria-haspopup="menu" aria-expanded={open}>
+        {RANGE_LABEL[range]} <span aria-hidden="true">▾</span>
+      </button>
+      {open && <div className="range-menu" role="menu">
+        {(['month', 'all'] as TimeRange[]).map(option => (
+          <button key={option} role="menuitem" className={option === range ? 'selected' : ''} onClick={() => { onChange(option); setOpen(false); }}>
+            {RANGE_LABEL[option]}
+          </button>
+        ))}
+      </div>}
     </div>
   );
 }

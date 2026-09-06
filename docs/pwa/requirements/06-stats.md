@@ -7,6 +7,8 @@
 ## Purpose
 A group-level analytics dashboard scoped to the active group — "who's actually winning / who
 plays best together" — complementing the Board (per-player ranking) and Profile (one player).
+The dashboard defaults to **This Month** and can be switched to **All Time** with the same
+calendar-window selector used by the Board.
 
 ## Layout (top to bottom)
 - **RECORDS** — big total-matches count + `matches played`, then leader rows: **WIN LEADER**
@@ -25,22 +27,27 @@ both more visible and more accurate (server-computed exact last-10, not derived 
 matches happen to be in the loaded page).
 
 ## Behavior / Requirements
-1. **Records** are all-time, from the leaderboard (`GET .../leaderboard`) + the group's match
-   count. **Win leader** = the top entry with ≥ `MIN_LEADER_GAMES` (2) games, else the top-ranked
-   (so a lone 1-game 100% doesn't headline). Streak records show only from `MIN_STREAK` (2) up.
-2. **Biggest win** is derived **client-side** from the **first page** of matches
-   (`useMatchesInfinite` page 0) and labeled "· recent".
-3. **Partners** calls `GET .../members/{userId}/stats/partners` only while expanded and
+1. **Range** defaults to This Month. The selector offers This Month and All Time; This Month
+   computes its local calendar `[from,to)` window like the Board and refetches the windowed
+   leaderboard.
+2. **Records** use the selected leaderboard window. **Win leader** = the top entry with ≥
+   `MIN_LEADER_GAMES` (2) games, else the top-ranked (so a lone 1-game 100% doesn't headline).
+   Streak records are meaningful only for All Time because the windowed leaderboard does not
+   provide streak values.
+3. **Biggest win** is derived **client-side** from the first page of matches
+   (`useMatchesInfinite` page 0), filtered to the selected window, and labeled "· recent".
+4. **Partners** calls `GET .../members/{userId}/stats/partners` only while expanded and
    whenever the selected player changes.
-4. **Biggest win** — the recent match with the largest total-points margin (summed across sets).
-5. **Monthly winners** are **served** (`GET .../trophies`), not derived — a crown is awarded once
+5. **Biggest win** — the recent match with the largest total-points margin (summed across sets).
+6. **Monthly winners** are **served** (`GET .../trophies`), not derived — a crown is awarded once
    when a month closes and never recomputed. Rendered only when non-empty (absent from the v4.4
    screenshot, which is a group with no closed-month trophies).
-6. **States** — spinner while leaderboard/matches load; retry on leaderboard failure; a
+7. **States** — spinner while leaderboard/matches load; retry on leaderboard failure; a
    `Play some matches to see insights.` empty state when the group has no matches.
 
 ## Data needed
-- `GET /groups/{groupId}/leaderboard` (rankings) · the group's `matchCount`.
+- `GET /groups/{groupId}/leaderboard` (rankings), with `from` and `to` for This Month; the
+  group's `matchCount` is used only for All Time.
 - `GET /groups/{groupId}/matches` (first page) — biggest win.
 - `GET /groups/{groupId}/members/{userId}/stats/partners` — selected player's partners.
 - `GET /groups/{groupId}/trophies` (MonthlyTrophyDto[]) — monthly winners.

@@ -4,6 +4,7 @@ import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MonthlyTrophy
 import com.org.playboard.data.model.Partner
 import com.org.playboard.data.model.PlayerRanking
+import com.org.playboard.ui.board.LeaderboardTimeRange
 
 /**
  * Immutable state for the Stats/Insights tab (docs/requirements/06-stats.md): a
@@ -46,9 +47,11 @@ data class StatsUiState(
     val partners: List<Partner> = emptyList(),
     val isPartnersLoading: Boolean = false,
     val partnersLoadFailed: Boolean = false,
+    /** Calendar window used for records and the biggest-win insight. */
+    val selectedTimeRange: LeaderboardTimeRange = LeaderboardTimeRange.MONTH,
 )
 
-/** All-time group records, derived from the leaderboard + `Group.matchCount`. */
+/** Group records derived from the selected leaderboard window and match count. */
 data class Records(
     val totalMatches: Int,
     /** Top by win rate with at least [MIN_LEADER_GAMES] games, else the top-ranked entry. */

@@ -54,6 +54,7 @@ import com.org.playboard.ui.components.MonthlyCrownIcon
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.components.avatarColor
+import com.org.playboard.ui.board.LeaderboardTimeRange
 import com.org.playboard.ui.theme.PlayboardTheme
 
 /** Stats/Insights tab — group analytics dashboard (docs/requirements/06-stats.md). */
@@ -66,6 +67,7 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         onPullRefresh = viewModel::onPullRefresh,
         onPartnersToggled = viewModel::onPartnersToggled,
         onPlayerSelected = viewModel::onPlayerSelected,
+        onTimeRangeSelected = viewModel::onTimeRangeSelected,
     )
 }
 
@@ -77,6 +79,7 @@ private fun StatsContent(
     onPullRefresh: () -> Unit,
     onPartnersToggled: () -> Unit,
     onPlayerSelected: (String) -> Unit,
+    onTimeRangeSelected: (LeaderboardTimeRange) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -103,7 +106,12 @@ private fun StatsContent(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item { Spacer(Modifier.height(4.dp)) }
+                    item {
+                        StatsHeader(
+                            selectedRange = state.selectedTimeRange,
+                            onTimeRangeSelected = onTimeRangeSelected,
+                        )
+                    }
                     state.records?.let { item { RecordsCard(records = it) } }
                     if (state.monthlyWinners.isNotEmpty()) {
                         item { MonthlyWinnersCard(winners = state.monthlyWinners) }
@@ -123,6 +131,37 @@ private fun StatsContent(
                     state.biggestWin?.let { item { BiggestWinCard(biggestWin = it) } }
                     item { Spacer(Modifier.height(12.dp)) }
                 }
+            }
+        }
+    }
+}
+
+/** Insights heading with the same calendar-window dropdown used by the leaderboard. */
+@Composable
+private fun StatsHeader(
+    selectedRange: LeaderboardTimeRange,
+    onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { menuExpanded = true }
+                .padding(vertical = 6.dp),
+        ) {
+            Text("INSIGHTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = PlayboardTheme.colors.textMuted)
+            Spacer(Modifier.width(10.dp))
+            Text(if (selectedRange == LeaderboardTimeRange.MONTH) "This Month" else "All Time", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textPrimary)
+            Text(if (menuExpanded) " ▴" else " ▾", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
+        }
+        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }, modifier = Modifier.background(PlayboardTheme.colors.surface)) {
+            LeaderboardTimeRange.entries.forEach { range ->
+                DropdownMenuItem(
+                    text = { Text(if (range == LeaderboardTimeRange.MONTH) "This Month" else "All Time", color = if (range == selectedRange) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary) },
+                    onClick = { menuExpanded = false; onTimeRangeSelected(range) },
+                )
             }
         }
     }

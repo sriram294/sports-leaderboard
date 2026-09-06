@@ -11,8 +11,13 @@ best together" view — scoped to the currently selected group. Complements the
 
 ## Layout / sections
 
-- **Records** (all-time, accurate — from the leaderboard + `group.matchCount`):
-  - Total matches (`Group.matchCount`)
+The Stats tab defaults to **This Month** and provides a dropdown with **This Month** and
+**All Time**, matching the Board leaderboard selector. Records and match-derived insights are
+scoped to the selected window.
+
+- **Records** (scoped to the selected range — from the windowed leaderboard; all-time uses
+  `group.matchCount` for total matches):
+  - Total matches
   - Win leader (top leaderboard entry — server-sorted by win rate)
   - Most points (max `pointsFor`)
   - Most active (max `gamesPlayed`)
@@ -38,12 +43,12 @@ each player's name), so it's visible without switching tabs.
    Profile grid.
 
 ## Data / implementation notes
-- Reuse `LeaderboardRepository.getLeaderboard`, `MatchRepository.getMatches`,
+- Reuse `LeaderboardRepository.getLeaderboard` with the selected calendar window, `MatchRepository.getMatches`,
   and `GroupRepository.selectedGroup` (`matchCount`, `dataRevision`) for
   Records and Biggest Win.
-- Leaderboard-derived records are all-time accurate. Biggest-win is computed
-  **client-side from `getMatches()`**, which currently returns only the first
-  page (newest ~20) — a reasonable "recent" window; labeled accordingly.
+- Leaderboard-derived records use the selected range. Biggest-win is computed
+  **client-side from `getMatches()`**, filtered to the selected range, and currently returns
+  only the first page (newest ~20) — a reasonable "recent" window; labeled accordingly.
   Improves automatically once Matches pagination is wired (see
   [03-matches.md](03-matches.md)).
 - **Partners reuses the same per-player endpoint as Profile** (`GET
@@ -70,5 +75,3 @@ each player's name), so it's visible without switching tabs.
 - Minimum-games threshold before a player shows in "records" (same concern
   as leaderboard ranking — a 1-game 100% is noise). Partners has no such
   threshold — every pair that has played together at least once is shown.
-- Whether records should be all-time (needs match pagination for match-derived
-  ones) or explicitly "recent" for v1.
