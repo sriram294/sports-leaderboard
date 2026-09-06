@@ -64,10 +64,16 @@ export function AddMatchScreen({ user, roster, isEditing, playedAt, prefill, onS
   const updateSet = (index: number, side: 'team1' | 'team2', value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 2);
     setSets(current => current.map((set, i) => (i === index ? { ...set, [side]: digits } : set)));
+    // Scores determine the result; discard the old edit-time winner override when they change.
+    // Otherwise correcting a match can still submit the winner from the original match.
+    setWinnerOverride(undefined);
     setError(undefined);
   };
   const addSet = () => setSets(current => [...current, { team1: '', team2: '' }]);
-  const removeSet = (index: number) => setSets(current => (current.length <= 1 ? current : current.filter((_, i) => i !== index)));
+  const removeSet = (index: number) => {
+    setSets(current => (current.length <= 1 ? current : current.filter((_, i) => i !== index)));
+    setWinnerOverride(undefined);
+  };
 
   const teamLabel = (teamNo: number) =>
     Array.from({ length: TEAM_SIZE }, (_, i) => {

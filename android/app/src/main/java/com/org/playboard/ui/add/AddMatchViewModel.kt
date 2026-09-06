@@ -189,7 +189,9 @@ class AddMatchViewModel @Inject constructor(
             if (index !in state.sets.indices) return@update state
             val sets = state.sets.toMutableList()
             sets[index] = if (teamNo == 1) sets[index].copy(team1 = digits) else sets[index].copy(team2 = digits)
-            state.copy(sets = sets, submitError = null)
+            // A score edit invalidates the previous manual winner choice. Otherwise an edit
+            // can submit the winner from the original match even after the result is flipped.
+            state.copy(sets = sets, winnerOverride = null, submitError = null)
         }
     }
 
@@ -200,7 +202,7 @@ class AddMatchViewModel @Inject constructor(
     fun onRemoveSet(index: Int) {
         _uiState.update { state ->
             if (state.sets.size <= 1 || index !in state.sets.indices) return@update state
-            state.copy(sets = state.sets.filterIndexed { i, _ -> i != index }, submitError = null)
+            state.copy(sets = state.sets.filterIndexed { i, _ -> i != index }, winnerOverride = null, submitError = null)
         }
     }
 
