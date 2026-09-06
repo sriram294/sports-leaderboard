@@ -160,23 +160,53 @@ public class StatsQueryService {
             }
         }
 
+        Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
         List<RawStatRow> rows = new ArrayList<>();
         for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
             int gamesPlayed = (int) row.getGamesPlayed();
             if (!eligible.containsKey(row.getUserId()) || gamesPlayed == 0) {
                 continue;
             }
+            int[] playerStreaks = streaks.getOrDefault(row.getUserId(), new int[] {0, 0});
             rows.add(new RawStatRow(
                     row.getUserId(),
                     gamesPlayed,
                     (int) row.getWins(),
                     (int) row.getPointsFor(),
                     (int) row.getPointsAgainst(),
-                    0, // streaks are all-time only and not shown on the board
-                    0));
+                    playerStreaks[0],
+                    playerStreaks[1]));
         }
         Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
         return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(eligible, form));
+    }
+
+    private Map<UUID, int[]> windowedStreaks(UUID groupId, Instant from, Instant to) {
+        Map<UUID, List<Boolean>> results = new HashMap<>();
+        for (var row : matchParticipantRepository.findWindowedStreaks(groupId, from, to)) {
+            results.computeIfAbsent(row.getUserId(), key -> new ArrayList<>()).add(row.isWinner());
+        }
+        Map<UUID, int[]> streaks = new HashMap<>();
+        for (Map.Entry<UUID, List<Boolean>> entry : results.entrySet()) {
+            int running = 0;
+            int best = 0;
+            List<Boolean> playerResults = entry.getValue();
+            for (boolean win : playerResults) {
+                if (win) {
+                    running++;
+                    best = Math.max(best, running);
+                } else {
+                    running = 0;
+                }
+            }
+            boolean lastWin = playerResults.get(playerResults.size() - 1);
+            int trailing = 0;
+            for (int i = playerResults.size() - 1; i >= 0 && playerResults.get(i) == lastWin; i--) {
+                trailing++;
+            }
+            streaks.put(entry.getKey(), new int[] {lastWin ? trailing : -trailing, best});
+        }
+        return streaks;
     }
 
     /**
@@ -289,6 +319,12 @@ public class StatsQueryService {
      */
     @Transactional(readOnly = true)
     public List<PartnerDto> getPartners(UUID groupId, UUID targetUserId, UUID callerId) {
+        return getPartners(groupId, targetUserId, callerId, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PartnerDto> getPartners(
+            UUID groupId, UUID targetUserId, UUID callerId, Instant from, Instant to) {
         membershipGuard.requireActiveMember(groupId, callerId);
         groupMemberRepository
                 .findByGroupIdAndUserId(groupId, targetUserId)
@@ -296,7 +332,7 @@ public class StatsQueryService {
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
 
-        List<PartnerRow> rows = matchParticipantRepository.findPartnerHistory(groupId, targetUserId);
+        List<PartnerRow> rows = matchParticipantRepository.findPartnerHistory(groupId, targetUserId, from, to);
 
         // Guest fillers aren't real partners — leave them out of the tally so a
         // one-off guest can never surface in the partner list.

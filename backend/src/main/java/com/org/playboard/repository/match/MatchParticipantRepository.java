@@ -78,11 +78,37 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
           join MatchParticipant mp2 on mp2.matchTeam = mp.matchTeam
         where mp.user.id = :userId and mp2.user.id <> :userId
           and mp.match.group.id = :groupId and mp.match.deleted = false
+          and (:from is null or mp.match.playedAt >= :from)
+          and (:to is null or mp.match.playedAt < :to)
         """)
-    List<PartnerRow> findPartnerHistory(@Param("groupId") UUID groupId, @Param("userId") UUID userId);
+    List<PartnerRow> findPartnerHistory(
+            @Param("groupId") UUID groupId,
+            @Param("userId") UUID userId,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
 
     interface PartnerRow {
         UUID getPartnerId();
+
+        boolean isWinner();
+    }
+
+    @Query("""
+        select mp.user.id as userId, m.playedAt as playedAt, mt.winner as winner
+        from MatchParticipant mp
+          join mp.match m
+          join mp.matchTeam mt
+        where m.group.id = :groupId and m.deleted = false
+          and m.playedAt >= :from and m.playedAt < :to
+        order by mp.user.id asc, m.playedAt asc, m.id asc
+        """)
+    List<WindowedStreakRow> findWindowedStreaks(
+            @Param("groupId") UUID groupId,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
+    interface WindowedStreakRow {
+        UUID getUserId();
 
         boolean isWinner();
     }

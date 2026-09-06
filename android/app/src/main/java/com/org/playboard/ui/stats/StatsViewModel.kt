@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
  * Stats/Insights tab (docs/requirements/06-stats.md): a group-level analytics
  * dashboard scoped to the active group. Follows [com.org.playboard.ui.board.BoardViewModel]:
  * observes the shared active group (+ load status) and reloads on a match change.
- * Records derive from the leaderboard (all-time); biggest win from the recent match
+ * Records derive from the selected leaderboard window; biggest win from the recent match
  * window — both computed by the pure functions in StatsComputations. The "Partners"
  * card is separate: it lets the user pick any player (defaulting to themself) from a
  * picker, then fetches just that player's partner list from its own endpoint only once
@@ -63,7 +63,7 @@ class StatsViewModel @Inject constructor(
                 // A new match also changes partner counts — refresh an open selection too.
                 val state = _uiState.value
                 if (state.partnersExpanded) {
-                    state.selectedPlayerId?.let { userId -> fetchPartners(group.id, userId) }
+                    state.selectedPlayerId?.let { userId -> fetchPartners(group.id, userId, state.selectedTimeRange) }
                 }
             }
         }
@@ -89,7 +89,7 @@ class StatsViewModel @Inject constructor(
                 ?: state.players.firstOrNull { it.userId == currentUserId }?.userId
                 ?: state.players.firstOrNull()?.userId
             _uiState.update { it.copy(partnersExpanded = true, selectedPlayerId = defaultPlayerId) }
-            if (defaultPlayerId != null) fetchPartners(groupId, defaultPlayerId)
+            if (defaultPlayerId != null) fetchPartners(groupId, defaultPlayerId, state.selectedTimeRange)
         }
     }
 
@@ -97,21 +97,31 @@ class StatsViewModel @Inject constructor(
     fun onPlayerSelected(userId: String) {
         val groupId = _uiState.value.groupId ?: return
         _uiState.update { it.copy(selectedPlayerId = userId) }
-        viewModelScope.launch { fetchPartners(groupId, userId) }
+        viewModelScope.launch { fetchPartners(groupId, userId, _uiState.value.selectedTimeRange) }
     }
 
-    /** Switches records and match-derived insights between the current month and all time. */
+    /** Switches records, partners, and match-derived insights between the current month and all time. */
     fun onTimeRangeSelected(range: LeaderboardTimeRange) {
         if (_uiState.value.selectedTimeRange == range) return
+        val previousState = _uiState.value
         _uiState.update { it.copy(selectedTimeRange = range) }
         viewModelScope.launch {
-            groupRepository.selectedGroup.first()?.let { load(it, showLoading = true) }
+            groupRepository.selectedGroup.first()?.let { group ->
+                load(group, showLoading = true)
+                if (previousState.partnersExpanded && previousState.selectedPlayerId != null) {
+                    _uiState.update {
+                        it.copy(partnersExpanded = true, selectedPlayerId = previousState.selectedPlayerId)
+                    }
+                    fetchPartners(group.id, previousState.selectedPlayerId, range)
+                }
+            }
         }
     }
 
-    private suspend fun fetchPartners(groupId: String, userId: String) {
+    private suspend fun fetchPartners(groupId: String, userId: String, timeRange: LeaderboardTimeRange) {
+        val (from, to) = timeRange.window() ?: (null to null)
         _uiState.update { if (it.selectedPlayerId == userId) it.copy(isPartnersLoading = true, partnersLoadFailed = false) else it }
-        statsRepository.getPartners(groupId, userId)
+        statsRepository.getPartners(groupId, userId, from, to)
             .onSuccess { partners ->
                 _uiState.update { if (it.selectedPlayerId == userId) it.copy(isPartnersLoading = false, partners = partners) else it }
             }

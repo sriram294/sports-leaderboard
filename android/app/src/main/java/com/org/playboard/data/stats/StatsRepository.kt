@@ -37,8 +37,8 @@ class StatsRepository @Inject constructor(
         runCatching { api.getPlayerStats(groupId, userId).toStats() }
 
     /** Every partner this player has had in the group, most games together first. Fetched only on expand. */
-    suspend fun getPartners(groupId: String, userId: String): Result<List<Partner>> =
-        runCatching { api.getPartners(groupId, userId).map(PartnerDto::toPartner) }
+    suspend fun getPartners(groupId: String, userId: String, from: String? = null, to: String? = null): Result<List<Partner>> =
+        runCatching { api.getPartners(groupId, userId, from, to).map(PartnerDto::toPartner) }
 
     /**
      * The local calendar days on which the player was in a match, within `[from, to)`.
