@@ -8,11 +8,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.Dialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 
@@ -115,7 +117,7 @@ fun PlayerAvatar(
     if (showPreview) {
         Dialog(onDismissRequest = { showPreview = false }) {
             androidx.compose.material3.Surface(shape = RoundedCornerShape(24.dp), color = PlayboardTheme.colors.surface) {
-                androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
                     PlayerAvatar(displayName, photoUrl, avatarColorHex, avatarId = avatarId, size = 260.dp, preloadedImage = preloadedImage, enablePreview = false)
                     Text(displayName, color = PlayboardTheme.colors.textPrimary, modifier = Modifier.padding(top = 12.dp))
                     TextButton(onClick = { showPreview = false }) { androidx.compose.material3.Text("Close") }

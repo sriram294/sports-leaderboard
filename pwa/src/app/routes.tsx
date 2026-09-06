@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
 import { invalidateGroupData, leaderboardKey, statsKey, useAttendance, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
-import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, winningTeamNo, type TimeRange } from '../domain';
+import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, rangeWindow, winningTeamNo, type TimeRange } from '../domain';
 import type { RecordMatchRequest, User } from '../models';
 import { api } from '../data';
 import type { AddMatchPrefill } from '../features/add-match/AddMatchScreen';
@@ -157,23 +157,34 @@ export function AddRoute() {
 export function StatsRoute() {
   const { activeGroup } = useGroups();
   const { user } = useSession();
-  const leaderboard = useLeaderboard(activeGroup?.id);
-  // Records are all-time (leaderboard + matchCount); Biggest Win uses the recent
-  // window — the first page of matches — mirroring Android's getMatches() first page.
+  const [range, setRange] = useState<TimeRange>('month');
+  useEffect(() => setRange('month'), [activeGroup?.id]);
+  const leaderboard = useLeaderboard(activeGroup?.id, range);
   const matches = useMatchesInfinite(activeGroup?.id);
   const trophies = useTrophies(activeGroup?.id);
   if (!activeGroup) return <NoGroup />;
   if (leaderboard.isLoading || matches.isLoading) return <Loading />;
   if (leaderboard.error) return <ErrorState message={errorMessage(leaderboard.error)} retry={() => leaderboard.refetch()} />;
+  const loadedMatches = matches.data?.pages[0]?.matches ?? [];
+  const window = rangeWindow(range);
+  const visibleMatches = window
+    ? loadedMatches.filter(match => match.playedAt >= window.from && match.playedAt < window.to)
+    : loadedMatches;
+  const rankings = leaderboard.data?.rankings ?? [];
+  const matchCount = range === 'all'
+    ? activeGroup.matchCount
+    : Math.round(rankings.reduce((total, player) => total + player.gamesPlayed, 0) / 4);
   return (
     <StatsScreen
       key={activeGroup.id}
       groupId={activeGroup.id}
       currentUserId={user?.id}
-      rankings={leaderboard.data?.rankings ?? []}
-      matchCount={activeGroup.matchCount}
-      matches={matches.data?.pages[0]?.matches ?? []}
+      rankings={rankings}
+      matchCount={matchCount}
+      matches={visibleMatches}
       trophies={trophies.data ?? []}
+      range={range}
+      onRangeChange={setRange}
     />
   );
 }

@@ -2086,6 +2086,13 @@ h3 {
 
 /* ==================== Profile / player stats ==================== */
 
+.stats-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
 .profile-top-actions {
     display: flex;
     gap: 16px;

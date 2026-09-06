@@ -17,7 +17,8 @@ export const matchesKey = (groupId?: string) => ['matches', groupId] as const;
 /**
  * Board leaderboard for a calendar window. `keepPreviousData` keeps the current table
  * on screen while a range switch fetches, so the header (with the range selector) never
- * blinks out to a spinner. Stats defaults to `all` to preserve its all-time semantics.
+ * blinks out to a spinner. Board keeps its existing all-time default; Stats selects its own
+ * This Month default when it calls this hook.
  */
 export const useLeaderboard = (groupId?: string, range: TimeRange = 'all') =>
   useQuery({

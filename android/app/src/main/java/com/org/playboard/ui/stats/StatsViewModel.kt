@@ -8,6 +8,7 @@ import com.org.playboard.data.group.GroupsLoadState
 import com.org.playboard.data.leaderboard.LeaderboardRepository
 import com.org.playboard.data.match.MatchRepository
 import com.org.playboard.data.model.Group
+import com.org.playboard.ui.board.LeaderboardTimeRange
 import com.org.playboard.data.model.SessionState
 import com.org.playboard.data.stats.StatsRepository
 import com.org.playboard.data.trophy.TrophyRepository
@@ -99,6 +100,15 @@ class StatsViewModel @Inject constructor(
         viewModelScope.launch { fetchPartners(groupId, userId) }
     }
 
+    /** Switches records and match-derived insights between the current month and all time. */
+    fun onTimeRangeSelected(range: LeaderboardTimeRange) {
+        if (_uiState.value.selectedTimeRange == range) return
+        _uiState.update { it.copy(selectedTimeRange = range) }
+        viewModelScope.launch {
+            groupRepository.selectedGroup.first()?.let { load(it, showLoading = true) }
+        }
+    }
+
     private suspend fun fetchPartners(groupId: String, userId: String) {
         _uiState.update { if (it.selectedPlayerId == userId) it.copy(isPartnersLoading = true, partnersLoadFailed = false) else it }
         statsRepository.getPartners(groupId, userId)
@@ -168,7 +178,8 @@ class StatsViewModel @Inject constructor(
                 partnersLoadFailed = if (showLoading) false else it.partnersLoadFailed,
             )
         }
-        val rankings = leaderboardRepository.getLeaderboard(group.id).getOrElse {
+        val (from, to) = _uiState.value.selectedTimeRange.window() ?: (null to null)
+        val rankings = leaderboardRepository.getLeaderboard(group.id, from, to).getOrElse {
             _uiState.update { s -> s.copy(isLoading = false, hasLoadFailed = s.records == null) }
             return
         }.rankings
@@ -180,14 +191,26 @@ class StatsViewModel @Inject constructor(
         // failure here degrades to an absent card rather than blanking the whole screen —
         // the same treatment Profile gives its attendance calendar.
         val monthlyWinners = trophyRepository.getGroupTrophies(group.id).getOrDefault(emptyList())
+        val visibleMatches = if (from == null || to == null) {
+            matches
+        } else {
+            val start = java.time.Instant.parse(from)
+            val end = java.time.Instant.parse(to)
+            matches.filter { it.playedAt >= start && it.playedAt < end }
+        }
+        val matchCount = if (from == null || to == null) {
+            group.matchCount
+        } else {
+            rankings.sumOf { it.gamesPlayed }.div(4)
+        }
         _uiState.update {
             it.copy(
                 isLoading = false,
                 hasLoadFailed = false,
                 groupName = group.name,
-                hasMatches = group.matchCount > 0,
-                records = computeRecords(rankings, group.matchCount),
-                biggestWin = computeBiggestWin(matches),
+                hasMatches = rankings.isNotEmpty() || visibleMatches.isNotEmpty(),
+                records = computeRecords(rankings, matchCount),
+                biggestWin = computeBiggestWin(visibleMatches),
                 monthlyWinners = monthlyWinners,
                 players = rankings,
             )

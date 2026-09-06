@@ -188,6 +188,7 @@ class StatsViewModelTest {
             },
         )
         val (vm, groups) = viewModel(api)
+        vm.onTimeRangeSelected(com.org.playboard.ui.board.LeaderboardTimeRange.ALL_TIME)
         groups.refreshGroups()
         advanceUntilIdle()
 
@@ -363,6 +364,7 @@ class StatsViewModelTest {
             trophiesResult = { error("trophies down") },
         )
         val (vm, groups) = viewModel(api)
+        vm.onTimeRangeSelected(com.org.playboard.ui.board.LeaderboardTimeRange.ALL_TIME)
         groups.refreshGroups()
         advanceUntilIdle()
 
