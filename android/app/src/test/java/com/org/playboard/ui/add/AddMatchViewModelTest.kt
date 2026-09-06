@@ -400,6 +400,26 @@ class AddMatchViewModelTest {
     }
 
     @Test
+    fun `editing scores clears the original winner override and derives the corrected winner`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            groups = listOf(groupDto("g1", "Smashers")),
+            members = fourPlayers,
+            matchDetail = detailDto(winningTeamNo = 2),
+        )
+        val viewModel = readyViewModel(api)
+        advanceUntilIdle()
+
+        viewModel.onModeRequested("m1")
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.effectiveWinner)
+
+        viewModel.onSetScoreChanged(0, 2, "10")
+
+        assertNull(viewModel.uiState.value.winnerOverride)
+        assertEquals(1, viewModel.uiState.value.effectiveWinner)
+    }
+
+    @Test
     fun `saving an edit sends a PATCH for that match, emits recorded, and resets to create mode`() =
         runTest(testDispatcher) {
             val api = FakePlayboardApi(
