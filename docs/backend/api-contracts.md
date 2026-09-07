@@ -280,8 +280,8 @@ over the selected window, and one or two sessions is too few games for it to
 separate anyone. Omit both params for the all-time ranking (the default and
 the original behavior). Windowed responses use the identical shape, ordering,
 guest-exclusion, and zero-matches-omitted rules as all-time; the only difference
-is `currentStreak`/`bestStreak` are `0` (streaks are all-time-only and the board
-doesn't render them). All-time reads the materialized `member_stats` snapshot;
+is that `currentStreak`/`bestStreak` are calculated within the requested ranking
+window (and the board doesn't render them). All-time reads the materialized `member_stats` snapshot;
 windowed aggregates raw matches on demand. A window covering all of history is
 otherwise identical to the all-time response, including every `rating` — pinned
 by an integration test, because the end-of-session rank-change notification
