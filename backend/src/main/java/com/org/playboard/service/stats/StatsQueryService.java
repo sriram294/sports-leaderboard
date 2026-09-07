@@ -229,6 +229,12 @@ public class StatsQueryService {
             double delta = TeamRatingCalculator.conservativeScore(new TeamRatingCalculator.Rating(ar.mean(), ar.sigma()))
                     - TeamRatingCalculator.conservativeScore(new TeamRatingCalculator.Rating(br.mean(), br.sigma()));
             if (Math.abs(delta) > .25) return delta > 0 ? -1 : 1;
+            // Keep the user-visible number aligned with the row order. The internal
+            // conservative score still decides clearly separated players; inside its
+            // tie band, comparing the same display mapping prevents confusing cases
+            // such as #2 showing 72.1 above #3 showing 72.5.
+            int byDisplayRating = br.displayRating().compareTo(ar.displayRating());
+            if (byDisplayRating != 0) return byDisplayRating;
             int byDiff = Integer.compare(b.pointsDiff(), a.pointsDiff());
             if (byDiff != 0) return byDiff;
             int byWins = Integer.compare(b.wins(), a.wins());
