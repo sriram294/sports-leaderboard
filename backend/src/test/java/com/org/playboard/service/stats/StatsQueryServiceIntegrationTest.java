@@ -127,6 +127,23 @@ class StatsQueryServiceIntegrationTest {
         assertThat(statsQueryService.getPartners(f.group.getId(), f.newbie.getId(), f.raj.getId())).isEmpty();
     }
 
+    @Test
+    void getPartnersHonorsTheRequestedWindow() {
+        Fixture f = newFixture();
+        Instant from = Instant.parse("2026-09-01T00:00:00Z");
+        Instant to = Instant.parse("2026-10-01T00:00:00Z");
+
+        recordMatch(f.group, f.raj, List.of(f.raj, f.dev), List.of(f.marcus, f.kiran), 21, 12, 1,
+                from.plus(Duration.ofHours(1)));
+        recordMatch(f.group, f.raj, List.of(f.raj, f.kiran), List.of(f.dev, f.marcus), 21, 12, 1,
+                from.minus(Duration.ofDays(1)));
+
+        List<PartnerDto> partners = statsQueryService.getPartners(f.group.getId(), f.raj.getId(), f.raj.getId(), from, to);
+
+        assertThat(partners).extracting(PartnerDto::userId).containsExactly(f.dev.getId());
+        assertThat(partners.get(0).gamesTogether()).isEqualTo(1);
+    }
+
     /**
      * Everyone ends on exactly 50%, which now separates into two tiers rather than one
      * tie: Carl and Dina played four games to everyone else's two, so their 50% is better
