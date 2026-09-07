@@ -9,4 +9,12 @@ import java.util.List;
  * rank rather than showing as provisional — so it lives here once instead of being repeated
  * on every entry. Clients derive "N more to rank" as {@code minGamesToRank - gamesPlayed}.
  */
-public record LeaderboardResponse(List<LeaderboardEntryDto> rankings, int minGamesToRank) {}
+public record LeaderboardResponse(
+        List<LeaderboardEntryDto> rankings,
+        int minGamesToRank,
+        String algorithmVersion,
+        String ratingPeriod) {
+    public LeaderboardResponse(List<LeaderboardEntryDto> rankings, int minGamesToRank) {
+        this(rankings, minGamesToRank, "wilson-v1", "all-time");
+    }
+}

@@ -36,7 +36,22 @@ public record LeaderboardEntryDto(
         int bestStreak,
         BigDecimal rating,
         boolean provisional,
-        List<Boolean> recentForm) {
+        List<Boolean> recentForm,
+        String algorithmVersion,
+        String ratingPeriod,
+        int uniquePartners,
+        BigDecimal maxPartnerShare,
+        String provisionalReason) {
+
+    public LeaderboardEntryDto(
+            int rank, UUID userId, String displayName, String photoUrl, String avatarId,
+            String avatarColor, int gamesPlayed, int wins, int losses, int pointsFor,
+            int pointsAgainst, BigDecimal winRate, int currentStreak, int bestStreak,
+            BigDecimal rating, boolean provisional, List<Boolean> recentForm) {
+        this(rank, userId, displayName, photoUrl, avatarId, avatarColor, gamesPlayed, wins,
+                losses, pointsFor, pointsAgainst, winRate, currentStreak, bestStreak, rating,
+                provisional, recentForm, "wilson-v1", "all-time", 0, BigDecimal.ZERO, null);
+    }
 
     /**
      * Copy with a different rank. Lives on the record so the 17-field constructor is
@@ -47,7 +62,8 @@ public record LeaderboardEntryDto(
         return new LeaderboardEntryDto(
                 newRank, userId, displayName, photoUrl, avatarId, avatarColor,
                 gamesPlayed, wins, losses, pointsFor, pointsAgainst,
-                winRate, currentStreak, bestStreak, rating, provisional, recentForm);
+                winRate, currentStreak, bestStreak, rating, provisional, recentForm,
+                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason);
     }
 
     /** Copy marked provisional (or not). */
@@ -55,7 +71,8 @@ public record LeaderboardEntryDto(
         return new LeaderboardEntryDto(
                 rank, userId, displayName, photoUrl, avatarId, avatarColor,
                 gamesPlayed, wins, losses, pointsFor, pointsAgainst,
-                winRate, currentStreak, bestStreak, rating, value, recentForm);
+                winRate, currentStreak, bestStreak, rating, value, recentForm,
+                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason);
     }
 
     /** Points difference — the first tiebreak between equal ratings, and shown on the row. */

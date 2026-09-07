@@ -22,4 +22,10 @@ public record MonthlyTrophyDto(
         String avatarColor,
         BigDecimal rating,
         Integer gamesPlayed,
-        Integer wins) {}
+        Integer wins,
+        String algorithmVersion) {
+    public MonthlyTrophyDto(String month, UUID userId, String displayName, String photoUrl,
+            String avatarId, String avatarColor, BigDecimal rating, Integer gamesPlayed, Integer wins) {
+        this(month, userId, displayName, photoUrl, avatarId, avatarColor, rating, gamesPlayed, wins, "wilson-v1");
+    }
+}

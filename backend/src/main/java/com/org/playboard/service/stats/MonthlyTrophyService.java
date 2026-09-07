@@ -97,6 +97,7 @@ public class MonthlyTrophyService {
                 user.getAvatarColor(),
                 trophy.getRating(),
                 trophy.getGamesPlayed(),
-                trophy.getWins());
+                trophy.getWins(),
+                trophy.getAlgorithmVersion());
     }
 }

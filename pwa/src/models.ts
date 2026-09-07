@@ -45,10 +45,15 @@ export type Ranking = {
   provisional?: boolean;
   /** Last results within the standings window, oldest first (≤10). Absent pre-rollout. */
   recentForm?: boolean[];
+  algorithmVersion?: string;
+  ratingPeriod?: string;
+  uniquePartners?: number;
+  maxPartnerShare?: number;
+  provisionalReason?: string | null;
 };
 
 /** `GET /groups/{id}/leaderboard` (LeaderboardResponse). */
-export type LeaderboardResponse = { rankings: Ranking[]; minGamesToRank: number };
+export type LeaderboardResponse = { rankings: Ranking[]; minGamesToRank: number; algorithmVersion?: string; ratingPeriod?: string };
 
 /** A player as referenced inside a match/team (PlayerRefDto). Guests are ordinary refs whose
  * `displayName` is "Guest N"; there is no explicit guest flag on the wire. */
@@ -66,7 +71,7 @@ export type MatchListResponse = { matches: Match[]; nextCursor?: string };
 /** `GET /groups/{id}/members/{userId}/stats/partners` (PartnerDto) — one partner a player has had, fetched separately, on demand. */
 export type Partner = { userId: string; displayName: string; avatarId?: string | null; photoUrl?: string | null; avatarColor: string; gamesTogether: number; winsTogether: number; winRate: number };
 /** A month the player topped the group leaderboard (MonthlyTrophyDto). */
-export type MonthlyTrophy = { month: string; userId: string; displayName: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string; rating: number; gamesPlayed: number; wins: number };
+export type MonthlyTrophy = { month: string; userId: string; displayName: string; photoUrl?: string | null; avatarId?: string | null; avatarColor: string; rating: number; gamesPlayed: number; wins: number; algorithmVersion?: string };
 /** One captured completed month; a null rank is a missing/provisional finish. */
 export type MonthlyFinish = { month: string; rank: number | null; qualifiedPlayers: number };
 /** `GET /groups/{id}/members/{userId}/stats` (PlayerStatsDto) — the full player-stats payload. */

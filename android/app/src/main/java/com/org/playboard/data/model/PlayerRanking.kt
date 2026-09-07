@@ -36,6 +36,11 @@ data class PlayerRanking(
     val provisional: Boolean = false,
     /** Last results within the standings window, oldest first (≤10). Empty pre-rollout. */
     val recentForm: List<Boolean> = emptyList(),
+    val algorithmVersion: String? = null,
+    val ratingPeriod: String? = null,
+    val uniquePartners: Int = 0,
+    val maxPartnerShare: Double = 0.0,
+    val provisionalReason: String? = null,
 ) {
     /**
      * Win rate as a whole percentage for display (e.g. `0.83` → `83`).
@@ -78,6 +83,8 @@ data class PlayerRanking(
      */
     fun secondaryLine(minGamesToRank: Int): String {
         val head = "$gamesPlayed games · $wins-$losses · $winRatePercent%"
+        if (provisionalReason == "partners") return "$head · play with more partners to rank"
+        if (provisionalReason == "partner-concentration") return "$head · diversify partners to rank"
         val needed = gamesNeeded(minGamesToRank)
         return if (provisional && needed > 0) "$head · $needed more to rank" else "$head · $pointsDiffLabel"
     }

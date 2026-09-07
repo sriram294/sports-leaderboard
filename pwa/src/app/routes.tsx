@@ -44,7 +44,9 @@ export function BoardRoute() {
   return (
     <BoardScreen
       rankings={rankings}
-      minGamesToRank={data?.minGamesToRank ?? 1}
+        minGamesToRank={data?.minGamesToRank ?? 1}
+        algorithmVersion={data?.algorithmVersion}
+        ratingPeriod={data?.ratingPeriod}
       groupId={activeGroup.id}
       range={range}
       onRangeChange={setRange}

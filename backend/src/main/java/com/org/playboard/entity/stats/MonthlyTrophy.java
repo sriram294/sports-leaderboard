@@ -53,6 +53,9 @@ public class MonthlyTrophy extends Auditable {
     @Column(name = "wins")
     private Integer wins;
 
+    @Column(name = "algorithm_version", nullable = false)
+    private String algorithmVersion;
+
     @Column(name = "standings_captured", nullable = false)
     private boolean standingsCaptured;
 
@@ -87,6 +90,8 @@ public class MonthlyTrophy extends Auditable {
     public Integer getWins() {
         return wins;
     }
+
+    public String getAlgorithmVersion() { return algorithmVersion; }
 
     public boolean isStandingsCaptured() {
         return standingsCaptured;

@@ -87,6 +87,14 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
             @Param("from") Instant from,
             @Param("to") Instant to);
 
+    @Query("""
+        select mp2.user.id as partnerId, mp.matchTeam.winner as winner
+        from MatchParticipant mp join MatchParticipant mp2 on mp2.matchTeam = mp.matchTeam
+        where mp.user.id = :userId and mp2.user.id <> :userId
+          and mp.match.group.id = :groupId and mp.match.deleted = false
+        """)
+    List<PartnerRow> findPartnerHistoryUnbounded(@Param("groupId") UUID groupId, @Param("userId") UUID userId);
+
     interface PartnerRow {
         UUID getPartnerId();
 

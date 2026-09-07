@@ -35,9 +35,9 @@ public interface MonthlyTrophyRepository extends JpaRepository<MonthlyTrophy, UU
             value =
                     """
                     insert into monthly_trophy
-                        (id, group_id, user_id, month, rating, games_played, wins, standings_captured, created_at, updated_at)
+                        (id, group_id, user_id, month, rating, games_played, wins, standings_captured, algorithm_version, created_at, updated_at)
                     values
-                        (gen_random_uuid(), :groupId, :userId, :month, :rating, :gamesPlayed, :wins, true, now(), now())
+                        (gen_random_uuid(), :groupId, :userId, :month, :rating, :gamesPlayed, :wins, true, :algorithmVersion, now(), now())
                     on conflict (group_id, month) do nothing
                     """,
             nativeQuery = true)
@@ -47,7 +47,14 @@ public interface MonthlyTrophyRepository extends JpaRepository<MonthlyTrophy, UU
             @Param("month") LocalDate month,
             @Param("rating") BigDecimal rating,
             @Param("gamesPlayed") Integer gamesPlayed,
-            @Param("wins") Integer wins);
+            @Param("wins") Integer wins,
+            @Param("algorithmVersion") String algorithmVersion);
+
+    default int captureIfAbsent(UUID groupId, UUID userId, LocalDate month, BigDecimal rating,
+            Integer gamesPlayed, Integer wins) {
+        return captureIfAbsent(groupId, userId, month, rating, gamesPlayed, wins, "wilson-v1");
+    }
+
 
     /** Months already decided for a group, winner or not — the job skips these. */
     @Query("select t.month from MonthlyTrophy t where t.groupId = :groupId")

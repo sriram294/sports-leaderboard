@@ -19,6 +19,11 @@ struct LeaderboardEntry: Codable, Equatable, Identifiable, Sendable {
     let rating: Double
     let provisional: Bool
     let recentForm: [Bool]
+    let algorithmVersion: String? = nil
+    let ratingPeriod: String? = nil
+    let uniquePartners: Int?
+    let maxPartnerShare: Double?
+    let provisionalReason: String?
 
     var id: String { userID }
     var pointsDifference: Int { pointsFor - pointsAgainst }
@@ -32,6 +37,7 @@ struct LeaderboardEntry: Codable, Equatable, Identifiable, Sendable {
         case avatarColor
         case gamesPlayed, wins, losses, pointsFor, pointsAgainst, winRate
         case currentStreak, bestStreak, rating, provisional, recentForm
+        case algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason
     }
 }
 
@@ -39,4 +45,6 @@ struct LeaderboardEntry: Codable, Equatable, Identifiable, Sendable {
 struct Leaderboard: Codable, Equatable, Sendable {
     let rankings: [LeaderboardEntry]
     let minGamesToRank: Int
+    let algorithmVersion: String? = nil
+    let ratingPeriod: String? = nil
 }

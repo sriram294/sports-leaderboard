@@ -18,6 +18,8 @@ private const val DEFAULT_MIN_GAMES_TO_RANK = 1
 data class Leaderboard(
     val rankings: List<PlayerRanking>,
     val minGamesToRank: Int = DEFAULT_MIN_GAMES_TO_RANK,
+    val algorithmVersion: String? = null,
+    val ratingPeriod: String? = null,
 )
 
 /**
@@ -43,6 +45,8 @@ class LeaderboardRepository @Inject constructor(
             Leaderboard(
                 rankings = response.rankings.map(LeaderboardEntryDto::toPlayerRanking),
                 minGamesToRank = response.minGamesToRank ?: DEFAULT_MIN_GAMES_TO_RANK,
+                algorithmVersion = response.algorithmVersion,
+                ratingPeriod = response.ratingPeriod,
             )
         }
 }
@@ -68,4 +72,9 @@ private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
     // marking the whole board unranked.
     provisional = rating != null && provisional,
     recentForm = recentForm,
+    algorithmVersion = algorithmVersion,
+    ratingPeriod = ratingPeriod,
+    uniquePartners = uniquePartners,
+    maxPartnerShare = maxPartnerShare,
+    provisionalReason = provisionalReason,
 )

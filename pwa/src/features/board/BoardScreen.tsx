@@ -23,6 +23,8 @@ import crown from '../../assets/brand/crown-3d.png';
 type Props = {
   rankings: Ranking[];
   minGamesToRank: number;
+  algorithmVersion?: string;
+  ratingPeriod?: string;
   groupId: string;
   range: TimeRange;
   onRangeChange: (range: TimeRange) => void;
@@ -37,7 +39,7 @@ type Props = {
  * shown, so an empty window still lets the user switch ranges; below it sit the podium and
  * the RANKINGS card (whose header cycles the sort metric; each row's form dots come with it).
  */
-export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, onPlayer, shareStatus, onShare }: Props) {
+export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, onPlayer, shareStatus, onShare, algorithmVersion, ratingPeriod }: Props) {
   const [metric, setMetric] = useState<RankingSortMetric>('rating');
   // A different group is a different board, so the metric resets to the default.
   useEffect(() => setMetric('rating'), [groupId]);
@@ -51,6 +53,7 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
         <div className="board-head-title">
           <span className="eyebrow">TOP PLAYERS</span>
           <RangeSelector range={range} onChange={onRangeChange} />
+          {algorithmVersion === 'team-v1' && <span className="muted">September rankings</span>}
         </div>
         <button className="icon-button board-share" onClick={onShare} aria-label="Share leaderboard">
           <Icon name="share" size={18} />
