@@ -12,4 +12,6 @@ data class LeaderboardResponseDto(
      * "N more to rank" as `minGamesToRank - gamesPlayed`. Null against a pre-rating backend.
      */
     val minGamesToRank: Int? = null,
+    val algorithmVersion: String? = null,
+    val ratingPeriod: String? = null,
 )

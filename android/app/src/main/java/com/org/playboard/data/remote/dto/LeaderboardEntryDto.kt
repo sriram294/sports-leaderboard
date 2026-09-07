@@ -37,4 +37,9 @@ data class LeaderboardEntryDto(
     // Last results within the standings window, oldest first (≤10). Defaulted so a
     // pre-rollout backend's JSON still deserializes (renders no dots until it deploys).
     val recentForm: List<Boolean> = emptyList(),
+    val algorithmVersion: String? = null,
+    val ratingPeriod: String? = null,
+    val uniquePartners: Int = 0,
+    val maxPartnerShare: Double = 0.0,
+    val provisionalReason: String? = null,
 )

@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +57,9 @@ public class StatsQueryService {
     private final AvatarUrlResolver avatarUrls;
     private final MonthlyTrophyService monthlyTrophyService;
     private final MonthlyStandingRepository monthlyStandingRepository;
+    private final TeamRatingService teamRatingService;
+    private final boolean teamV1Enabled;
+    private static final Instant TEAM_V1_BOUNDARY = Instant.parse("2026-08-31T18:30:00Z");
 
     public StatsQueryService(
             GroupMembershipGuard membershipGuard,
@@ -65,7 +69,9 @@ public class StatsQueryService {
             MatchService matchService,
             AvatarUrlResolver avatarUrls,
             MonthlyTrophyService monthlyTrophyService,
-            MonthlyStandingRepository monthlyStandingRepository) {
+            MonthlyStandingRepository monthlyStandingRepository,
+            TeamRatingService teamRatingService,
+            @Value("${playboard.ratings.team-v1-enabled:true}") boolean teamV1Enabled) {
         this.membershipGuard = membershipGuard;
         this.groupMemberRepository = groupMemberRepository;
         this.memberStatsRepository = memberStatsRepository;
@@ -74,6 +80,8 @@ public class StatsQueryService {
         this.avatarUrls = avatarUrls;
         this.monthlyTrophyService = monthlyTrophyService;
         this.monthlyStandingRepository = monthlyStandingRepository;
+        this.teamRatingService = teamRatingService;
+        this.teamV1Enabled = teamV1Enabled;
     }
 
     @Transactional(readOnly = true)
@@ -94,10 +102,13 @@ public class StatsQueryService {
     @Transactional(readOnly = true)
     public LeaderboardResponse getLeaderboard(UUID groupId, UUID callerId, Instant from, Instant to) {
         membershipGuard.requireActiveMember(groupId, callerId);
+        boolean teamV1 = teamV1Enabled && from != null && to != null && !from.isBefore(TEAM_V1_BOUNDARY);
         Standings standings = from == null || to == null
                 ? allTimeStandings(groupId, null)
-                : rankedStandings(groupId, from, to, null);
-        return new LeaderboardResponse(standings.entries(), standings.minGamesToRank());
+                : teamV1 ? teamRankedStandings(groupId, from, to) : rankedStandings(groupId, from, to, null);
+        return new LeaderboardResponse(standings.entries(), standings.minGamesToRank(),
+                teamV1 ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1",
+                teamV1 ? TeamRatingService.PERIOD : (from == null ? "all-time" : "window"));
     }
 
     /**
@@ -151,6 +162,12 @@ public class StatsQueryService {
      */
     @Transactional(readOnly = true)
     public Standings rankedStandings(UUID groupId, Instant from, Instant to, Integer thresholdOverride) {
+        // Scheduled monthly snapshots use this method directly rather than the HTTP
+        // envelope. Keep the same September algorithm and metadata on those immutable
+        // records as on the live current-period endpoint.
+        if (teamV1Enabled && thresholdOverride == null && from != null && to != null && !from.isBefore(TEAM_V1_BOUNDARY)) {
+            return teamRankedStandings(groupId, from, to);
+        }
         // Only active, non-guest members can rank (guests are excluded from the
         // leaderboard, matching the all-time member_stats path).
         Map<UUID, User> eligible = new HashMap<>();
@@ -160,7 +177,7 @@ public class StatsQueryService {
             }
         }
 
-        Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
+        Map<UUID, int[]> streaks = Map.of();
         List<RawStatRow> rows = new ArrayList<>();
         for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
             int gamesPlayed = (int) row.getGamesPlayed();
@@ -179,6 +196,50 @@ public class StatsQueryService {
         }
         Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
         return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(eligible, form));
+    }
+
+    private Standings teamRankedStandings(UUID groupId, Instant from, Instant to) {
+        Map<UUID, User> eligible = new HashMap<>();
+        for (GroupMember member : groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)) {
+            if (member.getRole() != GroupRole.GUEST) eligible.put(member.getUser().getId(), member.getUser());
+        }
+        Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, from, to, eligible);
+        // Streaks remain an all-time presentation statistic, as in the legacy period board.
+        Map<UUID, int[]> streaks = Map.of();
+        Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
+        List<LeaderboardEntryDto> qualified = new ArrayList<>();
+        List<LeaderboardEntryDto> provisional = new ArrayList<>();
+        for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
+            TeamRatingService.PlayerRating team = ratings.get(row.getUserId());
+            if (team == null || team.games() == 0) continue;
+            int[] streak = streaks.getOrDefault(row.getUserId(), new int[] {0, 0});
+            BigDecimal rating = team.displayRating();
+            LeaderboardEntryDto entry = new LeaderboardEntryDto(0, row.getUserId(), eligible.get(row.getUserId()).getDisplayName(),
+                    avatarUrls.resolve(eligible.get(row.getUserId()).getPhotoUrl()), eligible.get(row.getUserId()).getAvatarId(),
+                    eligible.get(row.getUserId()).getAvatarColor(), team.games(), team.wins(),
+                    team.games() - team.wins(), (int) row.getPointsFor(), (int) row.getPointsAgainst(),
+                    LeaderboardRanker.winRate(team.wins(), team.games()), streak[0], streak[1], rating,
+                    !team.qualified(), form.getOrDefault(row.getUserId(), List.of()), TeamRatingService.ALGORITHM_VERSION,
+                    TeamRatingService.PERIOD, team.uniquePartners(), team.maxPartnerShare(), team.provisionalReason());
+            (team.qualified() ? qualified : provisional).add(entry);
+        }
+        Comparator<LeaderboardEntryDto> order = (a, b) -> {
+            TeamRatingService.PlayerRating ar = ratings.get(a.userId());
+            TeamRatingService.PlayerRating br = ratings.get(b.userId());
+            double delta = TeamRatingCalculator.conservativeScore(new TeamRatingCalculator.Rating(ar.mean(), ar.sigma()))
+                    - TeamRatingCalculator.conservativeScore(new TeamRatingCalculator.Rating(br.mean(), br.sigma()));
+            if (Math.abs(delta) > .25) return delta > 0 ? -1 : 1;
+            int byDiff = Integer.compare(b.pointsDiff(), a.pointsDiff());
+            if (byDiff != 0) return byDiff;
+            int byWins = Integer.compare(b.wins(), a.wins());
+            return byWins != 0 ? byWins : a.userId().compareTo(b.userId());
+        };
+        qualified.sort(order); provisional.sort(order);
+        List<LeaderboardEntryDto> result = new ArrayList<>();
+        int rank = 1;
+        for (LeaderboardEntryDto entry : qualified) result.add(entry.withRank(rank++));
+        for (LeaderboardEntryDto entry : provisional) result.add(entry.withRank(rank++));
+        return new Standings(result, LeaderboardRanker.minGamesToRank(ratings.values().stream().map(TeamRatingService.PlayerRating::games).toList()));
     }
 
     private Map<UUID, int[]> windowedStreaks(UUID groupId, Instant from, Instant to) {
@@ -332,7 +393,9 @@ public class StatsQueryService {
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
 
-        List<PartnerRow> rows = matchParticipantRepository.findPartnerHistory(groupId, targetUserId, from, to);
+        List<PartnerRow> rows = from == null && to == null
+                ? matchParticipantRepository.findPartnerHistoryUnbounded(groupId, targetUserId)
+                : matchParticipantRepository.findPartnerHistory(groupId, targetUserId, from, to);
 
         // Guest fillers aren't real partners — leave them out of the tally so a
         // one-off guest can never surface in the partner list.

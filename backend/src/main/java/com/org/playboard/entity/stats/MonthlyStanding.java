@@ -26,6 +26,7 @@ public class MonthlyStanding extends Auditable {
     @Column(name = "games_played", nullable = false) private int gamesPlayed;
     @Column(nullable = false) private int wins;
     @Column(nullable = false) private boolean provisional;
+    @Column(name = "algorithm_version", nullable = false) private String algorithmVersion;
 
     protected MonthlyStanding() {}
 
@@ -38,6 +39,7 @@ public class MonthlyStanding extends Auditable {
         this.gamesPlayed = entry.gamesPlayed();
         this.wins = entry.wins();
         this.provisional = entry.provisional();
+        this.algorithmVersion = entry.algorithmVersion();
     }
 
     public UUID getId() { return id; }
@@ -49,4 +51,5 @@ public class MonthlyStanding extends Auditable {
     public int getGamesPlayed() { return gamesPlayed; }
     public int getWins() { return wins; }
     public boolean isProvisional() { return provisional; }
+    public String getAlgorithmVersion() { return algorithmVersion; }
 }

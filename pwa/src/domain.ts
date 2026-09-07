@@ -26,6 +26,8 @@ export const gamesNeeded = (r: Ranking, minGamesToRank: number) => Math.max(0, m
 export function secondaryLine(r: Ranking, minGamesToRank: number): string {
   const head = `${r.gamesPlayed} games · ${r.wins}-${r.losses} · ${winRatePercent(r)}%`;
   const needed = gamesNeeded(r, minGamesToRank);
+  if (r.provisional && r.provisionalReason === 'partners') return `${head} · play with more partners to rank`;
+  if (r.provisional && r.provisionalReason === 'partner-concentration') return `${head} · diversify partners to rank`;
   return r.provisional && needed > 0 ? `${head} · ${needed} more to rank` : `${head} · ${pointsDiffLabel(r)}`;
 }
 

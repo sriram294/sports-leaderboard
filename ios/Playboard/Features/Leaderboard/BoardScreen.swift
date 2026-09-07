@@ -248,6 +248,8 @@ private struct LeaderboardRowView: View {
     }
 
     private var metricValue: String {
+        if entry.provisionalReason == "partners" { return "Play with more partners to rank" }
+        if entry.provisionalReason == "partner-concentration" { return "Diversify partners to rank" }
         if entry.provisional { return "Provisional" }
         return switch metric {
         case .rating: entry.rating.formatted(.number.precision(.fractionLength(1)))

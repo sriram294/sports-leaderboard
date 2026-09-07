@@ -12,6 +12,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface MatchRepository extends JpaRepository<Match, UUID> {
 
+    @Query("select m from Match m where m.group.id = :groupId and m.deleted = false "
+            + "and m.playedAt >= :from and m.playedAt < :to order by m.playedAt asc, m.id asc")
+    List<Match> findRatingMatches(@Param("groupId") UUID groupId, @Param("from") Instant from,
+            @Param("to") Instant to);
+
     Optional<Match> findByIdAndGroupIdAndDeletedFalse(UUID id, UUID groupId);
 
     long countByGroupIdAndDeletedFalse(UUID groupId);

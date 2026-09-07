@@ -31,13 +31,20 @@ public class MonthlyStandingsWriter {
             Standings standings,
             Optional<LeaderboardEntryDto> winner) {
         LeaderboardEntryDto winningEntry = winner.orElse(null);
-        int claimed = trophyRepository.captureIfAbsent(
-                groupId,
-                winningEntry == null ? null : winningEntry.userId(),
-                month.atDay(1),
-                winningEntry == null ? null : winningEntry.rating(),
-                winningEntry == null ? null : winningEntry.gamesPlayed(),
-                winningEntry == null ? null : winningEntry.wins());
+        int claimed;
+        if (winningEntry == null || "wilson-v1".equals(winningEntry.algorithmVersion())) {
+            claimed = trophyRepository.captureIfAbsent(
+                    groupId,
+                    winningEntry == null ? null : winningEntry.userId(),
+                    month.atDay(1),
+                    winningEntry == null ? null : winningEntry.rating(),
+                    winningEntry == null ? null : winningEntry.gamesPlayed(),
+                    winningEntry == null ? null : winningEntry.wins());
+        } else {
+            claimed = trophyRepository.captureIfAbsent(
+                    groupId, winningEntry.userId(), month.atDay(1), winningEntry.rating(),
+                    winningEntry.gamesPlayed(), winningEntry.wins(), winningEntry.algorithmVersion());
+        }
         if (claimed == 0) {
             return false;
         }
