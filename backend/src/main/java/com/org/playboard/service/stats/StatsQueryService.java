@@ -177,7 +177,7 @@ public class StatsQueryService {
             }
         }
 
-        Map<UUID, int[]> streaks = Map.of();
+        Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
         List<RawStatRow> rows = new ArrayList<>();
         for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
             int gamesPlayed = (int) row.getGamesPlayed();
@@ -204,8 +204,7 @@ public class StatsQueryService {
             if (member.getRole() != GroupRole.GUEST) eligible.put(member.getUser().getId(), member.getUser());
         }
         Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, from, to, eligible);
-        // Streaks remain an all-time presentation statistic, as in the legacy period board.
-        Map<UUID, int[]> streaks = Map.of();
+        Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
         Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
         List<LeaderboardEntryDto> qualified = new ArrayList<>();
         List<LeaderboardEntryDto> provisional = new ArrayList<>();

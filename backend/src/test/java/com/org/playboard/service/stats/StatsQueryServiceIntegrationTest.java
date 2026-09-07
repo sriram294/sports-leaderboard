@@ -299,9 +299,9 @@ class StatsQueryServiceIntegrationTest {
         assertThat(raj.winRate()).isEqualByComparingTo("1.0000");
         assertThat(raj.pointsFor()).isEqualTo(21);
         assertThat(raj.pointsAgainst()).isEqualTo(12);
-        // Streaks are all-time only, so windowed entries report zero.
-        assertThat(raj.currentStreak()).isZero();
-        assertThat(raj.bestStreak()).isZero();
+        // Streaks are calculated from the selected window.
+        assertThat(raj.currentStreak()).isEqualTo(1);
+        assertThat(raj.bestStreak()).isEqualTo(1);
 
         LeaderboardEntryDto marcus = entryFor(windowed, f.marcus.getId());
         assertThat(marcus.wins()).isZero();
