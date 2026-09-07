@@ -399,9 +399,15 @@ public class StatsQueryService {
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "Player is not a member of this group"));
 
-        List<PartnerRow> rows = from == null && to == null
+        if ((from == null) != (to == null)) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "PARTNER_WINDOW_INCOMPLETE",
+                    "Both from and to are required when filtering partners by time");
+        }
+        List<PartnerRow> rows = from == null
                 ? matchParticipantRepository.findPartnerHistoryUnbounded(groupId, targetUserId)
-                : matchParticipantRepository.findPartnerHistory(groupId, targetUserId, from, to);
+                : matchParticipantRepository.findPartnerHistoryInWindow(groupId, targetUserId, from, to);
 
         // Guest fillers aren't real partners — leave them out of the tally so a
         // one-off guest can never surface in the partner list.

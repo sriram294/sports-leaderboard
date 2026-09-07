@@ -78,10 +78,10 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
           join MatchParticipant mp2 on mp2.matchTeam = mp.matchTeam
         where mp.user.id = :userId and mp2.user.id <> :userId
           and mp.match.group.id = :groupId and mp.match.deleted = false
-          and (:from is null or mp.match.playedAt >= :from)
-          and (:to is null or mp.match.playedAt < :to)
+          and mp.match.playedAt >= :from
+          and mp.match.playedAt < :to
         """)
-    List<PartnerRow> findPartnerHistory(
+    List<PartnerRow> findPartnerHistoryInWindow(
             @Param("groupId") UUID groupId,
             @Param("userId") UUID userId,
             @Param("from") Instant from,
