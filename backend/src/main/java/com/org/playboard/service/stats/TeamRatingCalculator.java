@@ -8,11 +8,12 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.UUID;
 
-/** Pure, deterministic two-team TrueSkill-style update used by team-v1. */
+/** Pure, deterministic two-team Gaussian update used by team-v2. */
 public final class TeamRatingCalculator {
     public static final double INITIAL_MEAN = 25.0;
     public static final double INITIAL_SIGMA = 8.333333333333333;
-    private static final double BETA = 4.166666666666667;
+    public static final double BETA = 25d / 6d;
+    private static final double DRIFT_VARIANCE = Math.pow(25d / 300d, 2);
 
     private TeamRatingCalculator() {}
 
@@ -38,12 +39,22 @@ public final class TeamRatingCalculator {
         if (teams.stream().flatMap(t -> t.players().stream()).anyMatch(p -> p.userId() == null || !seen.add(p.userId()))) {
             return before;
         }
+        // A regular player's uncertainty drifts before every appearance. Guests always use
+        // the fixed prior and are never written back to the returned map.
+        Map<UUID, Rating> pre = new LinkedHashMap<>(before);
         Map<UUID, Rating> out = new LinkedHashMap<>(before);
-        double m1 = strength(teams.get(0), before);
-        double m2 = strength(teams.get(1), before);
-        double v1 = variance(teams.get(0), before);
-        double v2 = variance(teams.get(1), before);
-        double c = Math.sqrt(2 * BETA * BETA + v1 + v2);
+        for (Team team : teams) for (Participant p : team.players()) {
+            if (!p.guest()) {
+                Rating old = before.getOrDefault(p.userId(), new Rating());
+                pre.put(p.userId(), new Rating(old.mean(), Math.sqrt(old.sigma() * old.sigma() + DRIFT_VARIANCE)));
+            }
+        }
+        double m1 = strength(teams.get(0), pre);
+        double m2 = strength(teams.get(1), pre);
+        double v1 = variance(teams.get(0), pre);
+        double v2 = variance(teams.get(1), pre);
+        int participants = teams.get(0).players().size() + teams.get(1).players().size();
+        double c = Math.sqrt(participants * BETA * BETA + v1 + v2);
         double signedDiff = teams.get(0).winner() ? m1 - m2 : m2 - m1;
         double t = signedDiff / c;
         double p = normalCdf(t);
@@ -54,7 +65,7 @@ public final class TeamRatingCalculator {
             double sign = team.winner() ? 1 : -1;
             for (Participant participant : team.players()) {
                 if (participant.guest()) continue;
-                Rating old = before.getOrDefault(participant.userId(), new Rating());
+                Rating old = pre.getOrDefault(participant.userId(), new Rating());
                 double variance = old.sigma() * old.sigma();
                 double mean = old.mean() + sign * variance / c * v;
                 double sigmaSquared = variance * Math.max(1e-9, 1 - variance / (c * c) * w);

@@ -179,5 +179,7 @@ public final class LeaderboardRanker {
             .reversed()
             .thenComparing(Comparator.comparingInt(LeaderboardEntryDto::pointsDiff).reversed())
             .thenComparing(Comparator.comparingInt(LeaderboardEntryDto::wins).reversed())
-            .thenComparing(LeaderboardEntryDto::userId);
+            // PostgreSQL uuid ordering is unsigned byte/lexical order; UUID.compareTo
+            // is signed on the most-significant bits and can disagree for high-bit ids.
+            .thenComparing(e -> e.userId().toString());
 }

@@ -8,6 +8,9 @@ import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.service.stats.StatsQueryService;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +47,7 @@ public class SessionRankChangeJob {
     private final PushNotificationService pushNotificationService;
     private final Duration quietPeriod;
     private final Duration lookback;
+    private final ZoneId trophyZone;
 
     public SessionRankChangeJob(
             MatchRepository matchRepository,
@@ -52,7 +56,8 @@ public class SessionRankChangeJob {
             NotificationLogService notificationLog,
             PushNotificationService pushNotificationService,
             @Value("${playboard.notifications.session-quiet-period:PT90M}") Duration quietPeriod,
-            @Value("${playboard.notifications.session-lookback:PT24H}") Duration lookback) {
+            @Value("${playboard.notifications.session-lookback:PT24H}") Duration lookback,
+            @Value("${playboard.trophies.zone:Asia/Kolkata}") ZoneId trophyZone) {
         this.matchRepository = matchRepository;
         this.groupRepository = groupRepository;
         this.statsQueryService = statsQueryService;
@@ -60,6 +65,7 @@ public class SessionRankChangeJob {
         this.pushNotificationService = pushNotificationService;
         this.quietPeriod = quietPeriod;
         this.lookback = lookback;
+        this.trophyZone = trophyZone;
     }
 
     // fixedDelay would otherwise fire the moment the context is up — during startup, and
@@ -98,9 +104,11 @@ public class SessionRankChangeJob {
         // without pinning it, one player's session could move the median, change who counts
         // as ranked, and shift everyone's rank — firing "you moved up a place" at people who
         // never played. Pinned, the only movement between the two lists comes from real play.
-        Standings after = statsQueryService.rankedStandings(groupId, Instant.EPOCH, now, null);
+        LocalDate localStart = start.atZone(trophyZone).toLocalDate().withDayOfMonth(1);
+        Instant monthStart = localStart.atStartOfDay(trophyZone).toInstant();
+        Standings after = statsQueryService.rankedStandings(groupId, monthStart, now, null);
         Standings before =
-                statsQueryService.rankedStandings(groupId, Instant.EPOCH, start, after.minGamesToRank());
+                statsQueryService.rankedStandings(groupId, monthStart, start, after.minGamesToRank());
         List<RankChange> changes = RankChange.between(before.entries(), after.entries());
         if (changes.isEmpty()) {
             return;
@@ -111,7 +119,7 @@ public class SessionRankChangeJob {
             return;
         }
         String groupName = group.getName();
-        String dedupeKey = "rank_change:" + groupId + ":" + start;
+        String dedupeKey = "rank_change:" + groupId + ":" + YearMonth.from(localStart) + ":" + start;
 
         int sent = 0;
         for (RankChange change : changes) {

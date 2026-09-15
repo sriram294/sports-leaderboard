@@ -90,10 +90,17 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
   to order separately (JPQL vs a Java comparator), which could report a rank
   change that never happened.
 
+## Team-v2 presentation
+
+Skill carries across months while the selected calendar filter changes only
+statistics and qualifying games. Label the metric **Skill rating** and explain
+that it reflects partners, opponents, results, and confidence; it is not win
+percentage. Render qualified players under **Rankings** and provisional players
+under **Not yet ranked**, with muted ratings and progress such as `4/10
+qualifying games`. Show `Limited partner variety` as an informational warning.
+
 ## Open questions
 
 - Empty state: group with zero matches played.
-- The rating is computed over the *selected* window, so it is not comparable
-  across windows (a 60% player reads ~38.7 on This Month and ~46.2 on All
-  Time). If that confuses people, the fix is an all-time rating with the
-  filter changing only GP / W-L / Win%.
+- Skill rating is cumulative to the evaluation cutoff; the selected window
+  changes GP, W-L, statistics, and qualification only.

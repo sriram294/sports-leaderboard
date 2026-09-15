@@ -241,8 +241,10 @@ cannot drift apart; there is deliberately no `ORDER BY` in the query.
     "avatarColor": "#FF3D8A", "gamesPlayed": 6, "wins": 6, "losses": 0,
     "pointsFor": 252, "pointsAgainst": 180, "winRate": 1.0,
     "currentStreak": 6, "bestStreak": 6, "rating": 54.1, "provisional": false,
-    "recentForm": [true, true, false, true, true, true] }
-], "minGamesToRank": 3 }
+    "recentForm": [true, true, false, true, true, true],
+    "algorithmVersion": "team-v2", "ratingPeriod": "cumulative",
+    "limitedPartnerVariety": false }
+], "minGamesToRank": 3, "algorithmVersion": "team-v2", "ratingPeriod": "cumulative" }
 ```
 `pointsAgainst` was added alongside the difference tiebreak; `pointsFor` is
 retained (rather than replaced by a computed difference) so clients built
@@ -257,10 +259,12 @@ needs to reverse it. A player with fewer than 10 matches in the window simply
 gets a shorter list; one with none gets `[]`. Computed on demand in one
 set-based query per leaderboard fetch, not materialized.
 
-**`rating`** is the Wilson score lower bound on the win rate, scaled to 0–100
-with one decimal — a confidence-adjusted win rate, so a small sample scores
-below a long record at the same raw percentage. Sorting uses the unrounded
-value.
+**`rating`** is the team-v2 skill rating: a cumulative Gaussian team replay
+starting from mean 25 and uncertainty 25/3. It is displayed on a 0–100 scale
+with one decimal; sorting uses the unrounded conservative score. Skill reflects
+partners, opponents, results, and confidence, and is not a win percentage.
+Responses include `algorithmVersion: "team-v2"` and `ratingPeriod: "cumulative"`.
+`limitedPartnerVariety` is an informational warning only.
 
 **`minGamesToRank`** is a group-level scalar, `max(1, min(10, ceil(median(games
 played) / 2)))` over players with at least one game. Players below it have
@@ -281,11 +285,10 @@ separate anyone. Omit both params for the all-time ranking (the default and
 the original behavior). Windowed responses use the identical shape, ordering,
 guest-exclusion, and zero-matches-omitted rules as all-time; the only difference
 is that `currentStreak`/`bestStreak` are calculated within the requested ranking
-window (and the board doesn't render them). All-time reads the materialized `member_stats` snapshot;
-windowed aggregates raw matches on demand. A window covering all of history is
+window (and the board doesn't render them). Team-v2 all-time and windowed responses replay raw matches on demand. A window covering all of history is
 otherwise identical to the all-time response, including every `rating` — pinned
-by an integration test, because the end-of-session rank-change notification
-diffs two of these responses and any divergence would invent rank changes.
+by the same cumulative replay cutoff. Edits, deletions, and backdated matches
+therefore affect the next read without a checkpoint backfill.
 
 ### `GET /groups/{groupId}/members/{userId}/stats`
 Backs both the Profile tab (own stats) and tapping a player from the

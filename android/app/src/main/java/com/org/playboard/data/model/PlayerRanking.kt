@@ -27,9 +27,8 @@ data class PlayerRanking(
     /** Longest win streak ever (always ≥ 0). */
     val bestStreak: Int = 0,
     /**
-     * Confidence-adjusted win rate, 0–100. `null` only when talking to a backend that
-     * predates ratings — deliberately nullable rather than defaulting to `0.0`, because a
-     * winless player legitimately rates 0.0 and the two must stay distinguishable.
+     * Cumulative team skill rating, 0–100. `null` only when talking to a backend that
+     * predates ratings — deliberately nullable rather than defaulting to `0.0`.
      */
     val rating: Double? = null,
     /** Below the group's games threshold: listed, but not ranked. */
@@ -41,6 +40,7 @@ data class PlayerRanking(
     val uniquePartners: Int = 0,
     val maxPartnerShare: Double = 0.0,
     val provisionalReason: String? = null,
+    val limitedPartnerVariety: Boolean = false,
 ) {
     /**
      * Win rate as a whole percentage for display (e.g. `0.83` → `83`).
@@ -83,8 +83,6 @@ data class PlayerRanking(
      */
     fun secondaryLine(minGamesToRank: Int): String {
         val head = "$gamesPlayed games · $wins-$losses · $winRatePercent%"
-        if (provisionalReason == "partners") return "$head · play with more partners to rank"
-        if (provisionalReason == "partner-concentration") return "$head · diversify partners to rank"
         val needed = gamesNeeded(minGamesToRank)
         return if (provisional && needed > 0) "$head · $needed more to rank" else "$head · $pointsDiffLabel"
     }

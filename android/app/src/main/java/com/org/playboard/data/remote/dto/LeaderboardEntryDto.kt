@@ -27,10 +27,8 @@ data class LeaderboardEntryDto(
     // Defaulted so a pre-streak backend's JSON still deserializes during rollout.
     val currentStreak: Int = 0,
     val bestStreak: Int = 0,
-    // Wilson score lower bound on the win rate, 0-100. Nullable rather than defaulted to
-    // 0.0 — unlike the fields above, 0.0 is a *legitimate* rating for a winless player, so
-    // a default would make "backend predates ratings" indistinguishable from "has never
-    // won". The UI falls back to showing win% while this is null.
+    // Cumulative team skill rating, 0-100. Nullable for legacy backends; the UI falls
+    // back to showing win% while this is null.
     val rating: Double? = null,
     // Below the group's minGamesToRank: listed, but not ranked.
     val provisional: Boolean = false,
@@ -42,4 +40,5 @@ data class LeaderboardEntryDto(
     val uniquePartners: Int = 0,
     val maxPartnerShare: Double = 0.0,
     val provisionalReason: String? = null,
+    val limitedPartnerVariety: Boolean = false,
 )

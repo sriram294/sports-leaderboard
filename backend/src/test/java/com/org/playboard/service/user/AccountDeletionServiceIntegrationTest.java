@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.user.UserRepository;
 import java.time.Instant;
+import java.sql.Timestamp;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,7 +107,7 @@ class AccountDeletionServiceIntegrationTest {
     private void insertMembership(UUID groupId, UUID userId, String role, Instant joinedAt) {
         jdbc.update(
                 "insert into group_members (id, group_id, user_id, role, joined_at) values (?, ?, ?, ?, ?)",
-                UUID.randomUUID(), groupId, userId, role, joinedAt);
+                UUID.randomUUID(), groupId, userId, role, Timestamp.from(joinedAt));
     }
 
     private String role(UUID groupId, UUID userId) {

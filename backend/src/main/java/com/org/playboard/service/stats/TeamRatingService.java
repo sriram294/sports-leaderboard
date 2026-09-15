@@ -27,8 +27,9 @@ import org.springframework.stereotype.Service;
 /** Replays the selected period in deterministic (played_at, match_id) order. */
 @Service
 public class TeamRatingService {
-    public static final String ALGORITHM_VERSION = "team-v1";
-    public static final String PERIOD = "september-2026";
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TeamRatingService.class);
+    public static final String ALGORITHM_VERSION = "team-v2";
+    public static final String PERIOD = "cumulative";
 
     private final GroupMemberRepository members;
     private final MatchRepository matches;
@@ -44,7 +45,8 @@ public class TeamRatingService {
     }
 
     public record PlayerRating(double mean, double sigma, int games, int wins, int uniquePartners,
-            BigDecimal maxPartnerShare, boolean qualified, String provisionalReason) {
+            BigDecimal maxPartnerShare, boolean qualified, String provisionalReason,
+            boolean limitedPartnerVariety) {
         public BigDecimal displayRating() {
             double score = mean - 3 * sigma;
             double display = 100d / (1d + Math.exp(-(score - 17d) / 3d));
@@ -54,22 +56,48 @@ public class TeamRatingService {
 
     public Map<UUID, PlayerRating> replay(UUID groupId, Instant from, Instant to,
             Map<UUID, User> eligible) {
+        return replay(groupId, from, to, eligible, from);
+    }
+
+    /** Replays ratings from {@code from}, while collecting qualification statistics from a separate window. */
+    public Map<UUID, PlayerRating> replay(UUID groupId, Instant from, Instant to,
+            Map<UUID, User> eligible, Instant statisticsFrom) {
         Set<UUID> guestIds = new HashSet<>();
-        for (GroupMember member : members.findByGroupIdAndStatusAndRole(groupId, MemberStatus.ACTIVE, GroupRole.GUEST)) {
-            guestIds.add(member.getUser().getId());
+        Set<UUID> allRegularIds = new HashSet<>();
+        for (GroupMember member : members.findByGroupId(groupId)) {
+            if (member.getRole() == GroupRole.GUEST) {
+                guestIds.add(member.getUser().getId());
+            } else {
+                allRegularIds.add(member.getUser().getId());
+            }
         }
         Map<UUID, TeamRatingCalculator.Rating> ratings = new HashMap<>();
         Map<UUID, Integer> games = new HashMap<>();
         Map<UUID, Integer> wins = new HashMap<>();
         Map<UUID, Map<UUID, Integer>> partnerGames = new HashMap<>();
-        for (Match match : matches.findRatingMatches(groupId, from, to)) {
-            List<MatchTeam> matchTeams = teams.findByMatchIdOrderByTeamNo(match.getId());
-            if (matchTeams.size() != 2 || matchTeams.get(0).isWinner() == matchTeams.get(1).isWinner()) continue;
+        List<Match> ratingMatches = matches.findRatingMatches(groupId, from, to);
+        List<UUID> matchIds = ratingMatches.stream().map(Match::getId).toList();
+        Map<UUID, List<MatchTeam>> teamsByMatch = new HashMap<>();
+        Map<UUID, List<com.org.playboard.entity.match.MatchParticipant>> participantsByTeam = new HashMap<>();
+        if (!matchIds.isEmpty()) {
+            List<MatchTeam> allTeams = teams.findByMatchIdInOrderByMatchIdAscTeamNoAsc(matchIds);
+            allTeams.forEach(t -> teamsByMatch.computeIfAbsent(t.getMatch().getId(), k -> new ArrayList<>()).add(t));
+            List<UUID> teamIds = allTeams.stream().map(MatchTeam::getId).toList();
+            if (!teamIds.isEmpty()) participants.findByMatchTeamIdIn(teamIds)
+                    .forEach(p -> participantsByTeam.computeIfAbsent(p.getMatchTeam().getId(), k -> new ArrayList<>()).add(p));
+        }
+        for (Match match : ratingMatches) {
+            boolean inStatisticsWindow = !match.getPlayedAt().isBefore(statisticsFrom);
+            List<MatchTeam> matchTeams = teamsByMatch.getOrDefault(match.getId(), List.of());
+            if (matchTeams.size() != 2 || matchTeams.get(0).isWinner() == matchTeams.get(1).isWinner()) {
+                log.warn("Skipping malformed match {} while replaying team-v2 ratings", match.getId());
+                continue;
+            }
             List<TeamRatingCalculator.Team> result = new ArrayList<>();
             boolean malformed = false;
             Set<UUID> seenPlayers = new HashSet<>();
             for (MatchTeam team : matchTeams) {
-                List<TeamRatingCalculator.Participant> roster = participants.findByMatchTeamId(team.getId()).stream()
+                List<TeamRatingCalculator.Participant> roster = participantsByTeam.getOrDefault(team.getId(), List.of()).stream()
                         .map(p -> new TeamRatingCalculator.Participant(p.getUser().getId(), guestIds.contains(p.getUser().getId())))
                         .toList();
                 if (roster.isEmpty()) malformed = true;
@@ -78,14 +106,21 @@ public class TeamRatingService {
                 }
                 result.add(new TeamRatingCalculator.Team(roster, team.isWinner()));
             }
-            if (malformed) continue;
+            if (malformed) {
+                log.warn("Skipping malformed match {} while replaying team-v2 ratings", match.getId());
+                continue;
+            }
             for (TeamRatingCalculator.Team team : result) {
                 List<UUID> regular = team.players().stream().map(TeamRatingCalculator.Participant::userId)
-                        .filter(eligible::containsKey).toList();
+                        .filter(allRegularIds::contains).toList();
                 for (UUID player : regular) {
+                    if (!inStatisticsWindow) {
+                        ratings.putIfAbsent(player, new TeamRatingCalculator.Rating());
+                        continue;
+                    }
                     games.merge(player, 1, Integer::sum);
                     if (team.winner()) wins.merge(player, 1, Integer::sum);
-                    for (UUID partner : regular) if (!player.equals(partner)) {
+                    for (UUID partner : regular) if (!player.equals(partner) && eligible.containsKey(partner)) {
                         partnerGames.computeIfAbsent(player, k -> new HashMap<>()).merge(partner, 1, Integer::sum);
                     }
                     ratings.putIfAbsent(player, new TeamRatingCalculator.Rating());
@@ -93,7 +128,8 @@ public class TeamRatingService {
             }
             ratings = new HashMap<>(TeamRatingCalculator.update(ratings, result));
         }
-        int threshold = LeaderboardRanker.minGamesToRank(games.values());
+        int threshold = LeaderboardRanker.minGamesToRank(eligible.keySet().stream()
+                .map(id -> games.getOrDefault(id, 0)).toList());
         int requiredPartners = Math.min(3, Math.max(0, eligible.size() - 1));
         if (requiredPartners == 0 && eligible.size() > 1) requiredPartners = 1;
         BigDecimal cap = BigDecimal.valueOf(requiredPartners >= 3 ? .60 : requiredPartners == 2 ? .75 : 1.0);
@@ -105,11 +141,11 @@ public class TeamRatingService {
             int max = partners.values().stream().max(Comparator.naturalOrder()).orElse(0);
             BigDecimal share = played == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(max)
                     .divide(BigDecimal.valueOf(played), 4, RoundingMode.HALF_UP);
-            boolean coverage = unique >= requiredPartners;
-            boolean qualified = played >= threshold && coverage && share.compareTo(cap) <= 0;
-            String reason = qualified ? null : played < threshold ? "games" : !coverage ? "partners" : "partner-concentration";
+            boolean limited = unique < requiredPartners || share.compareTo(cap) > 0;
+            boolean qualified = played >= threshold;
+            String reason = qualified ? null : "games";
             TeamRatingCalculator.Rating rating = ratings.getOrDefault(id, new TeamRatingCalculator.Rating());
-            out.put(id, new PlayerRating(rating.mean(), rating.sigma(), played, wins.getOrDefault(id, 0), unique, share, qualified, reason));
+            out.put(id, new PlayerRating(rating.mean(), rating.sigma(), played, wins.getOrDefault(id, 0), unique, share, qualified, reason, limited));
         }
         return out;
     }

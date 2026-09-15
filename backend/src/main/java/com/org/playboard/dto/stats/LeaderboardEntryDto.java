@@ -7,9 +7,8 @@ import java.util.UUID;
 /**
  * One row of the leaderboard.
  *
- * <p>{@code rating} is the Wilson score lower bound on the win rate, scaled to 0-100 with
- * one decimal — a confidence-adjusted win rate, so a small sample scores below a long
- * record at the same raw percentage. {@code provisional} players have played fewer than
+ * <p>{@code rating} is the cumulative team-v2 skill score mapped to 0-100 with one decimal.
+ * {@code provisional} players have played fewer than
  * the group's {@link LeaderboardResponse#minGamesToRank()} and are listed after the ranked
  * ones; they still carry a continuing {@code rank} rather than a sentinel, so older clients
  * that don't know about the flag still render a sanely numbered list.
@@ -41,7 +40,8 @@ public record LeaderboardEntryDto(
         String ratingPeriod,
         int uniquePartners,
         BigDecimal maxPartnerShare,
-        String provisionalReason) {
+        String provisionalReason,
+        boolean limitedPartnerVariety) {
 
     public LeaderboardEntryDto(
             int rank, UUID userId, String displayName, String photoUrl, String avatarId,
@@ -50,7 +50,18 @@ public record LeaderboardEntryDto(
             BigDecimal rating, boolean provisional, List<Boolean> recentForm) {
         this(rank, userId, displayName, photoUrl, avatarId, avatarColor, gamesPlayed, wins,
                 losses, pointsFor, pointsAgainst, winRate, currentStreak, bestStreak, rating,
-                provisional, recentForm, "wilson-v1", "all-time", 0, BigDecimal.ZERO, null);
+                provisional, recentForm, "wilson-v1", "all-time", 0, BigDecimal.ZERO, null, false);
+    }
+
+    /** Compatibility constructor for callers compiled against the pre-warning payload. */
+    public LeaderboardEntryDto(int rank, UUID userId, String displayName, String photoUrl, String avatarId,
+            String avatarColor, int gamesPlayed, int wins, int losses, int pointsFor, int pointsAgainst,
+            BigDecimal winRate, int currentStreak, int bestStreak, BigDecimal rating, boolean provisional,
+            List<Boolean> recentForm, String algorithmVersion, String ratingPeriod, int uniquePartners,
+            BigDecimal maxPartnerShare, String provisionalReason) {
+        this(rank, userId, displayName, photoUrl, avatarId, avatarColor, gamesPlayed, wins, losses, pointsFor,
+                pointsAgainst, winRate, currentStreak, bestStreak, rating, provisional, recentForm,
+                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason, false);
     }
 
     /**
@@ -63,7 +74,7 @@ public record LeaderboardEntryDto(
                 newRank, userId, displayName, photoUrl, avatarId, avatarColor,
                 gamesPlayed, wins, losses, pointsFor, pointsAgainst,
                 winRate, currentStreak, bestStreak, rating, provisional, recentForm,
-                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason);
+                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason, limitedPartnerVariety);
     }
 
     /** Copy marked provisional (or not). */
@@ -72,7 +83,7 @@ public record LeaderboardEntryDto(
                 rank, userId, displayName, photoUrl, avatarId, avatarColor,
                 gamesPlayed, wins, losses, pointsFor, pointsAgainst,
                 winRate, currentStreak, bestStreak, rating, value, recentForm,
-                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason);
+                algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, provisionalReason, limitedPartnerVariety);
     }
 
     /** Points difference — the first tiebreak between equal ratings, and shown on the row. */

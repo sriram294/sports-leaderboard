@@ -16,6 +16,8 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
     List<MatchParticipant> findByMatchTeamId(UUID matchTeamId);
 
+    List<MatchParticipant> findByMatchTeamIdIn(List<UUID> matchTeamIds);
+
     List<MatchParticipant> findByUserId(UUID userId);
 
     void deleteByMatchId(UUID matchId);

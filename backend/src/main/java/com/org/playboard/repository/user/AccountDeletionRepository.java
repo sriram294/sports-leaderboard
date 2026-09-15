@@ -2,6 +2,7 @@ package com.org.playboard.repository.user;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -107,8 +108,8 @@ public class AccountDeletionRepository {
                 deletedEmail,
                 DELETED_NAME,
                 DELETED_AVATAR_COLOR,
-                deletedAt,
-                deletedAt,
+                Timestamp.from(deletedAt),
+                Timestamp.from(deletedAt),
                 userId);
     }
 
