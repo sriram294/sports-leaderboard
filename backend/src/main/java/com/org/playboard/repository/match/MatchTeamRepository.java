@@ -9,5 +9,7 @@ public interface MatchTeamRepository extends JpaRepository<MatchTeam, UUID> {
 
     List<MatchTeam> findByMatchIdOrderByTeamNo(UUID matchId);
 
+    List<MatchTeam> findByMatchIdInOrderByMatchIdAscTeamNoAsc(List<UUID> matchIds);
+
     void deleteByMatchId(UUID matchId);
 }

@@ -77,4 +77,5 @@ private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
     uniquePartners = uniquePartners,
     maxPartnerShare = maxPartnerShare,
     provisionalReason = provisionalReason,
+    limitedPartnerVariety = limitedPartnerVariety,
 )

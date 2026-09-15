@@ -383,13 +383,19 @@ private fun RankingsCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
+            Text(text = "Carries across months; this filter changes statistics and qualifying games.", style = MaterialTheme.typography.bodySmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
             LeaderboardHeaderRow(metric = metric, onMetricTap = onMetricTap)
             var previousWasRanked = true
+            var showedProvisionalHeader = false
             rows.forEach { row ->
                 // A slightly stronger rule marks the ranked/provisional boundary, so the
                 // block below reads as a separate group rather than more of the table.
                 val boundary = previousWasRanked && row.provisional
+                if (row.provisional && !showedProvisionalHeader) {
+                    Text("Not yet ranked", style = MaterialTheme.typography.labelMedium, color = PlayboardTheme.colors.textMuted, modifier = Modifier.padding(top = 12.dp))
+                    showedProvisionalHeader = true
+                }
                 HorizontalDivider(
                     color = PlayboardTheme.colors.textMuted.copy(alpha = if (boundary) 0.28f else 0.12f),
                 )

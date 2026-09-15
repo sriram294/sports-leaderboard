@@ -9,6 +9,7 @@ import java.time.YearMonth;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Atomically claims a completed month and freezes its entire eligible leaderboard. */
@@ -16,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class MonthlyStandingsWriter {
     private final MonthlyTrophyRepository trophyRepository;
     private final MonthlyStandingRepository standingRepository;
+    @Value("${playboard.ratings.team-v2-enabled:true}")
+    private boolean teamV2Enabled;
 
     public MonthlyStandingsWriter(
             MonthlyTrophyRepository trophyRepository,
@@ -32,7 +35,16 @@ public class MonthlyStandingsWriter {
             Optional<LeaderboardEntryDto> winner) {
         LeaderboardEntryDto winningEntry = winner.orElse(null);
         int claimed;
-        if (winningEntry == null || "wilson-v1".equals(winningEntry.algorithmVersion())) {
+        String algorithm = winningEntry != null ? winningEntry.algorithmVersion()
+                : standings.entries().stream().findFirst().map(LeaderboardEntryDto::algorithmVersion)
+                        .orElse(teamV2Enabled ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1");
+        if (winningEntry == null) {
+            if (!teamV2Enabled) {
+                claimed = trophyRepository.captureIfAbsent(groupId, null, month.atDay(1), null, null, null);
+            } else {
+                claimed = trophyRepository.captureIfAbsent(groupId, null, month.atDay(1), null, null, null, algorithm);
+            }
+        } else if ("wilson-v1".equals(algorithm)) {
             claimed = trophyRepository.captureIfAbsent(
                     groupId,
                     winningEntry == null ? null : winningEntry.userId(),
@@ -42,8 +54,10 @@ public class MonthlyStandingsWriter {
                     winningEntry == null ? null : winningEntry.wins());
         } else {
             claimed = trophyRepository.captureIfAbsent(
-                    groupId, winningEntry.userId(), month.atDay(1), winningEntry.rating(),
-                    winningEntry.gamesPlayed(), winningEntry.wins(), winningEntry.algorithmVersion());
+                    groupId, winningEntry == null ? null : winningEntry.userId(), month.atDay(1),
+                    winningEntry == null ? null : winningEntry.rating(),
+                    winningEntry == null ? null : winningEntry.gamesPlayed(),
+                    winningEntry == null ? null : winningEntry.wins(), algorithm);
         }
         if (claimed == 0) {
             return false;

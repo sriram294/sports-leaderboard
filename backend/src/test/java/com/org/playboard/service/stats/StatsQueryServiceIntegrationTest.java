@@ -32,12 +32,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 // Live-DB test covering the leaderboard ranking order, own/tapped player
 // stats (including the zero-matches case), and the on-demand partner-count
 // computation across multiple partners.
 @SpringBootTest
+@TestPropertySource(properties = "playboard.ratings.team-v2-enabled=false")
 @Transactional
 class StatsQueryServiceIntegrationTest {
 

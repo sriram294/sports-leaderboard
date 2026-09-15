@@ -9,7 +9,7 @@ enum LeaderboardRange: String, CaseIterable, Identifiable, Sendable {
 
 /// Optional client-side metric while canonical rank remains server-owned.
 enum LeaderboardMetric: String, CaseIterable, Sendable {
-    case rating = "Rating"
+    case rating = "Skill rating"
     case winRate = "Win %"
     case games = "Games"
     case pointsDifference = "Difference"

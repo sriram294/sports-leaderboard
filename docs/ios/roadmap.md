@@ -13,9 +13,10 @@ Base refreshed from `origin/master` on 2026-09-02: `586d85d0520802e0a80993b14eb9
 | S06 | Notifications and app updates | `done` | `feature/ios-notifications` | S05 | [#107](https://github.com/sriram294/sports-leaderboard/pull/107) | `a3ddb7b17cab788895cb68d865495e4e2ef7fd7e` | 2026-09-02 | 2026-09-02 | PR #107 merged 2026-09-02; backend compile and targeted AppUpdate service/controller tests, iOS repository verification, and `git diff --check` passed; Xcode 26.2 execution remains unavailable |
 | S07 | Account lifecycle and hardening | `done` | `feature/ios-account-lifecycle` | S06 | [#108](https://github.com/sriram294/sports-leaderboard/pull/108) | `9740414b8cc83623b2b6f81c39878ebea22aa1ab` | 2026-09-02 | 2026-09-02 | PR #108 merged 2026-09-02; iOS repository verification and `git diff --check` passed; Xcode 26.2 build, UI, and screenshot evidence remains pending |
 | S08 | Release readiness and parity closure | `done` | `feature/ios-release` | S07 | [#109](https://github.com/sriram294/sports-leaderboard/pull/109) | `586d85d0520802e0a80993b14eb9a23983b79739` | 2026-09-02 | 2026-09-02 | Documentation-only closure after PR #109 merged 2026-09-02; repository/release-readiness controls and backend compile passed, Vercel checks passed; Xcode 26.2 build, test, archive, accessibility, performance, and screenshot evidence remains an explicitly documented macOS follow-up |
+| S09 | Team-v2 leaderboard parity | `in_progress` | `feature/ios-team-v2` | S08 | — | — | 2026-09-15 | — | Linux Swift parsing/repository checks recorded here; Xcode 26.2 build, test, and screenshot evidence remains pending on macOS |
 
 ## Status invariants
 
-The `Status` column must contain exactly one `in_progress` entry until S08 merges. A slice becomes `done` only in the next slice's transition commit. S08 becomes `done` in the permitted documentation-only closure PR.
+The `Status` column must contain exactly one `in_progress` entry. A slice becomes `done` only in the next slice's transition commit. S08 is complete; S09 is the active post-release parity slice.
 
 Evidence must name the command, Xcode version, simulator/device, result, and durable artifact path. A successful local or CI run is required before changing a slice from `in_progress`.

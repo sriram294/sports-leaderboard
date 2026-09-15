@@ -50,6 +50,7 @@ export type Ranking = {
   uniquePartners?: number;
   maxPartnerShare?: number;
   provisionalReason?: string | null;
+  limitedPartnerVariety?: boolean;
 };
 
 /** `GET /groups/{id}/leaderboard` (LeaderboardResponse). */

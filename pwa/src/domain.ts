@@ -26,15 +26,13 @@ export const gamesNeeded = (r: Ranking, minGamesToRank: number) => Math.max(0, m
 export function secondaryLine(r: Ranking, minGamesToRank: number): string {
   const head = `${r.gamesPlayed} games · ${r.wins}-${r.losses} · ${winRatePercent(r)}%`;
   const needed = gamesNeeded(r, minGamesToRank);
-  if (r.provisional && r.provisionalReason === 'partners') return `${head} · play with more partners to rank`;
-  if (r.provisional && r.provisionalReason === 'partner-concentration') return `${head} · diversify partners to rank`;
   return r.provisional && needed > 0 ? `${head} · ${needed} more to rank` : `${head} · ${pointsDiffLabel(r)}`;
 }
 
 /** What the big right-hand number shows, and what the table is sorted by. */
 export type RankingSortMetric = 'rating' | 'winRate' | 'games' | 'pointsDiff';
 export const METRIC_ORDER: RankingSortMetric[] = ['rating', 'winRate', 'games', 'pointsDiff'];
-export const METRIC_LABEL: Record<RankingSortMetric, string> = { rating: 'RATING', winRate: 'WIN%', games: 'GAMES', pointsDiff: 'DIFF' };
+export const METRIC_LABEL: Record<RankingSortMetric, string> = { rating: 'SKILL RATING', winRate: 'WIN%', games: 'GAMES', pointsDiff: 'DIFF' };
 /** The next metric in the cycle — the header is a single tappable control, not a row of them. */
 export const nextMetric = (m: RankingSortMetric): RankingSortMetric => METRIC_ORDER[(METRIC_ORDER.indexOf(m) + 1) % METRIC_ORDER.length];
 

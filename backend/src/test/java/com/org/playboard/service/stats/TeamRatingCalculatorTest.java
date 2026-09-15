@@ -1,6 +1,7 @@
 package com.org.playboard.service.stats;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 import java.util.Map;
@@ -34,5 +35,24 @@ class TeamRatingCalculatorTest {
         assertTrue(result.containsKey(A));
         assertTrue(!result.containsKey(G));
         assertTrue(result.containsKey(B));
+    }
+
+    @Test
+    void symmetricTeamsMoveByEqualAndOppositeAmounts() {
+        Map<UUID, TeamRatingCalculator.Rating> result = TeamRatingCalculator.update(
+                Map.of(A, new TeamRatingCalculator.Rating(), B, new TeamRatingCalculator.Rating()),
+                List.of(new TeamRatingCalculator.Team(List.of(new TeamRatingCalculator.Participant(A, false)), true),
+                        new TeamRatingCalculator.Team(List.of(new TeamRatingCalculator.Participant(B, false)), false)));
+        assertEquals(result.get(A).mean() - 25, 25 - result.get(B).mean(), 1e-9);
+    }
+
+    @Test
+    void displayMappingIsMonotonicAndBounded() {
+        double previous = 0;
+        for (double score = -100; score <= 100; score += 1) {
+            double display = 100d / (1d + Math.exp(-(score - 17d) / 3d));
+            assertTrue(display >= previous && display >= 0 && display <= 100);
+            previous = display;
+        }
     }
 }

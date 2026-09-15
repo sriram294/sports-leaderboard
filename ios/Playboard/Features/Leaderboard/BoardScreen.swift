@@ -143,7 +143,7 @@ private struct PodiumSlot: View {
                 .font(PlayboardTypography.label())
                 .foregroundStyle(palette.textPrimary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-            Text("\(entry.rating, specifier: "%.1f") rating")
+            Text(entry.rating.map { String(format: "%.1f skill rating", $0) } ?? "Win rate")
                 .font(PlayboardTypography.eyebrow())
                 .monospacedDigit()
                 .foregroundStyle(champion ? playerColor : palette.textMuted)
@@ -169,7 +169,7 @@ private struct PodiumSlot: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(playerColor.opacity(champion ? 0.45 : 0.2)))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Rank \(entry.rank), \(entry.displayName)")
-        .accessibilityValue("\(entry.rating.formatted(.number.precision(.fractionLength(1)))) rating, \(entry.wins) wins from \(entry.gamesPlayed) games, \(range.rawValue)")
+        .accessibilityValue("\(entry.rating.map { $0.formatted(.number.precision(.fractionLength(1))) + " skill rating" } ?? "win rate"), \(entry.wins) wins from \(entry.gamesPlayed) games, \(range.rawValue)")
     }
 
     private var playerColor: Color { Color(leaderboardHex: entry.avatarColor) }
@@ -197,9 +197,20 @@ private struct RankingsCard: View {
                     .accessibilityHint("Cycles through leaderboard metrics")
                     .accessibilityIdentifier("leaderboard-metric")
                 }
-                ForEach(Array(viewModel.state.tableRows.enumerated()), id: \.element.id) { index, entry in
-                    if index > 0 { Divider().overlay(palette.textMuted.opacity(entry.provisional && !viewModel.state.tableRows[index - 1].provisional ? 0.42 : 0.16)) }
-                    LeaderboardRowView(entry: entry, minGamesToRank: viewModel.state.minGamesToRank, metric: viewModel.state.metric)
+                Text("Carries across months; the filter changes statistics and qualifying games.")
+                    .font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                let ranked = viewModel.state.tableRows.filter { !$0.provisional }
+                let provisional = viewModel.state.tableRows.filter { $0.provisional }
+                Group {
+                    ForEach(ranked) { entry in
+                        LeaderboardRowView(entry: entry, minGamesToRank: viewModel.state.minGamesToRank, metric: viewModel.state.metric)
+                    }
+                    if !provisional.isEmpty {
+                        Text("Not yet ranked").font(PlayboardTypography.label()).foregroundStyle(palette.textMuted).padding(.top, PlayboardSpacing.small)
+                        ForEach(provisional) { entry in
+                            LeaderboardRowView(entry: entry, minGamesToRank: viewModel.state.minGamesToRank, metric: viewModel.state.metric)
+                        }
+                    }
                 }
             }
         }
@@ -233,13 +244,19 @@ private struct LeaderboardRowView: View {
                     }
                 }
                 Text(secondaryLine).font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                if entry.provisional {
+                    Text("\(entry.gamesPlayed)/\(minGamesToRank) qualifying games").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                }
+                if !entry.provisional && entry.limitedPartnerVariety {
+                    Text("Limited partner variety").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                }
                 FormDots(results: entry.recentForm)
             }
         }
         .padding(.vertical, PlayboardSpacing.small)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Rank \(entry.provisional ? "provisional" : String(entry.rank)), \(entry.displayName)")
-        .accessibilityValue("\(entry.wins) wins, \(entry.losses) losses, \(entry.gamesPlayed) games, rating \(entry.rating.formatted(.number.precision(.fractionLength(1)))), recent form \(formSummary)")
+        .accessibilityValue("\(entry.wins) wins, \(entry.losses) losses, \(entry.gamesPlayed) games, rating \(entry.rating?.formatted(.number.precision(.fractionLength(1))) ?? "win rate"), recent form \(formSummary)")
     }
 
     private var secondaryLine: String {
@@ -248,11 +265,9 @@ private struct LeaderboardRowView: View {
     }
 
     private var metricValue: String {
-        if entry.provisionalReason == "partners" { return "Play with more partners to rank" }
-        if entry.provisionalReason == "partner-concentration" { return "Diversify partners to rank" }
         if entry.provisional { return "Provisional" }
         return switch metric {
-        case .rating: entry.rating.formatted(.number.precision(.fractionLength(1)))
+        case .rating: entry.rating?.formatted(.number.precision(.fractionLength(1))) ?? entry.winRate.formatted(.percent.precision(.fractionLength(0)))
         case .winRate: entry.winRate.formatted(.percent.precision(.fractionLength(0)))
         case .games: "\(entry.gamesPlayed)"
         case .pointsDifference: "\(entry.pointsDifference >= 0 ? "+" : "")\(entry.pointsDifference)"
@@ -262,7 +277,7 @@ private struct LeaderboardRowView: View {
     private var metricColor: Color {
         if entry.provisional { return palette.textMuted }
         return switch metric {
-        case .rating: entry.rating >= 40 ? palette.brand : entry.rating >= 25 ? palette.winRateMid : palette.winRateLow
+        case .rating: (entry.rating ?? entry.winRate * 100) >= 40 ? palette.brand : (entry.rating ?? entry.winRate * 100) >= 25 ? palette.winRateMid : palette.winRateLow
         case .winRate: entry.winRate >= 0.5 ? palette.brand : entry.winRate >= 0.25 ? palette.winRateMid : palette.winRateLow
         case .games: palette.textPrimary
         case .pointsDifference: entry.pointsDifference > 0 ? palette.statWin : entry.pointsDifference < 0 ? palette.statLoss : palette.textMuted

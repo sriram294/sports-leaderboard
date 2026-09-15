@@ -58,8 +58,7 @@ public class StatsQueryService {
     private final MonthlyTrophyService monthlyTrophyService;
     private final MonthlyStandingRepository monthlyStandingRepository;
     private final TeamRatingService teamRatingService;
-    private final boolean teamV1Enabled;
-    private static final Instant TEAM_V1_BOUNDARY = Instant.parse("2026-08-31T18:30:00Z");
+    private final boolean teamV2Enabled;
 
     public StatsQueryService(
             GroupMembershipGuard membershipGuard,
@@ -71,7 +70,7 @@ public class StatsQueryService {
             MonthlyTrophyService monthlyTrophyService,
             MonthlyStandingRepository monthlyStandingRepository,
             TeamRatingService teamRatingService,
-            @Value("${playboard.ratings.team-v1-enabled:true}") boolean teamV1Enabled) {
+            @Value("${playboard.ratings.team-v2-enabled:true}") boolean teamV2Enabled) {
         this.membershipGuard = membershipGuard;
         this.groupMemberRepository = groupMemberRepository;
         this.memberStatsRepository = memberStatsRepository;
@@ -81,7 +80,7 @@ public class StatsQueryService {
         this.monthlyTrophyService = monthlyTrophyService;
         this.monthlyStandingRepository = monthlyStandingRepository;
         this.teamRatingService = teamRatingService;
-        this.teamV1Enabled = teamV1Enabled;
+        this.teamV2Enabled = teamV2Enabled;
     }
 
     @Transactional(readOnly = true)
@@ -102,13 +101,13 @@ public class StatsQueryService {
     @Transactional(readOnly = true)
     public LeaderboardResponse getLeaderboard(UUID groupId, UUID callerId, Instant from, Instant to) {
         membershipGuard.requireActiveMember(groupId, callerId);
-        boolean teamV1 = teamV1Enabled && from != null && to != null && !from.isBefore(TEAM_V1_BOUNDARY);
-        Standings standings = from == null || to == null
-                ? allTimeStandings(groupId, null)
-                : teamV1 ? teamRankedStandings(groupId, from, to) : rankedStandings(groupId, from, to, null);
+        boolean teamV2 = teamV2Enabled;
+        Standings standings = teamV2
+                ? teamRankedStandings(groupId, from == null ? Instant.EPOCH : from, to == null ? Instant.now() : to)
+                : (from == null || to == null ? allTimeStandings(groupId, null) : rankedStandings(groupId, from, to, null));
         return new LeaderboardResponse(standings.entries(), standings.minGamesToRank(),
-                teamV1 ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1",
-                teamV1 ? TeamRatingService.PERIOD : (from == null ? "all-time" : "window"));
+                teamV2 ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1",
+                teamV2 ? TeamRatingService.PERIOD : (from == null ? "all-time" : "window"));
     }
 
     /**
@@ -165,7 +164,7 @@ public class StatsQueryService {
         // Scheduled monthly snapshots use this method directly rather than the HTTP
         // envelope. Keep the same September algorithm and metadata on those immutable
         // records as on the live current-period endpoint.
-        if (teamV1Enabled && thresholdOverride == null && from != null && to != null && !from.isBefore(TEAM_V1_BOUNDARY)) {
+        if (teamV2Enabled && thresholdOverride == null && from != null && to != null) {
             return teamRankedStandings(groupId, from, to);
         }
         // Only active, non-guest members can rank (guests are excluded from the
@@ -203,7 +202,9 @@ public class StatsQueryService {
         for (GroupMember member : groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)) {
             if (member.getRole() != GroupRole.GUEST) eligible.put(member.getUser().getId(), member.getUser());
         }
-        Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, from, to, eligible);
+        // Ratings always carry forward from the first match; `from` only scopes displayed
+        // statistics and qualification for the selected calendar range.
+        Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, Instant.EPOCH, to, eligible, from);
         Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
         Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
         List<LeaderboardEntryDto> qualified = new ArrayList<>();
@@ -219,7 +220,7 @@ public class StatsQueryService {
                     team.games() - team.wins(), (int) row.getPointsFor(), (int) row.getPointsAgainst(),
                     LeaderboardRanker.winRate(team.wins(), team.games()), streak[0], streak[1], rating,
                     !team.qualified(), form.getOrDefault(row.getUserId(), List.of()), TeamRatingService.ALGORITHM_VERSION,
-                    TeamRatingService.PERIOD, team.uniquePartners(), team.maxPartnerShare(), team.provisionalReason());
+                    TeamRatingService.PERIOD, team.uniquePartners(), team.maxPartnerShare(), team.provisionalReason(), team.limitedPartnerVariety());
             (team.qualified() ? qualified : provisional).add(entry);
         }
         Comparator<LeaderboardEntryDto> order = (a, b) -> {
@@ -227,17 +228,11 @@ public class StatsQueryService {
             TeamRatingService.PlayerRating br = ratings.get(b.userId());
             double delta = TeamRatingCalculator.conservativeScore(new TeamRatingCalculator.Rating(ar.mean(), ar.sigma()))
                     - TeamRatingCalculator.conservativeScore(new TeamRatingCalculator.Rating(br.mean(), br.sigma()));
-            if (Math.abs(delta) > .25) return delta > 0 ? -1 : 1;
-            // Keep the user-visible number aligned with the row order. The internal
-            // conservative score still decides clearly separated players; inside its
-            // tie band, comparing the same display mapping prevents confusing cases
-            // such as #2 showing 72.1 above #3 showing 72.5.
-            int byDisplayRating = br.displayRating().compareTo(ar.displayRating());
-            if (byDisplayRating != 0) return byDisplayRating;
+            if (Double.compare(delta, 0d) != 0) return delta > 0 ? -1 : 1;
             int byDiff = Integer.compare(b.pointsDiff(), a.pointsDiff());
             if (byDiff != 0) return byDiff;
             int byWins = Integer.compare(b.wins(), a.wins());
-            return byWins != 0 ? byWins : a.userId().compareTo(b.userId());
+            return byWins != 0 ? byWins : a.userId().toString().compareTo(b.userId().toString());
         };
         qualified.sort(order); provisional.sort(order);
         List<LeaderboardEntryDto> result = new ArrayList<>();

@@ -29,9 +29,8 @@ server:
 
 playboard:
   ratings:
-    # Rollback switch: all-time/legacy responses remain Wilson; disable this to serve
-    # Wilson for September-period windows without removing team-v1 replay state.
-    team-v1-enabled: ${PLAYBOARD_TEAM_V1_ENABLED:true}
+    # Active cumulative Gaussian team ratings. Set false for the legacy Wilson/team-v1 path.
+    team-v2-enabled: ${PLAYBOARD_TEAM_V2_ENABLED:true}
   # Comma-separated browser origins, for example:
   # https://playboardapp.vercel.app,http://localhost:5173
   web-origin: ${WEB_ORIGIN:http://localhost:5173}
