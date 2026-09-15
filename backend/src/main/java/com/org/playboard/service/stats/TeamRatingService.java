@@ -48,10 +48,15 @@ public class TeamRatingService {
             BigDecimal maxPartnerShare, boolean qualified, String provisionalReason,
             boolean limitedPartnerVariety) {
         public BigDecimal displayRating() {
-            double score = mean - 3 * sigma;
-            double display = 100d / (1d + Math.exp(-(score - 17d) / 3d));
-            return BigDecimal.valueOf(display).setScale(1, RoundingMode.HALF_UP);
+            return TeamRatingService.displayRating(new TeamRatingCalculator.Rating(mean, sigma));
         }
+    }
+
+    /** The 0-100, one-decimal value exposed by the team-v2 leaderboard. */
+    public static BigDecimal displayRating(TeamRatingCalculator.Rating rating) {
+        double score = rating.mean() - 3 * rating.sigma();
+        double display = 100d / (1d + Math.exp(-(score - 17d) / 3d));
+        return BigDecimal.valueOf(display).setScale(1, RoundingMode.HALF_UP);
     }
 
     public Map<UUID, PlayerRating> replay(UUID groupId, Instant from, Instant to,

@@ -7,8 +7,22 @@ final class MatchesUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["matches-screen"].waitForExistence(timeout: 3))
         app.descendants(matching: .any)["match-card-match-preview"].tap()
         XCTAssertTrue(app.staticTexts["GAME BREAKDOWN"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["RATING CHANGE"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Test Player, rating increased by 4.2"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Kiran, not rated"].exists)
         XCTAssertTrue(app.staticTexts["HISTORY"].exists)
         attachScreenshot(app, name: "matches-expanded")
+    }
+
+    func testRatingChangesReflowAtLargeDynamicType() {
+        let app = launch(
+            matchScenario: "standard",
+            extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge"]
+        )
+        app.buttons["Matches"].tap()
+        app.descendants(matching: .any)["match-card-match-preview"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["Kiran, not rated"].waitForExistence(timeout: 3))
+        attachScreenshot(app, name: "matches-rating-large-type")
     }
 
     func testEmptyAndFailureStates() {

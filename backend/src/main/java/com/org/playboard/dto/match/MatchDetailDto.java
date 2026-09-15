@@ -11,4 +11,5 @@ public record MatchDetailDto(
         List<SetDto> sets,
         RecordedByDto recordedBy,
         Instant recordedAt,
-        List<MatchEventDto> events) {}
+        List<MatchEventDto> events,
+        List<RatingChangeDto> ratingChanges) {}

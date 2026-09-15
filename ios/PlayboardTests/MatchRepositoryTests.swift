@@ -39,11 +39,27 @@ struct MatchRepositoryTests {
             winningTeamNo: 1
         )
 
-        _ = try await repository.record(groupID: "group-1", request: request, requestID: "attempt-42")
+        let detail = try await repository.record(groupID: "group-1", request: request, requestID: "attempt-42")
 
         #expect(await client.lastIdempotencyKey == "attempt-42")
         #expect(await client.lastMethod == "POST")
         #expect(await client.lastBodyString?.contains(#"\"winningTeamNo\":1"#) == true)
+        #expect(detail.ratingChanges == nil)
+    }
+
+    @Test("Decodes rated and guest changes while remaining compatible with a missing field")
+    func decodesRatingChanges() async throws {
+        let client = MatchRecordingAPIClient(responses: [APIResponse(data: Self.detailWithRatingsJSON, statusCode: 200)])
+        let repository = LiveMatchRepository(
+            apiClient: client,
+            baseURL: URL(string: "https://example.test/api/v1")!,
+            accessToken: "access"
+        )
+        let detail = try await repository.detail(groupID: "group-1", matchID: "match-1")
+        #expect(detail.ratingChanges == [
+            MatchRatingChange(userID: "p1", ratingDelta: 4.2),
+            MatchRatingChange(userID: "guest", ratingDelta: nil)
+        ])
     }
 
     @Test("Maps backend validation problem codes")
@@ -75,6 +91,7 @@ struct MatchRepositoryTests {
 
     private static let pageJSON = Data(#"{"matches":[{"id":"match-1","playedAt":"2026-08-09T06:58:00.123Z","teams":[{"teamNo":1,"isWinner":true,"players":[]},{"teamNo":2,"isWinner":false,"players":[]}],"sets":[{"setNo":1,"team1Score":21,"team2Score":12}]}],"nextCursor":null}"#.utf8)
     private static let detailJSON = Data(#"{"id":"match-1","playedAt":"2026-08-09T06:58:00Z","teams":[{"teamNo":1,"isWinner":true,"players":[]},{"teamNo":2,"isWinner":false,"players":[]}],"sets":[{"setNo":1,"team1Score":21,"team2Score":12}],"recordedBy":{"userId":"p1","displayName":"Priya"},"recordedAt":"2026-08-09T06:58:00Z","events":[]}"#.utf8)
+    private static let detailWithRatingsJSON = Data(#"{"id":"match-1","playedAt":"2026-08-09T06:58:00Z","teams":[{"teamNo":1,"isWinner":true,"players":[]},{"teamNo":2,"isWinner":false,"players":[]}],"sets":[{"setNo":1,"team1Score":21,"team2Score":12}],"recordedBy":{"userId":"p1","displayName":"Priya"},"recordedAt":"2026-08-09T06:58:00Z","events":[],"ratingChanges":[{"userId":"p1","ratingDelta":4.2},{"userId":"guest","ratingDelta":null}]}"#.utf8)
 }
 
 private actor MatchRecordingAPIClient: APIClient {

@@ -12,7 +12,12 @@ data class MatchDetailDto(
     val recordedBy: RecordedByDto,
     val recordedAt: String,
     val events: List<MatchEventDto>,
+    /** Null when decoded from a backend version that predates per-match rating changes. */
+    val ratingChanges: List<RatingChangeDto>? = null,
 )
+
+@Serializable
+data class RatingChangeDto(val userId: String, val ratingDelta: Double?)
 
 @Serializable
 data class RecordedByDto(val userId: String, val displayName: String)

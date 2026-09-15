@@ -40,8 +40,10 @@ matches happen to be in the loaded page).
    whenever the selected player changes.
 5. **Biggest win** — the recent match with the largest total-points margin (summed across sets).
 6. **Monthly winners** are **served** (`GET .../trophies`), not derived — a crown is awarded once
-   when a month closes and never recomputed. Rendered only when non-empty (absent from the v4.4
-   screenshot, which is a group with no closed-month trophies).
+   when a month closes and never recomputed. The response carries the algorithm version used
+   at capture time, including `team-v2` for newly captured months; months with no winner remain
+   internal versioned verdicts and are omitted from the list. Rendered only when non-empty
+   (absent from the v4.4 screenshot, which is a group with no closed-month trophies).
 7. **States** — spinner while leaderboard/matches load; retry on leaderboard failure; a
    `Play some matches to see insights.` empty state when the group has no matches.
 

@@ -12,6 +12,7 @@ Legend: **Y** shipped, **P** planned in named slice, **—** not applicable. And
 | App shell/navigation | Y | Y | P:S02 | P:S02 | — | P:S02 | — | P:S02 | P:S02 | P:S02 |
 | Board — This Month | Y | Y | P:S03 | P:S03 | P:S03 | P:S03 | — | P:S03 | P:S03 | P:S03 |
 | Board — All Time | Y | Y | P:S03 | P:S03 | P:S03 | P:S03 | — | P:S03 | P:S03 | P:S03 |
+| Team-v2 cumulative Skill rating | Y | Y | P:S09 | P:S09 | P:S09 | P:S09 | — | P:S09 | P:S09 | P:S09 |
 | Match history/detail | Y | Y | P:S04 | P:S04 | P:S04 | P:S04 | — | P:S04 | P:S04 | P:S04 |
 | Record match | Y | Y | P:S04 | P:S04 | P:S04 | P:S04 | — | P:S04 | P:S04 | P:S04 |
 | Profile/avatar/settings | Y | Y | P:S05 | P:S05 | P:S05 | P:S05 | P:S05 photos | P:S05 | P:S05 | P:S05 |

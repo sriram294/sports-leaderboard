@@ -1,6 +1,6 @@
 # iOS roadmap
 
-Base refreshed from `origin/master` on 2026-09-02: `586d85d0520802e0a80993b14eb9a23983b79739` (iOS release readiness PR #109).
+Base refreshed from `origin/master` on 2026-09-15: `2be8c64e8a91159407bce0c182d694840cf8f4a4` (team-v2 implementation PR #126 and leaderboard caption cleanup PR #127).
 
 | Slice | Deliverable | Status | Branch | Depends on | PR | Merge commit | Started | Finished | Verification evidence |
 |---|---|---|---|---|---|---|---|---|---|
@@ -13,7 +13,7 @@ Base refreshed from `origin/master` on 2026-09-02: `586d85d0520802e0a80993b14eb9
 | S06 | Notifications and app updates | `done` | `feature/ios-notifications` | S05 | [#107](https://github.com/sriram294/sports-leaderboard/pull/107) | `a3ddb7b17cab788895cb68d865495e4e2ef7fd7e` | 2026-09-02 | 2026-09-02 | PR #107 merged 2026-09-02; backend compile and targeted AppUpdate service/controller tests, iOS repository verification, and `git diff --check` passed; Xcode 26.2 execution remains unavailable |
 | S07 | Account lifecycle and hardening | `done` | `feature/ios-account-lifecycle` | S06 | [#108](https://github.com/sriram294/sports-leaderboard/pull/108) | `9740414b8cc83623b2b6f81c39878ebea22aa1ab` | 2026-09-02 | 2026-09-02 | PR #108 merged 2026-09-02; iOS repository verification and `git diff --check` passed; Xcode 26.2 build, UI, and screenshot evidence remains pending |
 | S08 | Release readiness and parity closure | `done` | `feature/ios-release` | S07 | [#109](https://github.com/sriram294/sports-leaderboard/pull/109) | `586d85d0520802e0a80993b14eb9a23983b79739` | 2026-09-02 | 2026-09-02 | Documentation-only closure after PR #109 merged 2026-09-02; repository/release-readiness controls and backend compile passed, Vercel checks passed; Xcode 26.2 build, test, archive, accessibility, performance, and screenshot evidence remains an explicitly documented macOS follow-up |
-| S09 | Team-v2 leaderboard parity | `in_progress` | `feature/ios-team-v2` | S08 | — | — | 2026-09-15 | — | Linux Swift parsing/repository checks recorded here; Xcode 26.2 build, test, and screenshot evidence remains pending on macOS |
+| S09 | Team-v2 leaderboard parity | `in_progress` | `fix/monthly-streaks` | S08 | [#126](https://github.com/sriram294/sports-leaderboard/pull/126), [#127](https://github.com/sriram294/sports-leaderboard/pull/127) | `1cd7d1f`, `2be8c64` | 2026-09-15 | — | Linux Swift parsing/repository checks, PWA 60/60 tests, and Android `:app:testDebugUnitTest` passed; Xcode 26.2 build, test, and screenshot evidence remains pending on macOS |
 
 ## Status invariants
 

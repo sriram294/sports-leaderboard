@@ -34,6 +34,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,6 +49,7 @@ import com.org.playboard.data.model.MatchEvent
 import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
 import com.org.playboard.data.model.MatchTeam
+import com.org.playboard.data.model.RatingChange
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.PlayboardBackground
 import com.org.playboard.ui.theme.PlayboardTheme
@@ -405,6 +409,17 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -
             )
         }
 
+        detail.ratingChanges?.let { changes ->
+            Spacer(Modifier.height(12.dp))
+            SubLabel("RATING CHANGE")
+            val changesByUser = changes.associateBy(RatingChange::userId)
+            detail.teams.sortedBy(MatchTeam::teamNo).forEach { team ->
+                team.players.forEach { player ->
+                    changesByUser[player.userId]?.let { RatingChangeRow(player, it.ratingDelta) }
+                }
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
         SubLabel("HISTORY")
         detail.events.forEach { event ->
@@ -424,6 +439,70 @@ private fun ExpandedDetail(detail: MatchDetail, canModify: Boolean, onEdit: () -
             }
         }
     }
+}
+
+@Composable
+private fun RatingChangeRow(player: MatchPlayer, delta: Double?) {
+    val value = formatRatingDelta(delta)
+    val accessibility = ratingChangeAccessibilityLabel(player.displayName, delta)
+    val valueColor = when {
+        delta == null || delta == 0.0 -> PlayboardTheme.colors.textMuted
+        delta > 0 -> PlayboardTheme.colors.statWin
+        else -> PlayboardTheme.colors.statLoss
+    }
+    val largeText = LocalDensity.current.fontScale >= 1.5f
+    val identity: @Composable (Modifier) -> Unit = { modifier ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier,
+        ) {
+            PlayerAvatar(
+                displayName = player.displayName,
+                photoUrl = player.photoUrl,
+                avatarColorHex = player.avatarColor,
+                avatarId = player.avatarId,
+                size = 28.dp,
+            )
+            Text(
+                player.displayName,
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
+                color = PlayboardTheme.colors.textPrimary,
+            )
+        }
+    }
+    if (largeText) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                .clearAndSetSemantics { contentDescription = accessibility },
+        ) {
+            identity(Modifier.fillMaxWidth())
+            Text(value, color = valueColor, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.End))
+        }
+    } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                .clearAndSetSemantics { contentDescription = accessibility },
+        ) {
+            identity(Modifier.weight(1f))
+            Text(value, color = valueColor, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+internal fun formatRatingDelta(delta: Double?): String = when {
+    delta == null -> "Not rated"
+    delta > 0 -> "+%.1f".format(Locale.US, delta)
+    delta < 0 -> "−%.1f".format(Locale.US, -delta)
+    else -> "0.0"
+}
+
+internal fun ratingChangeAccessibilityLabel(name: String, delta: Double?): String = when {
+    delta == null -> "$name, not rated"
+    delta > 0 -> "$name, rating increased by ${"%.1f".format(Locale.US, delta)}"
+    delta < 0 -> "$name, rating decreased by ${"%.1f".format(Locale.US, -delta)}"
+    else -> "$name, rating unchanged at 0.0"
 }
 
 /** A pill-outlined text button used for the edit/delete actions on an expanded match. */
@@ -525,6 +604,12 @@ private val previewDetail = MatchDetail(
     recordedByName = "Raj",
     recordedAt = previewMatch.playedAt,
     events = listOf(MatchEvent("Raj", "created", previewMatch.playedAt)),
+    ratingChanges = listOf(
+        RatingChange("u1", 4.2),
+        RatingChange("u2", 3.8),
+        RatingChange("u3", -2.7),
+        RatingChange("u4", null),
+    ),
 )
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 700)

@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 /// Paginated, locally grouped match history for the active group.
@@ -219,6 +220,9 @@ private struct MatchHistoryCard: View {
                     Text("Winner: \(winner.players.map(\.displayName).joined(separator: " & "))")
                         .font(PlayboardTypography.label()).foregroundStyle(palette.brand)
                 }
+                if let changes = detail.ratingChanges {
+                    ratingChanges(changes, detail: detail)
+                }
                 Text("HISTORY").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
                 ForEach(detail.events) { event in
                     Label {
@@ -231,6 +235,87 @@ private struct MatchHistoryCard: View {
             }
         }
     }
+
+    private func ratingChanges(_ changes: [MatchRatingChange], detail: MatchDetail) -> some View {
+        let byUser = Dictionary(uniqueKeysWithValues: changes.map { ($0.userID, $0) })
+        return VStack(alignment: .leading, spacing: PlayboardSpacing.small) {
+            Text("RATING CHANGE").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+            ForEach(detail.teams.sorted { $0.teamNo < $1.teamNo }) { team in
+                ForEach(team.players) { player in
+                    if let change = byUser[player.userID] {
+                        RatingChangeRow(player: player, delta: change.ratingDelta)
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct RatingChangeRow: View {
+    let player: MatchPlayer
+    let delta: Double?
+    @Environment(\.playboardPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PlayboardSpacing.extraSmall) {
+                    identity
+                    value.frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            } else {
+                HStack(spacing: PlayboardSpacing.small) {
+                    identity
+                    Spacer(minLength: PlayboardSpacing.small)
+                    value
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var identity: some View {
+        HStack(spacing: PlayboardSpacing.small) {
+            PlayerAvatar(
+                displayName: player.displayName,
+                avatarID: player.avatarID,
+                photoURL: player.photoURL,
+                color: Color(matchHex: player.avatarColor),
+                size: 28
+            )
+            Text(player.displayName).font(PlayboardTypography.body()).foregroundStyle(palette.textPrimary)
+        }
+    }
+
+    private var value: some View {
+        Text(ratingDeltaText(delta))
+            .font(PlayboardTypography.label())
+            .monospacedDigit()
+            .foregroundStyle(delta.map { $0 > 0 ? palette.statWin : $0 < 0 ? palette.statLoss : palette.textMuted } ?? palette.textMuted)
+    }
+
+    private var accessibilityText: String {
+        guard let delta else { return "\(player.displayName), not rated" }
+        if delta > 0 { return "\(player.displayName), rating increased by \(oneDecimal(delta))" }
+        if delta < 0 { return "\(player.displayName), rating decreased by \(oneDecimal(-delta))" }
+        return "\(player.displayName), rating unchanged at 0.0"
+    }
+}
+
+private let ratingLocale = Locale(identifier: "en_US_POSIX")
+
+private func oneDecimal(_ value: Double) -> String {
+    String(format: "%.1f", locale: ratingLocale, value)
+}
+
+private func ratingDeltaText(_ delta: Double?) -> String {
+    guard let delta else { return "Not rated" }
+    if delta > 0 { return "+\(oneDecimal(delta))" }
+    if delta < 0 { return "−\(oneDecimal(-delta))" }
+    return "0.0"
 }
 
 private extension Color {

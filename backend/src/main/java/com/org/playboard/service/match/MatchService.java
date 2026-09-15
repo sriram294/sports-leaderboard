@@ -36,6 +36,7 @@ import com.org.playboard.service.user.AvatarUrlResolver;
 import com.org.playboard.service.group.GroupMembershipGuard;
 import com.org.playboard.service.notification.events.MatchRecordedEvent;
 import com.org.playboard.service.notification.events.MatchUpdatedEvent;
+import com.org.playboard.service.stats.MatchRatingChangeService;
 import com.org.playboard.service.stats.StatsRecalculationService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -74,6 +75,7 @@ public class MatchService {
     private final UserRepository userRepository;
     private final GroupMembershipGuard membershipGuard;
     private final StatsRecalculationService statsRecalculationService;
+    private final MatchRatingChangeService matchRatingChangeService;
     private final ApplicationEventPublisher eventPublisher;
     private final AvatarUrlResolver avatarUrls;
 
@@ -88,6 +90,7 @@ public class MatchService {
             UserRepository userRepository,
             GroupMembershipGuard membershipGuard,
             StatsRecalculationService statsRecalculationService,
+            MatchRatingChangeService matchRatingChangeService,
             ApplicationEventPublisher eventPublisher,
             AvatarUrlResolver avatarUrls) {
         this.matchRepository = matchRepository;
@@ -100,6 +103,7 @@ public class MatchService {
         this.userRepository = userRepository;
         this.membershipGuard = membershipGuard;
         this.statsRecalculationService = statsRecalculationService;
+        this.matchRatingChangeService = matchRatingChangeService;
         this.eventPublisher = eventPublisher;
         this.avatarUrls = avatarUrls;
     }
@@ -415,7 +419,8 @@ public class MatchService {
                 buildSets(match),
                 recordedBy,
                 match.getCreatedAt(),
-                events);
+                events,
+                matchRatingChangeService.calculate(match));
     }
 
     private List<TeamDto> buildTeams(Match match) {

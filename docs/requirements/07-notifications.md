@@ -13,15 +13,17 @@ foundation they need.
 
 ## Scope
 
-Two notifications ship first:
+Three notifications ship first:
 
 | # | Notification | Recipients | Trigger |
 |---|---|---|---|
-| 1 | **Daily rank change** — "You moved up 2 places" | Everyone whose leaderboard position changed | Scheduled (session end) |
+| 1 | **Monthly rank change** — "You moved up 2 places" | Everyone whose leaderboard position changed | Scheduled (session end) |
 | 2 | **Promoted to admin** | The promoted member | Event (role change) |
+| 3 | **Monthly trophy** — "Priya topped Smashers in August." | Active non-guest group members | Scheduled (month close) |
 
 `MATCH_ACTIVITY` already exists and is retrofitted into the taxonomy so it obeys the same
-channel rules.
+channel rules. Monthly trophy capture also freezes the algorithm version and standings used
+for the award; later match edits do not retract an already captured trophy.
 
 **Deferred:** personal/member achievements, weekly group digest, court call, and the
 per-user notification-preferences table, API and Profile UI. Channels give users a mute
@@ -39,7 +41,7 @@ how an app loses its notification permission for good.
 | Category | Channel id | About |
 |---|---|---|
 | Match activity | `match_activity` | A match was logged or edited *(exists; id kept so installs keep their setting)* |
-| Daily summary | `daily_summary` | End-of-session leaderboard movement |
+| Daily summary | `daily_summary` | End-of-session movement in the active calendar month |
 | Group update | `group_updates` | Roster and admin changes |
 
 The channel id is set **server-side** on every push via `AndroidConfig`. Without it, a push
@@ -50,7 +52,7 @@ default channel — which would silently put every category back on one channel.
 
 ## Category specs
 
-### A. Daily rank change
+### A. Monthly rank change
 
 **When a session ends.** There is no reliable "session ended" signal in the data model:
 `groups.session_start`/`session_end` (V9) are static wall-clock config with no timezone,
@@ -61,24 +63,28 @@ never joined against matches. So the trigger is **inactivity-based**:
 - `sessionStart` = `played_at` of the first match in that contiguous block, found by
   walking back while consecutive gaps stay under the quiet period.
 
-This needs no timezone, adapts to sessions that run long or end early, and works for groups
-that never configured a window.
+The comparison uses the configured trophy timezone (default `Asia/Kolkata`) to identify the
+calendar month containing the session. This keeps a session notification's meaning aligned
+with the monthly standings and trophy capture, while still adapting to sessions that run
+long or finish early. A session that crosses a local month boundary is compared separately
+for each affected month.
 
 **Computing the change.** `member_stats` is a running aggregate that is overwritten on every
 match write, so there is no stored history to diff against. Both sides are computed from
 raw matches with the same query:
 
 ```
-before = rankedStandings(groupId, from = EPOCH, to = sessionStart)
-after  = rankedStandings(groupId, from = EPOCH, to = now)
+before = rankedStandings(groupId, from = monthStart, to = sessionStart)
+after  = rankedStandings(groupId, from = monthStart, to = sessionEnd)
 ```
 
 `rankedStandings` is extracted from the existing windowed-leaderboard path
-(`StatsQueryService`), so it inherits the canonical order — **win rate desc → points-diff
-desc → wins desc → userId asc** — and the guest/inactive-member exclusion. Deliberately
-*not* diffed against the `member_stats` ranking: that path reads a DB-generated `win_rate`
-while the aggregate path computes `BigDecimal` to 4 dp, and mixing the two could manufacture
-a rank change that didn't happen.
+(`StatsQueryService`), so it inherits the active algorithm and canonical order — **team-v2
+conservative score desc → points-diff desc → wins desc → PostgreSQL-compatible userId asc** —
+plus the guest/inactive-member exclusion. The `after` qualification threshold is pinned
+when constructing `before`, so a median shift cannot manufacture a rank change for a player
+who did not play. The same algorithm version and month start are used on both sides; the
+legacy Wilson/team-v1 path is selected when `PLAYBOARD_TEAM_V2_ENABLED=false`.
 
 | Case | Copy |
 |---|---|
@@ -90,9 +96,9 @@ a rank change that didn't happen.
 Recipients are **everyone whose position changed**, not just those who played — being
 overtaken while sitting out is exactly the thing worth knowing.
 
-Known edge case: a **backdated** match is attributed to the session containing its
-`played_at`, not tonight's. Acceptable — these notifications celebrate live play, not
-bookkeeping.
+Backdated matches are attributed to the session/month containing their `played_at`, not the
+time the record was edited. The dedupe key includes the group, month, and session start so
+separate month comparisons cannot suppress each other.
 
 ### B. Promoted to admin
 
@@ -104,6 +110,15 @@ someone a push about losing admin.
 |---|---|---|
 | Promoted to admin | The promoted user | "You're now an admin of Smashers." |
 
+### C. Monthly trophy
+
+The configured trophy timezone (default `Asia/Kolkata`) defines calendar month close. The
+award job captures the winner and the complete standings snapshot once, using the active
+algorithm version. A month with no eligible winner still receives an internal, versioned
+verdict so it is not re-evaluated on every scan; it produces no push. Awarded months notify
+active non-guest members once with a group-update push, and the group/month key prevents
+duplicate announcements across retries or instances.
+
 ---
 
 ## Cross-cutting infrastructure
@@ -113,7 +128,8 @@ someone a push about losing admin.
 `notification_log(user_id, category, dedupe_key, ...)` with a **unique constraint on
 (user_id, category, dedupe_key)**. Two jobs:
 
-- **Idempotency** — dedupe keys like `rank_change:<groupId>:<sessionStart>`. Claim-then-send:
+- **Idempotency** — dedupe keys like `rank_change:<groupId>:<month>:<sessionStart>` and
+  `monthly_trophy:<groupId>:<month>`. Claim-then-send:
   a Railway redeploy mid-job, or a second instance, can't double-send because the DB rejects
   the duplicate first. Required, not polish — a job on a 15-minute tick would otherwise
   re-send every tick.
@@ -164,7 +180,7 @@ train users to mute you.
 | # | Slice | Contents |
 |---|---|---|
 | **A** | **Foundation + promote** | `NotificationCategory`; `notification_log` migration + claim guard; category-aware `sendToUsers` with server-set channel id; three channels; small-icon fix; group deep-link; promoted-to-admin event + listener. Retrofits the existing 3 pushes. |
-| **B** | **Daily rank change** | `SchedulingConfig`; `rankedStandings` extraction; session-gap detection; rank diff + send. Backend-only. |
+| **B** | **Monthly rank change** | `SchedulingConfig`; versioned `rankedStandings` comparison; session-gap detection; pinned qualification threshold; month-aware dedupe and send. Backend-only. |
 
 Per repo workflow: update `docs/backend/api-contracts.md` and `docs/backend/data-model.md`
 alongside; unit tests + `:app:testDebugUnitTest` + `:app:assembleDebug` before each PR.

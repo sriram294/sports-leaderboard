@@ -242,7 +242,13 @@ private extension MatchDetail {
         sets: MatchSummary.preview.sets,
         recordedBy: MatchActor(userID: "ui-user", displayName: "Test Player"),
         recordedAt: MatchSummary.preview.playedAt,
-        events: [MatchEvent(userID: "ui-user", displayName: "Test Player", action: "created", createdAt: MatchSummary.preview.playedAt)]
+        events: [MatchEvent(userID: "ui-user", displayName: "Test Player", action: "created", createdAt: MatchSummary.preview.playedAt)],
+        ratingChanges: [
+            MatchRatingChange(userID: "ui-user", ratingDelta: 4.2),
+            MatchRatingChange(userID: "player-3", ratingDelta: 3.8),
+            MatchRatingChange(userID: "player-2", ratingDelta: -2.7),
+            MatchRatingChange(userID: "player-4", ratingDelta: nil)
+        ]
     )
 }
 

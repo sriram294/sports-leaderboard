@@ -226,12 +226,13 @@ GROUP_MEMBER_EXISTS` if they're already an active member.
 ## Leaderboard & Player Stats
 
 ### `GET /groups/{groupId}/leaderboard`
-Server-sorted by `rating` desc, then points difference (`pointsFor` −
-`pointsAgainst`) desc, then wins desc, with a final user-id key so fully tied
-rows keep a stable order across requests. `rank` is the position in that list
-(1-based, no shared ranks); members with zero matches are omitted. The Board
-screen's podium is the first 3 **non-provisional** entries of this same list —
-no separate endpoint, so podium and table never disagree.
+Server-sorted by the unrounded team-v2 conservative score (`mean − 3 ×
+uncertainty`) desc, then points difference (`pointsFor` − `pointsAgainst`)
+desc, then wins desc, with a final PostgreSQL-compatible user-id key so fully
+tied rows keep a stable order across requests. `rank` is the sequential position
+in that list (1-based, no shared ranks); members with zero matches are omitted.
+The Board screen's podium is the first 3 **non-provisional** entries of this same
+list — no separate endpoint, so podium and table never disagree.
 
 Ordering is computed in Java for both the all-time and windowed paths, so they
 cannot drift apart; there is deliberately no `ORDER BY` in the query.
@@ -243,7 +244,8 @@ cannot drift apart; there is deliberately no `ORDER BY` in the query.
     "currentStreak": 6, "bestStreak": 6, "rating": 54.1, "provisional": false,
     "recentForm": [true, true, false, true, true, true],
     "algorithmVersion": "team-v2", "ratingPeriod": "cumulative",
-    "limitedPartnerVariety": false }
+    "uniquePartners": 3, "maxPartnerShare": 0.5000,
+    "provisionalReason": null, "limitedPartnerVariety": false }
 ], "minGamesToRank": 3, "algorithmVersion": "team-v2", "ratingPeriod": "cumulative" }
 ```
 `pointsAgainst` was added alongside the difference tiebreak; `pointsFor` is
@@ -259,36 +261,55 @@ needs to reverse it. A player with fewer than 10 matches in the window simply
 gets a shorter list; one with none gets `[]`. Computed on demand in one
 set-based query per leaderboard fetch, not materialized.
 
-**`rating`** is the team-v2 skill rating: a cumulative Gaussian team replay
-starting from mean 25 and uncertainty 25/3. It is displayed on a 0–100 scale
-with one decimal; sorting uses the unrounded conservative score. Skill reflects
+**`rating`** is the team-v2 skill rating: a cumulative two-team Gaussian replay
+starting every player at mean 25 and uncertainty 25/3. Each regular player's
+variance drifts by `(25/300)²` before an appearance; performance noise is
+`β = 25/6` per participant. The result updates every participant from the same
+pre-match state, including teammate and opponent uncertainty. The conservative
+score is mapped to `100 / (1 + exp(-(score - 17) / 3))` and rounded half-up to
+one decimal for display; sorting uses the full-precision score. Skill reflects
 partners, opponents, results, and confidence, and is not a win percentage.
-Responses include `algorithmVersion: "team-v2"` and `ratingPeriod: "cumulative"`.
-`limitedPartnerVariety` is an informational warning only.
 
-**`minGamesToRank`** is a group-level scalar, `max(1, min(10, ceil(median(games
-played) / 2)))` over players with at least one game. Players below it have
-`provisional: true`: they are listed **after** every ranked player and are
-excluded from the podium, but they still carry a continuing `rank` (N+1, N+2, …)
-rather than a sentinel, so clients that predate the flag still render a sanely
-numbered list. Clients derive "N more to rank" as
+`uniquePartners` and `maxPartnerShare` are calculated within the selected
+statistics window. `limitedPartnerVariety` is informational only: the eligible
+roster requires up to three distinct partners (`min(3, roster size − 1)`), and
+the largest-partner share is compared with the existing 60%/75%/100% caps.
+Partner variety does not affect qualification or rating updates.
+
+Team-v2 responses include `algorithmVersion: "team-v2"` and
+`ratingPeriod: "cumulative"` at both response and entry level. With
+`PLAYBOARD_TEAM_V2_ENABLED=false`, the endpoint returns the legacy Wilson
+`wilson-v1` ranking and its `all-time`/`window` period values instead.
+
+**`minGamesToRank`** is a group-level scalar,
+`max(1, min(10, ceil(median(games played) / 2)))`, calculated over eligible
+players with at least one game in the selected statistics window. Players below
+it have `provisional: true` and `provisionalReason: "games"`; qualified entries
+have `provisionalReason: null`. Provisional entries are listed **after** every
+ranked entry and are excluded from the podium, but retain sequential API ranks
+(N+1, N+2, …). Clients derive the existing “N more to rank” copy from
 `minGamesToRank - gamesPlayed`.
 
 **Optional time window (`?from=…&to=…`).** Supply both `from` and `to` as
-ISO-8601 instants to scope the ranking to the half-open interval `[from, to)`
-by `match.playedAt` — this backs the Board's "This Month" toggle. The client
-computes the calendar boundaries in device-local time (month = current calendar
-month) and sends the resulting UTC instants, so members in different zones split
-boundaries by their own midnight. There is no weekly window: `rating` is computed
-over the selected window, and one or two sessions is too few games for it to
-separate anyone. Omit both params for the all-time ranking (the default and
-the original behavior). Windowed responses use the identical shape, ordering,
-guest-exclusion, and zero-matches-omitted rules as all-time; the only difference
-is that `currentStreak`/`bestStreak` are calculated within the requested ranking
-window (and the board doesn't render them). Team-v2 all-time and windowed responses replay raw matches on demand. A window covering all of history is
-otherwise identical to the all-time response, including every `rating` — pinned
-by the same cumulative replay cutoff. Edits, deletions, and backdated matches
-therefore affect the next read without a checkpoint backfill.
+ISO-8601 instants to scope the statistics and qualification window to the
+half-open interval `[from, to)` by `match.playedAt` — this backs the Board's
+"This Month" toggle. The client computes calendar boundaries in device-local
+time and sends UTC instants. There is no weekly window. Team-v2 always replays
+all nondeleted matches from the group's first history through the exclusive
+`to` cutoff, while `from` controls only displayed statistics, qualification,
+recent form, and streaks. Omit both params for the live all-time response;
+team-v2 treats it as `[EPOCH, now)`.
+
+Former regular members remain in the historical replay even after leaving, but
+only current active regular members are returned. Guests use the fixed initial
+prior on each appearance and never accumulate state. Matches and rosters are
+loaded in bulk; malformed matches are skipped with a diagnostic log. A window
+covering all history therefore produces the same team-v2 ratings as all-time for
+the same cutoff, while its statistics and qualification can still differ.
+Edits, deletions, and backdated matches affect the next read because ratings are
+replayed on demand; no checkpoint backfill is required.
+
+The legacy path remains available behind `PLAYBOARD_TEAM_V2_ENABLED=false`.
 
 ### `GET /groups/{groupId}/members/{userId}/stats`
 Backs both the Profile tab (own stats) and tapping a player from the
@@ -348,6 +369,21 @@ member, else `404 MEMBER_NOT_FOUND`).
 { "playedAt": ["2026-07-03T06:58:00Z", "2026-07-05T09:30:00Z"] }
 ```
 
+### `GET /groups/{groupId}/trophies?limit=6`
+Returns the group's awarded monthly winners, newest first. `limit` is clamped
+to `1–60` and defaults to 6. A completed month with no eligible winner is
+recorded internally but omitted from this response. Each returned trophy keeps
+the algorithm version that was active when the month was captured; previously
+captured rows are immutable.
+```json
+[
+  { "month": "2026-08", "userId": "uuid", "displayName": "Priya",
+    "photoUrl": null, "avatarId": "avatar3", "avatarColor": "#FF3D8A",
+    "rating": 71.4, "gamesPlayed": 12, "wins": 9,
+    "algorithmVersion": "team-v2" }
+]
+```
+
 ---
 
 ## Matches
@@ -388,9 +424,25 @@ payload light (mirrors the schema's list/detail split).
   "events": [
     { "userId": "uuid", "displayName": "Raj", "action": "created",
       "createdAt": "2026-07-09T06:58:00Z" }
+  ],
+  "ratingChanges": [
+    { "userId": "uuid-raj", "ratingDelta": 4.2 },
+    { "userId": "uuid-dev", "ratingDelta": 3.8 },
+    { "userId": "uuid-marcus", "ratingDelta": -2.7 },
+    { "userId": "uuid-guest", "ratingDelta": null }
   ]
 }
 ```
+
+`ratingChanges` is detail-only and contains exactly one entry per participant;
+it is not present on `MatchSummaryDto` in the paginated list. `ratingDelta` is
+the signed difference between the active leaderboard's one-decimal displayed
+rating immediately before and after this match. A null delta identifies a guest,
+who participates in the team prediction but is never rated. History is replayed
+through the target in `(playedAt, matchId)` order, skipping malformed and deleted
+matches. Consequently edits, deletions, and backdated inserts are reflected the
+next time any affected detail is requested. With team-v2 disabled, the same field
+uses the legacy one-decimal Wilson before/after difference.
 
 ### `POST /groups/{groupId}/matches`
 Clients may send an `Idempotency-Key` header (maximum 128 characters). Repeating
@@ -479,6 +531,7 @@ means an on-device issue; `failed > 0` surfaces the FCM error codes.
 | GET | `/groups/{groupId}/leaderboard` | Board tab |
 | GET | `/groups/{groupId}/members/{userId}/stats` | Profile tab / tapped player |
 | GET | `/groups/{groupId}/members/{userId}/attendance` | Profile attendance calendar |
+| GET | `/groups/{groupId}/trophies` | Monthly winners |
 | GET | `/groups/{groupId}/matches` | Matches tab list |
 | GET | `/groups/{groupId}/matches/{matchId}` | Expanded match + history |
 | POST | `/groups/{groupId}/matches` | Record match (Add tab) |

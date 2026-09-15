@@ -23,7 +23,9 @@ import com.org.playboard.repository.stats.MemberStatsRepository;
 import com.org.playboard.repository.user.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -98,6 +100,56 @@ class MatchServiceIntegrationTest {
         matchService.deleteMatch(f.group.getId(), match2.id(), f.raj.getId());
         assertStats(f.group, f.raj, 1, 1, 0, 42, 29, 1, 1);
         assertStats(f.group, f.marcus, 1, 0, 1, 29, 42, -1, 0);
+    }
+
+    @Test
+    void detailRatingChangesRecomputeAfterEarlierHistoryChanges() {
+        Fixture f = newFixture();
+        Instant firstTime = Instant.parse("2026-08-01T10:00:00Z");
+        Instant laterTime = Instant.parse("2026-08-02T10:00:00Z");
+        MatchDetailDto first = matchService.createMatch(
+                f.group.getId(), f.raj.getId(), recordRequestAt(firstTime, 1, f));
+        MatchDetailDto later = matchService.createMatch(
+                f.group.getId(), f.raj.getId(), recordRequestAt(laterTime, 2, f));
+
+        assertThat(first.ratingChanges()).hasSize(4);
+        assertThat(first.ratingChanges()).extracting("userId").containsExactlyInAnyOrder(
+                f.raj.getId(), f.dev.getId(), f.marcus.getId(), f.kiran.getId());
+        assertThat(first.ratingChanges()).allSatisfy(change -> {
+            assertThat(change.ratingDelta()).isNotNull();
+            assertThat(change.ratingDelta().scale()).isEqualTo(1);
+        });
+        var original = ratingChanges(matchService.getMatchDetail(f.group.getId(), later.id(), f.raj.getId()));
+
+        matchService.updateMatch(
+                f.group.getId(), first.id(), f.raj.getId(), recordRequestAt(firstTime, 2, f));
+        var afterEdit = ratingChanges(matchService.getMatchDetail(f.group.getId(), later.id(), f.raj.getId()));
+        assertThat(afterEdit.get(f.raj.getId())).isNotEqualByComparingTo(original.get(f.raj.getId()));
+
+        matchService.deleteMatch(f.group.getId(), first.id(), f.raj.getId());
+        var afterDelete = ratingChanges(matchService.getMatchDetail(f.group.getId(), later.id(), f.raj.getId()));
+        assertThat(afterDelete.get(f.raj.getId())).isNotEqualByComparingTo(afterEdit.get(f.raj.getId()));
+
+        matchService.createMatch(f.group.getId(), f.raj.getId(), recordRequestAt(firstTime, 1, f));
+        var afterBackfill = ratingChanges(matchService.getMatchDetail(f.group.getId(), later.id(), f.raj.getId()));
+        assertThat(afterBackfill.get(f.raj.getId())).isEqualByComparingTo(original.get(f.raj.getId()));
+    }
+
+    @Test
+    void guestsHaveNullRatingChanges() {
+        Fixture f = newFixture();
+        GroupMember guest = groupMemberRepository
+                .findByGroupIdAndUserId(f.group.getId(), f.kiran.getId()).orElseThrow();
+        guest.setRole(GroupRole.GUEST);
+        groupMemberRepository.save(guest);
+
+        MatchDetailDto detail = matchService.createMatch(
+                f.group.getId(), f.raj.getId(), recordRequestAt(Instant.parse("2026-08-01T10:00:00Z"), 1, f));
+
+        assertThat(detail.ratingChanges()).filteredOn(change -> change.userId().equals(f.kiran.getId()))
+                .singleElement().extracting("ratingDelta").isNull();
+        assertThat(detail.ratingChanges()).filteredOn(change -> !change.userId().equals(f.kiran.getId()))
+                .allSatisfy(change -> assertThat(change.ratingDelta()).isNotNull());
     }
 
     @Test
@@ -268,6 +320,21 @@ class MatchServiceIntegrationTest {
                         new TeamInput((short) 2, List.of(f.marcus.getId(), f.kiran.getId()))),
                 sets,
                 (short) winningTeamNo);
+    }
+
+    private RecordMatchRequest recordRequestAt(Instant playedAt, int winningTeamNo, Fixture f) {
+        return new RecordMatchRequest(
+                playedAt,
+                List.of(
+                        new TeamInput((short) 1, List.of(f.raj.getId(), f.dev.getId())),
+                        new TeamInput((short) 2, List.of(f.marcus.getId(), f.kiran.getId()))),
+                List.of(new SetInput((short) 1, (short) 21, (short) 12)),
+                (short) winningTeamNo);
+    }
+
+    private Map<UUID, java.math.BigDecimal> ratingChanges(MatchDetailDto detail) {
+        return detail.ratingChanges().stream().collect(Collectors.toMap(
+                change -> change.userId(), change -> change.ratingDelta(), (left, right) -> left));
     }
 
     private Fixture newFixture() {
