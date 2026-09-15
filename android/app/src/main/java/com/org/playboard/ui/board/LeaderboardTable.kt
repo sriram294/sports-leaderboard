@@ -158,15 +158,9 @@ fun LeaderboardRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (entry.provisional) {
-                Text("${entry.gamesPlayed}/$minGamesToRank qualifying games", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
-            }
             if (entry.recentForm.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 FormDots(results = entry.recentForm)
-            }
-            if (!entry.provisional && entry.limitedPartnerVariety) {
-                Text("Limited partner variety", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             }
         }
         Text(
