@@ -34,9 +34,9 @@ describe('ranking display helpers', () => {
       .toBe('7 games · 3-4 · 43% · 0');
   });
 
-  it('keeps provisional rows to their match summary', () => {
+  it('shows "N more to rank" for a provisional player short of the threshold', () => {
     expect(secondaryLine(row({ gamesPlayed: 5, provisional: true }), 10))
-      .toBe('5 games · 6-4 · 60%');
+      .toBe('5 games · 6-4 · 60% · 5 more to rank');
   });
 
   it('labels rating to one decimal, "prov" while unranked, win% on a pre-ratings backend', () => {

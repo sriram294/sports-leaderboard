@@ -252,7 +252,7 @@ private struct LeaderboardRowView: View {
     }
 
     private var secondaryLine: String {
-        if entry.provisional { return "\(entry.gamesPlayed) games · \(entry.wins)W–\(entry.losses)L" }
+        if entry.provisional { return "\(max(0, minGamesToRank - entry.gamesPlayed)) more to rank · \(entry.gamesPlayed) played" }
         return "\(entry.wins)W–\(entry.losses)L · \(entry.pointsDifference >= 0 ? "+" : "")\(entry.pointsDifference) points"
     }
 

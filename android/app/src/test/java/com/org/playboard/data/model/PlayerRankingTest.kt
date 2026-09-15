@@ -106,13 +106,13 @@ class PlayerRankingTest {
     }
 
     @Test
-    fun `a provisional row keeps only its match summary`() {
+    fun `a provisional row ends with the games it still needs`() {
         val line = ranking(
             gamesPlayed = 7, wins = 6, winRate = 0.8571,
             rating = 48.7, provisional = true, pointsFor = 150, pointsAgainst = 120,
         ).secondaryLine(minGamesToRank = 10)
 
-        assertEquals("7 games \u00b7 6-1 \u00b7 86%", line)
+        assertEquals("7 games \u00b7 6-1 \u00b7 86% \u00b7 3 more to rank", line)
     }
 
     @Test
