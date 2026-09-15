@@ -83,7 +83,6 @@ data class PlayerRanking(
      */
     fun secondaryLine(minGamesToRank: Int): String {
         val head = "$gamesPlayed games · $wins-$losses · $winRatePercent%"
-        val needed = gamesNeeded(minGamesToRank)
-        return if (provisional && needed > 0) "$head · $needed more to rank" else "$head · $pointsDiffLabel"
+        return if (provisional) head else "$head · $pointsDiffLabel"
     }
 }

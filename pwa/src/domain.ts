@@ -25,8 +25,7 @@ export const gamesNeeded = (r: Ranking, minGamesToRank: number) => Math.max(0, m
  */
 export function secondaryLine(r: Ranking, minGamesToRank: number): string {
   const head = `${r.gamesPlayed} games · ${r.wins}-${r.losses} · ${winRatePercent(r)}%`;
-  const needed = gamesNeeded(r, minGamesToRank);
-  return r.provisional && needed > 0 ? `${head} · ${needed} more to rank` : `${head} · ${pointsDiffLabel(r)}`;
+  return r.provisional ? head : `${head} · ${pointsDiffLabel(r)}`;
 }
 
 /** What the big right-hand number shows, and what the table is sorted by. */

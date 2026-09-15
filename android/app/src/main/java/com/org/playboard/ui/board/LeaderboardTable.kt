@@ -93,7 +93,7 @@ fun LeaderboardHeaderRow(
 /**
  * One player's row.
  *
- * @param minGamesToRank the group's threshold, used to render "N more to rank".
+ * @param minGamesToRank the group's threshold for provisional classification.
  * @param showPhoto false for the share card — its offscreen software canvas can't draw the
  *   hardware bitmaps AsyncImage decodes, for either an uploaded photo or a bundled avatarId.
  *   [avatarBitmap] is the share card's own pre-decoded substitute.
@@ -158,15 +158,9 @@ fun LeaderboardRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (entry.provisional) {
-                Text("${entry.gamesPlayed}/$minGamesToRank qualifying games", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
-            }
             if (entry.recentForm.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 FormDots(results = entry.recentForm)
-            }
-            if (!entry.provisional && entry.limitedPartnerVariety) {
-                Text("Limited partner variety", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             }
         }
         Text(
