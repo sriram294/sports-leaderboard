@@ -28,7 +28,8 @@ switch (see Theming). Exposed as CSS custom properties on `:root`.
 | `--glow-cool` | `rgba(91,140,255,.102)` | `rgba(37,99,235,.090)` |
 
 Rank colors: #1 `--brand`, #2 `--text`, #3 `--rate-mid`. Win% tiers ≥50 `--brand` /
-≥25 `--rate-mid` / else `--rate-low`. Rating tiers (Wilson) ≥40 / ≥25 / else, same colors.
+≥25 `--rate-mid` / else `--rate-low`. Team-v2 Skill rating tiers ≥40 / ≥25 / else,
+same colors. The rating is a confidence-adjusted skill score, not a win percentage.
 Radii 12–16px, 8px spacing rhythm, safe-area padding. Lime = active/positive; red = destructive/error only.
 
 ## Typography

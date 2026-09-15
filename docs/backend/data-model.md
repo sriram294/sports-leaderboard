@@ -41,7 +41,8 @@ product requirements this schema serves).
 | `match_sets` | Per-set scores |
 | `match_events` | Audit log: created / edited / deleted, by whom, when |
 | `match_record_requests` | Caller-scoped idempotency keys and their created match |
-| `member_stats` | Materialized per-group-per-player stats (leaderboard source) |
+| `member_stats` | Materialized per-group-per-player legacy/all-time stats and profile aggregates |
+| `team_rating_state` | Versioned rating checkpoint schema reserved for future materialization; current team-v2 reads replay matches on demand |
 | `monthly_trophy` | Immutable completed-month winner verdict; `standings_captured` identifies V14+ snapshots |
 | `monthly_standing` | Frozen rank/rating/games/wins/provisional row per group, month, and player |
 | `refresh_tokens` | Server-side record backing refresh-token rotation/revocation |
@@ -53,20 +54,33 @@ product requirements this schema serves).
 [Recompute strategy](#recompute-strategy)).
 
 `member_stats` is an **all-time** snapshot (keyed only by `(group_id, user_id)`,
-no time dimension), so it backs only the all-time leaderboard. The **windowed**
-leaderboard ("This Week" / "This Month") can't read it — it aggregates the raw
-`matches`/`match_teams`/`match_participants`/`match_sets` on demand, filtered by
-`matches.played_at ∈ [from, to)` (single set-based query, keyed off the existing
-`idx_matches_group_played` index). Same PF/PA-by-team and win logic as the
-per-player recompute, but for the whole group at once and bounded by the window.
+no time dimension), and remains the source for the legacy Wilson/team-v1 path
+and profile aggregates. Team-v2 leaderboard reads replay the source matches on
+demand instead of reading a checkpoint. The selected `from`/`to` interval bounds
+statistics and qualification, while the rating replay starts at the first
+historical match and stops at the exclusive `to` cutoff. The raw-stat queries
+for PF/PA, form, and streaks remain set-based and use `idx_matches_group_played`.
+
+Team-v2 replay loads all match teams and participants for the selected group in
+bulk, orders valid matches by `(played_at, match_id)`, and skips malformed or
+soft-deleted matches consistently. Former regular members are retained in the
+replay so a departure does not erase historical skill; only current active
+regular members are emitted. Guest participants use the initial prior on each
+appearance and are never persisted as raters. Because the replay is on demand,
+match edits, deletions, and backdated entries take effect on the next read
+without checkpoint backfill. `team_rating_state` is retained as a versioned
+schema extension for a future checkpoint/materialization path and is not read by
+the current service.
 
 At month close, `MonthlyStandingsWriter` inserts the `monthly_trophy` verdict
-with `standings_captured = true` and all active non-guest leaderboard rows into
-`monthly_standing` in one transaction. The unique group/month trophy key is the
-concurrency claim; a repeated writer loses the claim and writes nothing. Snapshot
-rows include provisional players, but clients expose their finish as a null rank.
-The rows are immutable, so later match edits do not rewrite history. V14 leaves
-existing trophy rows at the default `false`, deliberately preventing backfill.
+with `standings_captured = true`, the active algorithm version, and all active
+non-guest leaderboard rows into `monthly_standing` in one transaction. The
+unique group/month trophy key is the concurrency claim; a repeated writer loses
+the claim and writes nothing. Snapshot rows include provisional players, but
+clients expose their finish as a null rank. The rows are immutable, so later
+match edits do not rewrite history. Empty months still receive a verdict with
+the active algorithm version and no winner. Existing rows retain their captured
+version and are never backfilled.
 
 ## Schema (DDL)
 
@@ -267,6 +281,21 @@ create table member_stats (
 
 create index idx_member_stats_leaderboard on member_stats(group_id, win_rate desc, wins desc);
 
+-- V18 schema extension for future durable team-v2 checkpoints. The current
+-- reader intentionally replays source matches and does not write this table.
+create table team_rating_state (
+    group_id          uuid not null references groups(id) on delete cascade,
+    user_id           uuid not null references users(id) on delete cascade,
+    algorithm_version varchar(32) not null,
+    mean_skill        numeric(12,6) not null,
+    uncertainty       numeric(12,6) not null,
+    matches_processed int not null default 0,
+    last_played_at    timestamptz,
+    last_match_id     uuid,
+    updated_at        timestamptz not null default now(),
+    primary key (group_id, user_id, algorithm_version)
+);
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- Refresh tokens — server-side record backing rotation + revocation
 -- ─────────────────────────────────────────────────────────────────────────
@@ -320,7 +349,8 @@ create index idx_notification_log_created_at on notification_log(created_at);
 `category` holds a `NotificationCategory` name (`MATCH_ACTIVITY`, `DAILY_SUMMARY`,
 `GROUP_UPDATE`); each maps to an Android notification channel of the same id, so a
 user can mute one kind of push without silencing the rest. `dedupe_key` is
-scoped by the sender — e.g. `rank_change:<groupId>:<sessionStart>`.
+scoped by the sender — for monthly rank comparisons it includes the group,
+calendar month, and session start (`rank_change:<groupId>:<month>:<sessionStart>`).
 
 ## Recompute strategy
 

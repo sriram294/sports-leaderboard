@@ -17,7 +17,7 @@ carrying that player's recent form.
   centered, larger, wears a 3D crown, and shows its rating in the player's color; runners-up
   flank it a step lower. Each avatar has a colored ring + soft glow and a numbered rank badge
   tucked at its bottom edge. Name + `{rating} rating` (or `{win%} win rate` pre-ratings) below.
-- **RANKINGS card:** `RANKINGS` title, then a header row `#  PLAYER  …  RATING ▾` where the
+- **RANKINGS card:** `RANKINGS` title, then a header row `#  PLAYER  …  SKILL RATING ▾` where the
   metric label is the single tappable sort control. One row per player: rank number (colored
   for the top 3), avatar, bold name over a muted `secondaryLine`, a row of small win/loss dots
   (up to 10, oldest on the left) under that, and the big right-hand metric value colored by
@@ -32,14 +32,14 @@ carrying that player's recent form.
    A window change is a server round-trip (different data), not a client re-sort. The choice
    persists across group switches. `keepPreviousData` keeps the table on screen while the new
    window loads, so the header/selector never blinks to a spinner.
-3. **Sort metric** cycles `Rating → Win% → Games → Diff` on each tap of the header label.
+3. **Sort metric** cycles `Skill rating → Win% → Games → Diff` on each tap of the header label.
    Re-sorting is client-side and **never reorders across the ranked/provisional boundary** —
    provisional players stay last whatever the metric. `Rating` keeps canonical server order
    (its tiebreaks would be lost by re-sorting). The metric resets to `Rating` on group change.
 4. **Podium** shows the top 3 **ranked** players only (provisional players are never crowned).
    Fewer than 3 ranked → empty slots. Tapping a podium avatar opens that player's profile.
 5. **Rows.** `secondaryLine` = `"{games} games · {W}-{L} · {win%}% · {±diff}"`; a provisional
-   player short of the threshold shows `"{games} games · {W}-{L} · {win%}% · {N} more to rank"`
+  player short of the threshold shows `"{games} games · {W}-{L} · {win%}% · {N} more to rank"`
    instead. Rank number is `—` and the metric reads `prov` for provisional players. Win% is
    **rounded** (42.86% → 43%). Tapping a row opens the player's profile.
 6. **Colors** (both themes, from `Color.kt`): rank #1 brand / #2 textPrimary / #3 winRateMid,
@@ -55,17 +55,31 @@ carrying that player's recent form.
 
 ## Data needed
 - `GET /groups/{groupId}/leaderboard?from&to` → `{ rankings: LeaderboardEntryDto[],
-  minGamesToRank }`. Entry fields: `rank, userId, displayName, photoUrl, avatarId, avatarColor,
-  gamesPlayed, wins, losses, pointsFor, pointsAgainst, winRate, currentStreak, bestStreak,
-  rating, provisional, recentForm`.
+  minGamesToRank, algorithmVersion, ratingPeriod }`. Entry fields: `rank, userId, displayName,
+  photoUrl, avatarId, avatarColor, gamesPlayed, wins, losses, pointsFor, pointsAgainst,
+  winRate, currentStreak, bestStreak, rating, provisional, provisionalReason, recentForm,
+  algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, limitedPartnerVariety`.
 
 ## Current rules (settled)
-- **Ratings** are a Wilson-style confidence-adjusted win rate (0–100). They sit below the raw
-  win rate, hence the 40/25 tier thresholds rather than win%'s 50/25 — reusing the win% scale
-  would paint the whole board mid-tier.
-- **`rating: null`** means a pre-ratings backend; rows then fall back to showing win% in the
-  rating column (and the podium shows `{win%} win rate`). `null` ≠ `0.0` — a winless player
-  legitimately rates 0.0.
+- **Ratings** use the active team-v2 cumulative two-team Gaussian replay. Players start at
+  mean 25 and uncertainty 25/3; the replay carries skill through the `to` cutoff while the
+  selected range scopes statistics and qualification. The conservative score (`mean − 3 ×
+  uncertainty`) maps to 0–100 with one decimal for display. It reflects partners, opponents,
+  results, and confidence; it is not win percentage.
+- Canonical server order is full-precision conservative score descending, points difference
+  descending, wins descending, then UUID. The PWA keeps that order for Skill rating and only
+  sorts within the qualified/provisional partitions for other metrics.
+- **`rating: null`** means a legacy backend; rows fall back to showing win% in the rating
+  column and the podium shows `{win%} win rate`. `null` ≠ `0.0` — a winless player can
+  legitimately rate 0.0.
+- **`algorithmVersion`** and **`ratingPeriod`** are optional for rollback compatibility.
+  Team-v2 responses are `team-v2`/`cumulative`; the disabled flag returns the legacy
+  Wilson/team-v1 metadata. Unknown or missing fields must not break decoding.
+- `minGamesToRank` is the selected-range median-games threshold, clamped to 1–10. Provisional
+  rows appear under **Not yet ranked**, use muted `prov`, show `—` in the rank column, and
+  retain the existing `N more to rank` secondary caption.
+- `limitedPartnerVariety` is an informational API warning only. The PWA does not add a
+  partner-diversity, threshold, or model-explanation subcaption to leaderboard rows.
 - **No weekly window.** A week is too few games for a confidence-adjusted rating to separate
   anyone, so only `This Month` and `All Time` exist.
 

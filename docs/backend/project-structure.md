@@ -76,6 +76,8 @@ backend/
     │   │   │   │   ├── MatchSetRepository.java       (+ deleteByMatchId, + sumScoresByMatchIds projection)
     │   │   │   │   └── MatchEventRepository.java
     │   │   │   ├── stats/MemberStatsRepository.java
+    │   │   │   ├── stats/MonthlyStandingRepository.java
+    │   │   │   └── stats/MonthlyTrophyRepository.java
     │   │   │   ├── auth/RefreshTokenRepository.java
     │   │   │   └── device/DeviceTokenRepository.java
     │   │   │
@@ -93,10 +95,15 @@ backend/
     │   │   │   ├── match/
     │   │   │   │   └── MatchService.java            (list/detail/create/edit/delete; cursor pagination; validation; calls service.stats in the same @Transactional; findRecentMatches() is a cross-service helper for StatsQueryService)
     │   │   │   ├── device/DeviceService.java          (FCM token register/unregister)
-    │   │   │   ├── notification/                     (FCM send service + domain event listener)
+    │   │   │   ├── notification/                     (FCM send service + scheduled rank comparisons)
     │   │   │   └── stats/
     │   │   │       ├── StatsRecalculationService.java  (write path — full rescan per affected player on every match write; see data-model.md § Recompute strategy)
-    │   │   │       └── StatsQueryService.java          (read path — leaderboard ranking, player stats, on-demand Best Partner computation)
+    │   │   │       ├── StatsQueryService.java          (read path — versioned leaderboard, player stats, and partner computation)
+    │   │   │       ├── LeaderboardRanker.java           (shared Wilson fallback ranker and qualification/tie rules)
+    │   │   │       ├── TeamRatingCalculator.java        (pure two-team Gaussian update)
+    │   │   │       ├── TeamRatingService.java            (bulk roster replay and team-v2 metadata)
+    │   │   │       ├── MonthlyStandingsWriter.java       (atomic immutable month snapshot)
+    │   │   │       └── MonthlyTrophyJob.java              (configured-zone completed-month sweep)
     │   │   │
     │   │   ├── controller/                    (all built)
     │   │   │   ├── auth/AuthController.java   (POST /auth/google, /auth/refresh, /auth/logout)
@@ -138,6 +145,7 @@ backend/
     │   │       └── stats/
     │   │           ├── LeaderboardEntryDto.java
     │   │           ├── LeaderboardResponse.java
+    │   │           ├── MonthlyTrophyDto.java
     │   │           ├── BestPartnerDto.java
     │   │           └── PlayerStatsDto.java
     │   │
@@ -149,7 +157,19 @@ backend/
     │           ├── V3__group_avatar_color.sql
     │           ├── V4__group_guests.sql
     │           ├── V5__shared_guest_fillers.sql
-    │           └── V6__device_tokens.sql
+    │           ├── V6__device_tokens.sql
+    │           ├── V7__user_avatar_id.sql
+    │           ├── V8__replace_default_avatars.sql
+    │           ├── V9__group_session_time.sql
+    │           ├── V10__avatar_relative_photo_url.sql
+    │           ├── V11__notification_log.sql
+    │           ├── V12__monthly_trophies.sql
+    │           ├── V13__version_existing_avatar_urls.sql
+    │           ├── V14__monthly_standings.sql
+    │           ├── V15__provider_neutral_auth_identities.sql
+    │           ├── V16__match_record_idempotency.sql
+    │           ├── V17__account_deletion.sql
+    │           └── V18__team_rating_state.sql
     │
     └── test
         └── java/com/org/playboard/
@@ -159,7 +179,10 @@ backend/
                 ├── user/UserServiceIntegrationTest.java  (live-DB: profile update, avatar upload/replace, content-type rejection)
                 ├── group/GroupServiceIntegrationTest.java (live-DB: create/invite/join/roster flow, role + membership permission checks, exhausted/invalid invite codes)
                 ├── match/MatchServiceIntegrationTest.java (live-DB: record/edit/delete with hand-verified stats recompute — sums, streak reversal on edit, reversion on delete — permission checks, validation errors, cursor pagination)
-                └── stats/StatsQueryServiceIntegrationTest.java (live-DB: leaderboard ordering + zero-match exclusion, player stats incl. Best Partner across multiple partners, zero-match player stats)
+                ├── stats/StatsQueryServiceIntegrationTest.java (live-DB: legacy and team-v2 ordering, range/cutoff behavior, zero-match exclusion, player stats, and partner data)
+                ├── stats/TeamRatingCalculatorTest.java         (pure update symmetry, guests, uncertainty, and display mapping)
+                ├── stats/MonthlyStandingsWriterTest.java        (versioned immutable snapshot capture, including empty months)
+                └── notification/SessionRankChangeJobTest.java   (month-scoped baseline, threshold pinning, session boundaries, and copy)
 ```
 
 ## Why this shape
@@ -184,6 +207,12 @@ backend/
   — see data-model.md § Recompute strategy for why this deviates from the
   original sketch. `MatchService` calls it with the union of old + new
   players inside the same `@Transactional` as the match write.
+- **Team-v2 ratings are a read-time replay.** `TeamRatingService` bulk-loads
+  rosters and replays nondeleted matches through `TeamRatingCalculator` in
+  `(played_at, match_id)` order. `from` scopes statistics and qualification;
+  the replay carries skill through the exclusive `to` cutoff. The
+  `PLAYBOARD_TEAM_V2_ENABLED` flag selects this path by default and restores
+  the Wilson/team-v1 path when disabled.
 - **`StatsQueryService` depends on `MatchService`** (for
   `findRecentMatches`, backing `PlayerStatsDto.recentMatches`) rather than
   duplicating match-to-DTO assembly — `MatchService` stays the one place

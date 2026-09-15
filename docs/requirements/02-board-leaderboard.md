@@ -37,12 +37,12 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
    partner, recent matches), scoped to the tapped player instead of the
    signed-in user. Read-only (no sign-out/account section, since it isn't
    "your" profile).
-3. Rankings table cycles through Rating, Win%, Games and DIFF via the header;
-   Rating is the default. Provisional players are always sorted below every
+3. Rankings table cycles through Skill rating, Win%, Games and DIFF via the header;
+   Skill rating is the default. Provisional players are always sorted below every
    ranked player, whatever the metric.
 5. Time filter offers **This Month** and **All Time** only. There is no weekly
-   window: ratings are computed over the selected window, and one or two
-   sessions is too few games for a confidence-adjusted rating to separate anyone.
+   window: Skill rating carries through the evaluation cutoff while the selected
+   range changes statistics and qualifying games.
 4. Avatar rendering follows the global rule: uploaded photo, else colored
    initial ([00-overview.md](00-overview.md)).
 
@@ -53,51 +53,56 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
   chronological order (oldest first), so the dots row reads left-to-right
   without any client-side reversal. Ships with the leaderboard response, not
   a separate call.
+- The leaderboard response also carries `algorithmVersion`, `ratingPeriod`,
+  `provisionalReason`, `uniquePartners`, `maxPartnerShare`, and
+  `limitedPartnerVariety` for version-aware clients and informational warnings.
 
 ## Current ranking behavior
 
-- Canonical order is **rating desc, then points difference (PF − PA) desc,
-  then wins desc**, with a final user-id key so fully tied rows can't shuffle
-  between requests. UI-only metric sorts retain that canonical relative order
-  for equal values.
-- **Rating** is the Wilson score lower bound on the win rate, scaled 0–100 with
-  one decimal — "the win rate we are confident this player is at least worth".
-  It replaced raw win%, which was hostile to volume: a 6-1 record (86%, 7 games)
-  outranked a 27-23 one (54%, 50 games). Weighting games played instead is
-  worse — any formula where volume *adds* score lets a player climb by losing
-  often.
-- The rating alone does **not** demote a hot newcomer: 6-1 is genuinely strong
-  evidence, so it rates above 22-15 and no honest confidence bound reverses
-  that. What keeps such a player off the board is the threshold below.
+- With the default `PLAYBOARD_TEAM_V2_ENABLED=true`, canonical order is the
+  unrounded conservative skill score (`mean − 3 × uncertainty`) descending,
+  then points difference (PF − PA) descending, wins descending, and finally the
+  PostgreSQL-compatible UUID string. API ranks are sequential; clients preserve
+  server order for the Skill rating metric and keep metric sorts stable inside
+  the qualified and provisional sections.
+- Each regular player starts independently at mean `25` and uncertainty `25/3`.
+  Team-v2 applies the two-team Gaussian update with `β = 25/6` per participant,
+  adds `(25/300)²` to a regular player's variance before each appearance, and
+  updates all participants from the same pre-match state. The conservative score
+  is displayed as `100 / (1 + exp(-(score − 17) / 3))`, rounded half-up to one
+  decimal. It measures skill confidence from partners, opponents, results, and
+  uncertainty; it is not win percentage.
+- Skill is cumulative through the evaluation cutoff. The selected This Month or
+  All Time filter changes only statistics, recent form, streaks, and
+  qualification. Historical matches are replayed in `(played_at, match UUID)`
+  order through the cutoff. Former regular members remain in the replay;
+  guests use a fixed prior per appearance and never accumulate skill.
 - **minGamesToRank** is `max(1, min(10, ceil(median(games played) / 2)))` over
-  players with at least one game. Below it a player is *provisional*: listed
-  after the ranked players, not ranked, and never on the podium. It slides with
-  group activity rather than being fixed at 10 — at the start of a month
-  everyone has two or three games, and a fixed gate would empty the board,
-  whereas a relative one ranks everybody because nobody holds an evidence
-  advantage. The gate exists to prevent unfair *small-N vs large-N* comparison.
-- Sorting uses the **unrounded** bound; only display rounds to one decimal. At
-  one decimal, ties are common enough that ordering the rounded value would
-  shuffle between requests.
-- Points difference still breaks a tie between equal ratings, and is shown on
-  the row's second line so the order between two equal ratings is visible
-  rather than hidden.
-- Win% is **rounded** for display, not truncated. Truncating showed 42.86%
-  and 42.11% both as "42%", making distinct rates look tied while the server
-  ranked them apart.
-- Both the all-time and windowed leaderboards run through the same ranker, so
-  a window covering all history is identical to the all-time board. They used
-  to order separately (JPQL vs a Java comparator), which could report a rank
-  change that never happened.
+  eligible players with at least one game in the selected range. Players below
+  it are provisional (`provisionalReason = "games"`), appear after qualified
+  players, are excluded from the podium, and show no numbered rank in the
+  clients. The existing row caption remains `N more to rank`.
+- Partner variety never changes qualification or skill gains. The API exposes
+  `uniquePartners`, `maxPartnerShare`, and `limitedPartnerVariety` for the
+  selected range; the client may treat the flag as informational and does not
+  render an additional partner-diversity subcaption.
+- Malformed matches are skipped consistently by rating and leaderboard
+  statistics, with a diagnostic log. Bulk roster loading avoids queries per
+  match or participant, and on-demand replay means edits, deletions, and
+  backdated matches take effect on the next read.
+- Setting `PLAYBOARD_TEAM_V2_ENABLED=false` restores Wilson/team-v1 routing and
+  its legacy metadata and notification behavior. Older clients also retain
+  their legacy explanation when they receive that version.
 
 ## Team-v2 presentation
 
-Skill carries across months while the selected calendar filter changes only
-statistics and qualifying games. Label the metric **Skill rating** and explain
-that it reflects partners, opponents, results, and confidence; it is not win
-percentage. Render qualified players under **Rankings** and provisional players
-under **Not yet ranked**, with muted ratings and progress such as `4/10
-qualifying games`. Show `Limited partner variety` as an informational warning.
+Label the metric **Skill rating**. Render qualified players under **Rankings**
+and provisional players under **Not yet ranked**, with muted ratings, no
+numbered rank, and the existing progress caption such as `4/10 qualifying
+games` or `N more to rank`. The board does not add explanatory subcaptions for
+the ranking model, partner diversity, or threshold games; the API warning is
+available for informational use without implying that variety is required to
+qualify.
 
 ## Open questions
 
