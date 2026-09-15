@@ -383,7 +383,6 @@ private fun RankingsCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = "RANKINGS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
-            Text(text = "Carries across months; this filter changes statistics and qualifying games.", style = MaterialTheme.typography.bodySmall, color = PlayboardTheme.colors.textMuted)
             Spacer(modifier = Modifier.height(12.dp))
             LeaderboardHeaderRow(metric = metric, onMetricTap = onMetricTap)
             var previousWasRanked = true

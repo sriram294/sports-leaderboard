@@ -77,7 +77,6 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
 
           <section className="card rankings">
             <div className="rankings-title">RANKINGS</div>
-            <p className="muted">Carries across months and reflects partners, opponents, results, and confidence.</p>
             <div className="rankings-header">
               <span className="col-rank">#</span>
               <span className="col-player">PLAYER</span>
@@ -103,8 +102,6 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
                   <span className="col-player">
                     <span className="ranking-name">{row.displayName}</span>
                     <span className="ranking-sub">{secondaryLine(row, minGamesToRank)}</span>
-                    {row.provisional && <span className="ranking-sub">{row.gamesPlayed}/{minGamesToRank} qualifying games</span>}
-                    {row.limitedPartnerVariety && <span className="ranking-sub">Limited partner variety</span>}
                     <FormDots results={row.recentForm ?? []} />
                   </span>
                   <span className="col-metric value" style={{ color: metricColor(row, metric) }}>

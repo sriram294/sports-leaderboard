@@ -197,8 +197,6 @@ private struct RankingsCard: View {
                     .accessibilityHint("Cycles through leaderboard metrics")
                     .accessibilityIdentifier("leaderboard-metric")
                 }
-                Text("Carries across months; the filter changes statistics and qualifying games.")
-                    .font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
                 let ranked = viewModel.state.tableRows.filter { !$0.provisional }
                 let provisional = viewModel.state.tableRows.filter { $0.provisional }
                 Group {
@@ -244,12 +242,6 @@ private struct LeaderboardRowView: View {
                     }
                 }
                 Text(secondaryLine).font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
-                if entry.provisional {
-                    Text("\(entry.gamesPlayed)/\(minGamesToRank) qualifying games").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
-                }
-                if !entry.provisional && entry.limitedPartnerVariety {
-                    Text("Limited partner variety").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
-                }
                 FormDots(results: entry.recentForm)
             }
         }
