@@ -16,6 +16,10 @@ Chronological log of every doubles match recorded in the current group.
 1. Tapping a match card expands it in place to show:
    - **Game Breakdown**: score per set, explicit winner line
      ("Winner: Raj & Dev")
+   - **Rating change**: one row per participant in team order. Positive and
+     negative signed one-decimal changes use the semantic win/loss colors; zero
+     is muted and guests read "Not rated". The section is hidden when an older
+     backend omits `ratingChanges`.
    - **History**: audit log entries — who recorded the match and when
      (e.g. "Raj · Recorded this match · 09 Jul · 06:58"). Should also log
      edits (see below) as additional history entries.
@@ -42,6 +46,10 @@ Chronological log of every doubles match recorded in the current group.
   delete a match; other members receive `MATCH_EDIT_FORBIDDEN`.
 - Delete is a soft delete: the match stays available to the audit trail but is
   excluded from history, leaderboard, and profile-stat queries.
+- Rating changes are derived from current history rather than stored snapshots.
+  They therefore update after earlier edits/deletions and backdated inserts, with
+  same-time matches ordered by match ID. Accessibility announces increased,
+  decreased, unchanged, and not-rated values; rows reflow for large text sizes.
 
 ## Open questions
 - Any edit window/lock (e.g. can't edit a match older than N days)?

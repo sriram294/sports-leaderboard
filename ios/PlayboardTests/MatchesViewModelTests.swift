@@ -21,6 +21,7 @@ struct MatchesViewModelTests {
 
         #expect(viewModel.state.matches.map(\.id) == ["new", "old", "older"])
         #expect(viewModel.state.nextCursor == nil)
+        #expect(viewModel.state.detail?.ratingChanges?.first?.ratingDelta == 4.2)
     }
 
     @Test("Mine filter replaces the list from the first page")
@@ -62,7 +63,8 @@ private actor MatchesRepositoryFake: MatchRepository {
         MatchDetail(
             id: matchID, playedAt: Date(timeIntervalSince1970: 300), teams: [], sets: [],
             recordedBy: MatchActor(userID: "p1", displayName: "Player"),
-            recordedAt: Date(timeIntervalSince1970: 300), events: []
+            recordedAt: Date(timeIntervalSince1970: 300), events: [],
+            ratingChanges: [MatchRatingChange(userID: "p1", ratingDelta: 4.2)]
         )
     }
     func record(groupID: String, request: RecordMatchRequest, requestID: String) async throws -> MatchDetail { fatalError("unused") }

@@ -27,8 +27,13 @@ public final class MatchRatingDeltaCalculator {
     public static BigDecimal delta(List<Boolean> resultsChronological, int targetIndex) {
         int gamesBefore = targetIndex;
         int winsBefore = (int) resultsChronological.subList(0, targetIndex).stream().filter(b -> b).count();
+        return delta(gamesBefore, winsBefore, resultsChronological.get(targetIndex));
+    }
+
+    /** Bulk-replay variant for callers that already hold the player's pre-match totals. */
+    public static BigDecimal delta(int gamesBefore, int winsBefore, boolean won) {
         int gamesAfter = gamesBefore + 1;
-        int winsAfter = winsBefore + (resultsChronological.get(targetIndex) ? 1 : 0);
+        int winsAfter = winsBefore + (won ? 1 : 0);
 
         BigDecimal before = LeaderboardRanker.rating(new RawStatRow(null, gamesBefore, winsBefore, 0, 0, 0, 0));
         BigDecimal after = LeaderboardRanker.rating(new RawStatRow(null, gamesAfter, winsAfter, 0, 0, 0, 0));

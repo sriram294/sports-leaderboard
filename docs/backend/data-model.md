@@ -72,6 +72,14 @@ without checkpoint backfill. `team_rating_state` is retained as a versioned
 schema extension for a future checkpoint/materialization path and is not read by
 the current service.
 
+Match detail rating deltas use the same bulk replay and malformed-match rules,
+stopping after the requested match in `(played_at, match_id)` order. Team-v2
+subtracts the rounded half-up, one-decimal 0–100 display values immediately
+before and after the match (not raw Gaussian means). The Wilson fallback likewise
+subtracts its displayed one-decimal values. Guests receive a null delta. Nothing
+is persisted, so edits, soft deletions, and backdated matches alter later detail
+deltas on their next request without a migration.
+
 At month close, `MonthlyStandingsWriter` inserts the `monthly_trophy` verdict
 with `standings_captured = true`, the active algorithm version, and all active
 non-guest leaderboard rows into `monthly_standing` in one transaction. The

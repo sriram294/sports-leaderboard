@@ -3,6 +3,7 @@ package com.org.playboard.data.match
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchDetail
+import com.org.playboard.data.model.RatingChange
 import com.org.playboard.data.model.MatchEvent
 import com.org.playboard.data.model.MatchPlayer
 import com.org.playboard.data.model.MatchSet
@@ -150,7 +151,7 @@ private fun MatchSummaryDto.toMatch() = Match(
     sets = sets.map(MatchSetDto::toSet),
 )
 
-private fun MatchDetailDto.toDetail() = MatchDetail(
+internal fun MatchDetailDto.toDetail() = MatchDetail(
     id = id,
     playedAt = Instant.parse(playedAt),
     teams = teams.map(MatchTeamDto::toTeam),
@@ -159,6 +160,7 @@ private fun MatchDetailDto.toDetail() = MatchDetail(
     recordedByName = recordedBy.displayName,
     recordedAt = Instant.parse(recordedAt),
     events = events.map(MatchEventDto::toEvent),
+    ratingChanges = ratingChanges?.map { RatingChange(it.userId, it.ratingDelta) },
 )
 
 private fun MatchTeamDto.toTeam() = MatchTeam(

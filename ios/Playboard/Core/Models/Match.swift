@@ -59,6 +59,14 @@ struct MatchEvent: Codable, Equatable, Identifiable, Sendable {
     enum CodingKeys: String, CodingKey { case userID = "userId", displayName, action, createdAt }
 }
 
+/// One participant's signed change in the active leaderboard rating; nil is a guest.
+struct MatchRatingChange: Codable, Equatable, Identifiable, Sendable {
+    let userID: String
+    let ratingDelta: Double?
+    var id: String { userID }
+    enum CodingKeys: String, CodingKey { case userID = "userId", ratingDelta }
+}
+
 /// Expanded history record fetched on demand.
 struct MatchDetail: Codable, Equatable, Identifiable, Sendable {
     let id: String
@@ -68,6 +76,29 @@ struct MatchDetail: Codable, Equatable, Identifiable, Sendable {
     let recordedBy: MatchActor
     let recordedAt: Date
     let events: [MatchEvent]
+    /// Nil when an older backend omitted the additive field; the UI then hides the section.
+    let ratingChanges: [MatchRatingChange]?
+
+    init(
+        id: String,
+        playedAt: Date,
+        teams: [MatchTeam],
+        sets: [MatchSet],
+        recordedBy: MatchActor,
+        recordedAt: Date,
+        events: [MatchEvent],
+        ratingChanges: [MatchRatingChange]? = nil
+    ) {
+        self.id = id
+        self.playedAt = playedAt
+        self.teams = teams
+        self.sets = sets
+        self.recordedBy = recordedBy
+        self.recordedAt = recordedAt
+        self.events = events
+        self.ratingChanges = ratingChanges
+    }
+
     func team(_ number: Int) -> MatchTeam? { teams.first { $0.teamNo == number } }
     var winningTeam: MatchTeam? { teams.first(where: \.isWinner) }
 }

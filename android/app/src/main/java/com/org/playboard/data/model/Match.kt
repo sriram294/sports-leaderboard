@@ -47,10 +47,17 @@ data class MatchDetail(
     val recordedByName: String,
     val recordedAt: Instant,
     val events: List<MatchEvent>,
+    /** Null means the backend omitted this additive field; an empty list is a present section. */
+    val ratingChanges: List<RatingChange>? = null,
 ) {
     fun team(teamNo: Int): MatchTeam? = teams.firstOrNull { it.teamNo == teamNo }
     val winningTeamNo: Int? get() = teams.firstOrNull { it.isWinner }?.teamNo
 }
+
+data class RatingChange(
+    val userId: String,
+    val ratingDelta: Double?,
+)
 
 data class MatchEvent(
     val displayName: String,
