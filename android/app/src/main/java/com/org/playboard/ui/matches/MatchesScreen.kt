@@ -493,16 +493,16 @@ private fun RatingChangeRow(player: MatchPlayer, delta: Double?) {
 
 internal fun formatRatingDelta(delta: Double?): String = when {
     delta == null -> "Not rated"
-    delta > 0 -> "+%.1f".format(Locale.US, delta)
-    delta < 0 -> "−%.1f".format(Locale.US, -delta)
-    else -> "0.0"
+    delta > 0 -> "+%.2f".format(Locale.US, delta)
+    delta < 0 -> "−%.2f".format(Locale.US, -delta)
+    else -> "0.00"
 }
 
 internal fun ratingChangeAccessibilityLabel(name: String, delta: Double?): String = when {
     delta == null -> "$name, not rated"
-    delta > 0 -> "$name, rating increased by ${"%.1f".format(Locale.US, delta)}"
-    delta < 0 -> "$name, rating decreased by ${"%.1f".format(Locale.US, -delta)}"
-    else -> "$name, rating unchanged at 0.0"
+    delta > 0 -> "$name, rating increased by ${"%.2f".format(Locale.US, delta)}"
+    delta < 0 -> "$name, rating decreased by ${"%.2f".format(Locale.US, -delta)}"
+    else -> "$name, rating unchanged at 0.00"
 }
 
 /** A pill-outlined text button used for the edit/delete actions on an expanded match. */

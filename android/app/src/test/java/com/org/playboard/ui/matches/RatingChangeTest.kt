@@ -26,10 +26,10 @@ class RatingChangeTest {
     }
 
     @Test
-    fun `formats signed one decimal and guest values`() {
-        assertEquals("+4.2", formatRatingDelta(4.24))
-        assertEquals("−2.7", formatRatingDelta(-2.66))
-        assertEquals("0.0", formatRatingDelta(0.0))
+    fun `formats signed two decimals and guest values`() {
+        assertEquals("+4.24", formatRatingDelta(4.24))
+        assertEquals("−2.66", formatRatingDelta(-2.66))
+        assertEquals("0.00", formatRatingDelta(0.0))
         assertEquals("Not rated", formatRatingDelta(null))
     }
 

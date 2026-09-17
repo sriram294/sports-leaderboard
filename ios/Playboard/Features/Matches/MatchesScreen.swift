@@ -299,23 +299,23 @@ private struct RatingChangeRow: View {
 
     private var accessibilityText: String {
         guard let delta else { return "\(player.displayName), not rated" }
-        if delta > 0 { return "\(player.displayName), rating increased by \(oneDecimal(delta))" }
-        if delta < 0 { return "\(player.displayName), rating decreased by \(oneDecimal(-delta))" }
-        return "\(player.displayName), rating unchanged at 0.0"
+        if delta > 0 { return "\(player.displayName), rating increased by \(twoDecimals(delta))" }
+        if delta < 0 { return "\(player.displayName), rating decreased by \(twoDecimals(-delta))" }
+        return "\(player.displayName), rating unchanged at 0.00"
     }
 }
 
 private let ratingLocale = Locale(identifier: "en_US_POSIX")
 
-private func oneDecimal(_ value: Double) -> String {
-    String(format: "%.1f", locale: ratingLocale, value)
+private func twoDecimals(_ value: Double) -> String {
+    String(format: "%.2f", locale: ratingLocale, value)
 }
 
 private func ratingDeltaText(_ delta: Double?) -> String {
     guard let delta else { return "Not rated" }
-    if delta > 0 { return "+\(oneDecimal(delta))" }
-    if delta < 0 { return "−\(oneDecimal(-delta))" }
-    return "0.0"
+    if delta > 0 { return "+\(twoDecimals(delta))" }
+    if delta < 0 { return "−\(twoDecimals(-delta))" }
+    return "0.00"
 }
 
 private extension Color {

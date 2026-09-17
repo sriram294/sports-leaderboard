@@ -426,9 +426,9 @@ payload light (mirrors the schema's list/detail split).
       "createdAt": "2026-07-09T06:58:00Z" }
   ],
   "ratingChanges": [
-    { "userId": "uuid-raj", "ratingDelta": 4.2 },
-    { "userId": "uuid-dev", "ratingDelta": 3.8 },
-    { "userId": "uuid-marcus", "ratingDelta": -2.7 },
+    { "userId": "uuid-raj", "ratingDelta": 4.20 },
+    { "userId": "uuid-dev", "ratingDelta": 3.80 },
+    { "userId": "uuid-marcus", "ratingDelta": -2.70 },
     { "userId": "uuid-guest", "ratingDelta": null }
   ]
 }
@@ -436,13 +436,14 @@ payload light (mirrors the schema's list/detail split).
 
 `ratingChanges` is detail-only and contains exactly one entry per participant;
 it is not present on `MatchSummaryDto` in the paginated list. `ratingDelta` is
-the signed difference between the active leaderboard's one-decimal displayed
-rating immediately before and after this match. A null delta identifies a guest,
-who participates in the team prediction but is never rated. History is replayed
+the signed difference between the active rating display values immediately before
+and after this match, calculated before endpoint rounding and rounded half-up to
+two decimals. The leaderboard itself remains displayed at one decimal. A null
+delta identifies a guest, who participates in the team prediction but is never rated. History is replayed
 through the target in `(playedAt, matchId)` order, skipping malformed and deleted
 matches. Consequently edits, deletions, and backdated inserts are reflected the
 next time any affected detail is requested. With team-v2 disabled, the same field
-uses the legacy one-decimal Wilson before/after difference.
+uses the unrounded Wilson before/after difference, rounded half-up to two decimals.
 
 ### `POST /groups/{groupId}/matches`
 Clients may send an `Idempotency-Key` header (maximum 128 characters). Repeating

@@ -54,9 +54,13 @@ public class TeamRatingService {
 
     /** The 0-100, one-decimal value exposed by the team-v2 leaderboard. */
     public static BigDecimal displayRating(TeamRatingCalculator.Rating rating) {
+        return BigDecimal.valueOf(unroundedDisplayRating(rating)).setScale(1, RoundingMode.HALF_UP);
+    }
+
+    /** The unrounded 0-100 display value, used when deriving match deltas. */
+    public static double unroundedDisplayRating(TeamRatingCalculator.Rating rating) {
         double score = rating.mean() - 3 * rating.sigma();
-        double display = 100d / (1d + Math.exp(-(score - 17d) / 3d));
-        return BigDecimal.valueOf(display).setScale(1, RoundingMode.HALF_UP);
+        return 100d / (1d + Math.exp(-(score - 17d) / 3d));
     }
 
     public Map<UUID, PlayerRating> replay(UUID groupId, Instant from, Instant to,
