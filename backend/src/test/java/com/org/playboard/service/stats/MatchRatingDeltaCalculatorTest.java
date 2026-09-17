@@ -28,9 +28,9 @@ class MatchRatingDeltaCalculatorTest {
 
         @Test
         void a_win_gains_the_full_rating_from_zero() {
-            // rating(0,0) = 0.0, rating(1,1) = 20.7
+            // rating(0,0) = 0.0, rating(1,1) = 20.65 before final two-decimal rounding
             BigDecimal delta = MatchRatingDeltaCalculator.delta(List.of(true), 0);
-            assertThat(delta).isEqualByComparingTo(bd("20.7"));
+            assertThat(delta).isEqualByComparingTo(bd("20.65"));
         }
 
         @Test
@@ -52,7 +52,7 @@ class MatchRatingDeltaCalculatorTest {
             // the player's state just before this match, not from game 0 every time.
             List<Boolean> history = List.of(true, false, true, false);
             BigDecimal delta = MatchRatingDeltaCalculator.delta(history, 2);
-            assertThat(delta).isEqualByComparingTo(bd("11.3"));
+            assertThat(delta).isEqualByComparingTo(bd("11.31"));
         }
 
         @Test
@@ -64,7 +64,7 @@ class MatchRatingDeltaCalculatorTest {
                     .collect(Collectors.toCollection(java.util.ArrayList::new));
             history.add(false);
             BigDecimal delta = MatchRatingDeltaCalculator.delta(history, 10);
-            assertThat(delta).isEqualByComparingTo(bd("-9.9"));
+            assertThat(delta).isEqualByComparingTo(bd("-9.98"));
         }
     }
 

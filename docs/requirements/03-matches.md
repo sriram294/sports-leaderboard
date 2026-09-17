@@ -17,7 +17,7 @@ Chronological log of every doubles match recorded in the current group.
    - **Game Breakdown**: score per set, explicit winner line
      ("Winner: Raj & Dev")
    - **Rating change**: one row per participant in team order. Positive and
-     negative signed one-decimal changes use the semantic win/loss colors; zero
+     negative signed two-decimal changes use the semantic win/loss colors; zero
      is muted and guests read "Not rated". The section is hidden when an older
      backend omits `ratingChanges`.
    - **History**: audit log entries — who recorded the match and when

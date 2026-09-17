@@ -11,6 +11,7 @@ import com.org.playboard.repository.match.MatchParticipantRepository;
 import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.repository.match.MatchTeamRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,9 +22,10 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/** Derives per-participant rating changes by replaying current group history on demand. */
+/** Derives per-participant, two-decimal rating changes by replaying current group history on demand. */
 @Service
 public class MatchRatingChangeService {
+    private static final int DELTA_SCALE = 2;
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(MatchRatingChangeService.class);
 
@@ -108,7 +110,7 @@ public class MatchRatingChangeService {
             for (MatchParticipant participant : participantsByTeam.getOrDefault(team.getId(), List.of())) {
                 UUID userId = participant.getUser().getId();
                 if (!guestIds.contains(userId)) {
-                    before.put(userId, displayed(userId, ratings, games, wins));
+                    before.put(userId, ratingValue(userId, ratings, games, wins));
                     if (!teamV2Enabled && result != null) {
                         wilsonDeltas.put(userId, MatchRatingDeltaCalculator.delta(
                                 games.getOrDefault(userId, 0), wins.getOrDefault(userId, 0), team.isWinner()));
@@ -128,7 +130,8 @@ public class MatchRatingChangeService {
                 BigDecimal delta = guestIds.contains(userId)
                         ? null
                         : teamV2Enabled || result == null
-                                ? displayed(userId, ratings, games, wins).subtract(before.get(userId))
+                                ? roundDelta(ratingValue(userId, ratings, games, wins)
+                                        .subtract(before.get(userId)))
                                 : wilsonDeltas.get(userId);
                 changes.add(new RatingChangeDto(userId, delta));
             }
@@ -136,14 +139,18 @@ public class MatchRatingChangeService {
         return changes;
     }
 
-    private BigDecimal displayed(UUID userId, Map<UUID, TeamRatingCalculator.Rating> ratings,
+    private BigDecimal ratingValue(UUID userId, Map<UUID, TeamRatingCalculator.Rating> ratings,
             Map<UUID, Integer> games, Map<UUID, Integer> wins) {
         if (teamV2Enabled) {
-            return TeamRatingService.displayRating(
-                    ratings.getOrDefault(userId, new TeamRatingCalculator.Rating()));
+            return BigDecimal.valueOf(TeamRatingService.unroundedDisplayRating(
+                    ratings.getOrDefault(userId, new TeamRatingCalculator.Rating())));
         }
         return LeaderboardRanker.rating(new LeaderboardRanker.RawStatRow(
                 userId, games.getOrDefault(userId, 0), wins.getOrDefault(userId, 0), 0, 0, 0, 0));
+    }
+
+    private BigDecimal roundDelta(BigDecimal delta) {
+        return delta.setScale(DELTA_SCALE, RoundingMode.HALF_UP);
     }
 
     private void applyWilson(List<TeamRatingCalculator.Team> result,

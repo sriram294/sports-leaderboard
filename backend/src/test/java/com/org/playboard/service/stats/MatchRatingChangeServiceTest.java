@@ -64,7 +64,7 @@ class MatchRatingChangeServiceTest {
         var changes = service.calculate(match);
 
         assertThat(changes).extracting("ratingDelta")
-                .containsExactly(new BigDecimal("20.7"), new BigDecimal("0.0"));
+                .containsExactly(new BigDecimal("20.65"), new BigDecimal("0.00"));
         verify(teams).findByMatchIdInOrderByMatchIdAscTeamNoAsc(List.of(matchId));
         verify(participants).findByMatchTeamIdIn(List.of(winningTeamId, losingTeamId));
     }

@@ -117,7 +117,7 @@ class MatchServiceIntegrationTest {
                 f.raj.getId(), f.dev.getId(), f.marcus.getId(), f.kiran.getId());
         assertThat(first.ratingChanges()).allSatisfy(change -> {
             assertThat(change.ratingDelta()).isNotNull();
-            assertThat(change.ratingDelta().scale()).isEqualTo(1);
+            assertThat(change.ratingDelta().scale()).isEqualTo(2);
         });
         var original = ratingChanges(matchService.getMatchDetail(f.group.getId(), later.id(), f.raj.getId()));
 

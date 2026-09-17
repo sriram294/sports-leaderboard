@@ -3,6 +3,8 @@ package com.org.playboard.service.stats;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,5 +56,19 @@ class TeamRatingCalculatorTest {
             assertTrue(display >= previous && display >= 0 && display <= 100);
             previous = display;
         }
+    }
+
+    @Test
+    void unroundedDisplayValuesPreserveAChangeHiddenByOneDecimalRatings() {
+        TeamRatingCalculator.Rating before = new TeamRatingCalculator.Rating(19.2878, 7.2881);
+        TeamRatingCalculator.Rating after = new TeamRatingCalculator.Rating(16.7635, 6.8374);
+
+        assertEquals(new BigDecimal("0.1"), TeamRatingService.displayRating(before));
+        assertEquals(new BigDecimal("0.1"), TeamRatingService.displayRating(after));
+
+        BigDecimal delta = BigDecimal.valueOf(TeamRatingService.unroundedDisplayRating(after))
+                .subtract(BigDecimal.valueOf(TeamRatingService.unroundedDisplayRating(before)))
+                .setScale(2, RoundingMode.HALF_UP);
+        assertEquals(new BigDecimal("-0.05"), delta);
     }
 }

@@ -2,12 +2,13 @@ package com.org.playboard.service.stats;
 
 import com.org.playboard.service.stats.LeaderboardRanker.RawStatRow;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * Rating points a player gained or lost from one specific match: the difference between
- * {@link LeaderboardRanker#rating} computed immediately before and immediately after that
- * match in the player's chronological history.
+ * Rating points a player gained or lost from one specific match: the difference between the
+ * unrounded Wilson values computed immediately before and immediately after that match in the
+ * player's chronological history, rounded to two decimals for the API.
  *
  * <p>Deliberately a sibling of {@link LeaderboardRanker} rather than a method on it —
  * {@link LeaderboardRanker}'s purpose is ranking/ordering a whole leaderboard, and stretching
@@ -35,8 +36,8 @@ public final class MatchRatingDeltaCalculator {
         int gamesAfter = gamesBefore + 1;
         int winsAfter = winsBefore + (won ? 1 : 0);
 
-        BigDecimal before = LeaderboardRanker.rating(new RawStatRow(null, gamesBefore, winsBefore, 0, 0, 0, 0));
-        BigDecimal after = LeaderboardRanker.rating(new RawStatRow(null, gamesAfter, winsAfter, 0, 0, 0, 0));
-        return after.subtract(before);
+        BigDecimal before = BigDecimal.valueOf(LeaderboardRanker.wilsonLowerBound(winsBefore, gamesBefore));
+        BigDecimal after = BigDecimal.valueOf(LeaderboardRanker.wilsonLowerBound(winsAfter, gamesAfter));
+        return after.subtract(before).setScale(2, RoundingMode.HALF_UP);
     }
 }
