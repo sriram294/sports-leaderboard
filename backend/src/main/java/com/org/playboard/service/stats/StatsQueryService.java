@@ -103,7 +103,7 @@ public class StatsQueryService {
         membershipGuard.requireActiveMember(groupId, callerId);
         boolean teamV2 = teamV2Enabled;
         Standings standings = teamV2
-                ? teamRankedStandings(groupId, from == null ? Instant.EPOCH : from, to == null ? Instant.now() : to)
+                ? teamRankedStandings(groupId, from == null ? Instant.EPOCH : from, to == null ? Instant.now() : to, null)
                 : (from == null || to == null ? allTimeStandings(groupId, null) : rankedStandings(groupId, from, to, null));
         return new LeaderboardResponse(standings.entries(), standings.minGamesToRank(),
                 teamV2 ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1",
@@ -164,8 +164,8 @@ public class StatsQueryService {
         // Scheduled monthly snapshots use this method directly rather than the HTTP
         // envelope. Keep the same September algorithm and metadata on those immutable
         // records as on the live current-period endpoint.
-        if (teamV2Enabled && thresholdOverride == null && from != null && to != null) {
-            return teamRankedStandings(groupId, from, to);
+        if (teamV2Enabled && from != null && to != null) {
+            return teamRankedStandings(groupId, from, to, thresholdOverride);
         }
         // Only active, non-guest members can rank (guests are excluded from the
         // leaderboard, matching the all-time member_stats path).
@@ -197,7 +197,7 @@ public class StatsQueryService {
         return LeaderboardRanker.rank(rows, thresholdOverride, entryFactory(eligible, form));
     }
 
-    private Standings teamRankedStandings(UUID groupId, Instant from, Instant to) {
+    private Standings teamRankedStandings(UUID groupId, Instant from, Instant to, Integer thresholdOverride) {
         Map<UUID, User> eligible = new HashMap<>();
         for (GroupMember member : groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)) {
             if (member.getRole() != GroupRole.GUEST) eligible.put(member.getUser().getId(), member.getUser());
@@ -207,6 +207,11 @@ public class StatsQueryService {
         Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, Instant.EPOCH, to, eligible, from);
         Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
         Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
+        int threshold = thresholdOverride != null
+                ? thresholdOverride
+                : LeaderboardRanker.minGamesToRank(ratings.values().stream()
+                        .map(TeamRatingService.PlayerRating::games)
+                        .toList());
         List<LeaderboardEntryDto> qualified = new ArrayList<>();
         List<LeaderboardEntryDto> provisional = new ArrayList<>();
         for (WindowedStatRow row : matchParticipantRepository.aggregateWindowedStats(groupId, from, to)) {
@@ -214,14 +219,16 @@ public class StatsQueryService {
             if (team == null || team.games() == 0) continue;
             int[] streak = streaks.getOrDefault(row.getUserId(), new int[] {0, 0});
             BigDecimal rating = team.displayRating();
+            boolean qualifiedForThreshold = team.games() >= threshold;
             LeaderboardEntryDto entry = new LeaderboardEntryDto(0, row.getUserId(), eligible.get(row.getUserId()).getDisplayName(),
                     avatarUrls.resolve(eligible.get(row.getUserId()).getPhotoUrl()), eligible.get(row.getUserId()).getAvatarId(),
                     eligible.get(row.getUserId()).getAvatarColor(), team.games(), team.wins(),
                     team.games() - team.wins(), (int) row.getPointsFor(), (int) row.getPointsAgainst(),
                     LeaderboardRanker.winRate(team.wins(), team.games()), streak[0], streak[1], rating,
-                    !team.qualified(), form.getOrDefault(row.getUserId(), List.of()), TeamRatingService.ALGORITHM_VERSION,
-                    TeamRatingService.PERIOD, team.uniquePartners(), team.maxPartnerShare(), team.provisionalReason(), team.limitedPartnerVariety());
-            (team.qualified() ? qualified : provisional).add(entry);
+                    !qualifiedForThreshold, form.getOrDefault(row.getUserId(), List.of()), TeamRatingService.ALGORITHM_VERSION,
+                    TeamRatingService.PERIOD, team.uniquePartners(), team.maxPartnerShare(),
+                    qualifiedForThreshold ? null : "games", team.limitedPartnerVariety());
+            (qualifiedForThreshold ? qualified : provisional).add(entry);
         }
         Comparator<LeaderboardEntryDto> order = (a, b) -> {
             TeamRatingService.PlayerRating ar = ratings.get(a.userId());
@@ -239,7 +246,7 @@ public class StatsQueryService {
         int rank = 1;
         for (LeaderboardEntryDto entry : qualified) result.add(entry.withRank(rank++));
         for (LeaderboardEntryDto entry : provisional) result.add(entry.withRank(rank++));
-        return new Standings(result, LeaderboardRanker.minGamesToRank(ratings.values().stream().map(TeamRatingService.PlayerRating::games).toList()));
+        return new Standings(result, threshold);
     }
 
     private Map<UUID, int[]> windowedStreaks(UUID groupId, Instant from, Instant to) {
