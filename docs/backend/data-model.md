@@ -57,8 +57,9 @@ product requirements this schema serves).
 no time dimension), and remains the source for the legacy Wilson/team-v1 path
 and profile aggregates. Team-v2 leaderboard reads replay the source matches on
 demand instead of reading a checkpoint. The selected `from`/`to` interval bounds
-statistics and qualification, while the rating replay starts at the first
-historical match and stops at the exclusive `to` cutoff. The raw-stat queries
+both the rating replay and statistics/qualification; This Month therefore starts
+from the initial rating prior at its month boundary, while All Time starts at
+the first historical match. The replay stops at the exclusive `to` cutoff. The raw-stat queries
 for PF/PA, form, and streaks remain set-based and use `idx_matches_group_played`.
 
 Team-v2 replay loads all match teams and participants for the selected group in
@@ -66,7 +67,7 @@ bulk, orders valid matches by `(played_at, match_id)`, and skips malformed or
 soft-deleted matches consistently. Former regular members are retained in the
 replay so a departure does not erase historical skill; only current active
 regular members are emitted. Guest participants use the initial prior on each
-appearance and are never persisted as raters. Because the replay is on demand,
+appearance and are never persisted as raters. Because replay is on demand,
 match edits, deletions, and backdated entries take effect on the next read
 without checkpoint backfill. `team_rating_state` is retained as a versioned
 schema extension for a future checkpoint/materialization path and is not read by

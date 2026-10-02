@@ -40,9 +40,10 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
 3. Rankings table cycles through Skill rating, Win%, Games and DIFF via the header;
    Skill rating is the default. Provisional players are always sorted below every
    ranked player, whatever the metric.
-5. Time filter offers **This Month** and **All Time** only. There is no weekly
-   window: Skill rating carries through the evaluation cutoff while the selected
-   range changes statistics and qualifying games.
+5. The time selector defaults to **This Month** and lists up to three most recent
+   completed months that have captured standings. Selecting a prior month reads its
+   frozen snapshot; no All Time leaderboard option is shown. All Time player and group
+   statistics remain available in Stats/Profile. There is no weekly leaderboard window.
 4. Avatar rendering follows the global rule: uploaded photo, else colored
    initial ([00-overview.md](00-overview.md)).
 
@@ -72,10 +73,11 @@ Home tab. Shows the ranked leaderboard for the currently selected group.
   is displayed as `100 / (1 + exp(-(score − 17) / 3))`, rounded half-up to one
   decimal. It measures skill confidence from partners, opponents, results, and
   uncertainty; it is not win percentage.
-- Skill is cumulative through the evaluation cutoff. The selected This Month or
-  All Time filter changes only statistics, recent form, streaks, and
-  qualification. Historical matches are replayed in `(played_at, match UUID)`
-  order through the cutoff. Former regular members remain in the replay;
+- This Month skill starts from the initial rating prior at the beginning of the
+  Asia/Kolkata calendar month. Prior month boards are immutable captured standings;
+  the current selector offers only months with an existing captured snapshot. The live
+  month controls statistics, recent form, streaks, and qualification. Matches are replayed in `(played_at, match UUID)` order;
+  former regular members remain in the replay for whichever period is selected;
   guests use a fixed prior per appearance and never accumulate skill.
 - **minGamesToRank** is `max(1, min(10, ceil(median(games played) / 2)))` over
   eligible players with at least one game in the selected range. Players below
@@ -107,5 +109,3 @@ qualify.
 ## Open questions
 
 - Empty state: group with zero matches played.
-- Skill rating is cumulative to the evaluation cutoff; the selected window
-  changes GP, W-L, statistics, and qualification only.

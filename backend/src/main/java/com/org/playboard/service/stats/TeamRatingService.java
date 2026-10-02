@@ -29,7 +29,8 @@ import org.springframework.stereotype.Service;
 public class TeamRatingService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TeamRatingService.class);
     public static final String ALGORITHM_VERSION = "team-v2";
-    public static final String PERIOD = "cumulative";
+    public static final String CUMULATIVE_PERIOD = "cumulative";
+    public static final String WINDOW_PERIOD = "window";
 
     private final GroupMemberRepository members;
     private final MatchRepository matches;

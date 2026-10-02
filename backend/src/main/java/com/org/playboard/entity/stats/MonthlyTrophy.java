@@ -59,6 +59,9 @@ public class MonthlyTrophy extends Auditable {
     @Column(name = "standings_captured", nullable = false)
     private boolean standingsCaptured;
 
+    @Column(name = "min_games_to_rank", nullable = false)
+    private int minGamesToRank = 1;
+
     protected MonthlyTrophy() {
         // for JPA
     }
@@ -96,6 +99,8 @@ public class MonthlyTrophy extends Auditable {
     public boolean isStandingsCaptured() {
         return standingsCaptured;
     }
+
+    public int getMinGamesToRank() { return minGamesToRank; }
 
     /** False when the month closed with nobody clearing the games threshold. */
     public boolean hasWinner() {

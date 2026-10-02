@@ -27,11 +27,10 @@ carrying that player's recent form.
 1. Load `GET /groups/{groupId}/leaderboard?from&to` for the active group; re-load on group
    change, on a recorded/edited/deleted match (query invalidation — the web `dataRevision`),
    and on window change.
-2. **Window selector** — `This Month` (default) or `All Time`. `This Month` sends the current
-   calendar month `[from, to)` as local-midnight ISO instants; `All Time` sends no window.
-   A window change is a server round-trip (different data), not a client re-sort. The choice
-   persists across group switches. `keepPreviousData` keeps the table on screen while the new
-   window loads, so the header/selector never blinks to a spinner.
+2. **Month selector** — `This Month` (default) or up to three most recent completed months
+   with captured snapshots. Historical choices load frozen standings by `YYYY-MM`; no All Time
+   leaderboard option is shown. All Time statistics remain available on Stats/Profile.
+   `keepPreviousData` keeps the table on screen while a selection loads.
 3. **Sort metric** cycles `Skill rating → Win% → Games → Diff` on each tap of the header label.
    Re-sorting is client-side and **never reorders across the ranked/provisional boundary** —
    provisional players stay last whatever the metric. `Rating` keeps canonical server order
@@ -61,9 +60,10 @@ carrying that player's recent form.
   algorithmVersion, ratingPeriod, uniquePartners, maxPartnerShare, limitedPartnerVariety`.
 
 ## Current rules (settled)
-- **Ratings** use the active team-v2 cumulative two-team Gaussian replay. Players start at
-  mean 25 and uncertainty 25/3; the replay carries skill through the `to` cutoff while the
-  selected range scopes statistics and qualification. The conservative score (`mean − 3 ×
+- **Ratings** use the active team-v2 two-team Gaussian replay. This Month replays from the
+  Asia/Kolkata month start, giving every player the initial mean 25 and uncertainty 25/3 prior.
+  Historical choices show the captured immutable monthly snapshot.
+  The conservative score (`mean − 3 ×
   uncertainty`) maps to 0–100 with one decimal for display. It reflects partners, opponents,
   results, and confidence; it is not win percentage.
 - Canonical server order is full-precision conservative score descending, points difference
@@ -73,20 +73,19 @@ carrying that player's recent form.
   column and the podium shows `{win%} win rate`. `null` ≠ `0.0` — a winless player can
   legitimately rate 0.0.
 - **`algorithmVersion`** and **`ratingPeriod`** are optional for rollback compatibility.
-  Team-v2 responses are `team-v2`/`cumulative`; the disabled flag returns the legacy
+  Team-v2 live-month and snapshot responses are `team-v2`/`window`; the disabled flag returns the legacy
   Wilson/team-v1 metadata. Unknown or missing fields must not break decoding.
 - `minGamesToRank` is the selected-range median-games threshold, clamped to 1–10. Provisional
   rows appear under **Not yet ranked**, use muted `prov`, show `—` in the rank column, and
   retain the existing `N more to rank` secondary caption.
 - `limitedPartnerVariety` is an informational API warning only. The PWA does not add a
   partner-diversity, threshold, or model-explanation subcaption to leaderboard rows.
-- **No weekly window.** A week is too few games for a confidence-adjusted rating to separate
-  anyone, so only `This Month` and `All Time` exist.
+- **No weekly or All Time leaderboard window.** All Time statistics remain available elsewhere.
 
 ## Parity notes (browser)
 - Android's `PullToRefreshBox` becomes TanStack Query refetch + invalidation; there is no
   pull-to-refresh gesture.
-- The window selector is a small click-outside menu (Android `DropdownMenu`).
+- The month selector is a small click-outside menu (Android `DropdownMenu`).
 
 ## Open questions
 - None currently open for this section.

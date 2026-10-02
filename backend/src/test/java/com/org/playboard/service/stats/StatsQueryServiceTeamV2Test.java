@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,31 @@ import org.junit.jupiter.api.Test;
 class StatsQueryServiceTeamV2Test {
 
     @Test
+    void allTimeStatsUseMaterializedTotalsWithoutReplayingSkillRatings() {
+        UUID groupId = UUID.randomUUID();
+        UUID callerId = UUID.randomUUID();
+        GroupMemberRepository members = mock(GroupMemberRepository.class);
+        MatchParticipantRepository participants = mock(MatchParticipantRepository.class);
+        TeamRatingService teamRatings = mock(TeamRatingService.class);
+        when(members.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)).thenReturn(List.of());
+        when(participants.findRecentFormForGroup(groupId, null, null, 10)).thenReturn(List.of());
+        MemberStatsRepository memberStats = mock(MemberStatsRepository.class);
+        when(memberStats.findByGroupId(groupId)).thenReturn(List.of());
+        StatsQueryService service = new StatsQueryService(
+                mock(GroupMembershipGuard.class), members, memberStats, participants,
+                mock(MatchService.class), mock(AvatarUrlResolver.class), mock(MonthlyTrophyService.class),
+                mock(MonthlyStandingRepository.class), teamRatings, true);
+
+        var response = service.getLeaderboard(groupId, callerId);
+
+        assertThat(response.rankings()).isEmpty();
+        assertThat(response.ratingPeriod()).isEqualTo("all-time-stats");
+        verify(teamRatings, never()).replay(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), anyMap(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void pinnedThresholdKeepsTheTeamV2RankingPath() {
         UUID groupId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
@@ -44,7 +70,7 @@ class StatsQueryServiceTeamV2Test {
         when(member.getUser()).thenReturn(player);
         when(member.getRole()).thenReturn(GroupRole.MEMBER);
         when(members.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)).thenReturn(List.of(member));
-        when(teamRatings.replay(eq(groupId), eq(Instant.EPOCH), eq(to), anyMap(), eq(from)))
+        when(teamRatings.replay(eq(groupId), eq(from), eq(to), anyMap(), eq(from)))
                 .thenReturn(Map.of(playerId, new TeamRatingService.PlayerRating(
                         25, 8.333333333333333, 1, 1, 0, BigDecimal.ZERO, false, "games", false)));
         when(participants.findWindowedStreaks(groupId, from, to)).thenReturn(List.of());
@@ -76,6 +102,6 @@ class StatsQueryServiceTeamV2Test {
             assertThat(entry.provisional()).isTrue();
         });
         assertThat(standings.minGamesToRank()).isEqualTo(4);
-        verify(teamRatings).replay(eq(groupId), eq(Instant.EPOCH), eq(to), anyMap(), eq(from));
+        verify(teamRatings).replay(eq(groupId), eq(from), eq(to), anyMap(), eq(from));
     }
 }

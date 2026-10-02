@@ -62,7 +62,8 @@ private class FakePlayboardApi(
     override suspend fun renameGroup(groupId: String, request: RenameGroupRequestDto): GroupDto = error("not used in this test")
     override suspend fun createInvite(groupId: String, request: CreateInviteRequestDto): InviteResponseDto =
         createInviteResult(groupId)
-    override suspend fun getLeaderboard(groupId: String, from: String?, to: String?): LeaderboardResponseDto = error("not used in this test")
+    override suspend fun getLeaderboard(groupId: String, from: String?, to: String?, month: String?): LeaderboardResponseDto = error("not used in this test")
+    override suspend fun getLeaderboardMonths(groupId: String): List<String> = emptyList()
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("not used in this test")
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("not used in this test")
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())

@@ -7,7 +7,9 @@ import java.util.UUID;
 /**
  * One row of the leaderboard.
  *
- * <p>{@code rating} is the cumulative team-v2 skill score mapped to 0-100 with one decimal.
+ * <p>{@code rating} is the team-v2 skill score for {@code ratingPeriod}, mapped to 0-100
+ * with one decimal. Window ratings start from the initial prior at the window boundary;
+ * cumulative ratings replay all history through the cutoff.
  * {@code provisional} players have played fewer than
  * the group's {@link LeaderboardResponse#minGamesToRank()} and are listed after the ranked
  * ones; they still carry a continuing {@code rank} rather than a sentinel, so older clients

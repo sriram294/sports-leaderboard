@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 /**
  * Board tab (docs/requirements/02-board-leaderboard.md): shows the leaderboard
@@ -91,15 +92,14 @@ class BoardViewModel @Inject constructor(
     }
 
     /**
-     * Switch the leaderboard's calendar window. Records the choice, then re-fetches
-     * the active group's ranking for the new window (a different window is different
-     * data, so it's a server round-trip, not a client re-sort). The selection is held
+     * Switch between the live month and an immutable archived snapshot, then refetch.
+     * The selection is held
      * in [BoardUiState] and reused by every later reload (group switch, pull-refresh,
      * a recorded match), so it persists until the user changes it again.
      */
-    fun onTimeRangeSelected(range: LeaderboardTimeRange) {
-        if (_uiState.value.selectedTimeRange == range) return
-        _uiState.update { it.copy(selectedTimeRange = range) }
+    fun onSnapshotMonthSelected(month: String?) {
+        if (_uiState.value.selectedSnapshotMonth == month) return
+        _uiState.update { it.copy(selectedSnapshotMonth = month) }
         viewModelScope.launch {
             val group = groupRepository.selectedGroup.first() ?: return@launch
             loadLeaderboard(group, showLoading = true)
@@ -111,7 +111,7 @@ class BoardViewModel @Inject constructor(
             // A different group is a different board, so the metric goes back to the
             // default; within one group it persists across reloads.
             if (_uiState.value.selectedGroup?.id != group.id) {
-                _uiState.update { it.copy(sortMetric = RankingSortMetric.RATING) }
+                _uiState.update { it.copy(sortMetric = RankingSortMetric.RATING, selectedSnapshotMonth = null) }
             }
             loadLeaderboard(group, showLoading = true)
             return
@@ -129,12 +129,16 @@ class BoardViewModel @Inject constructor(
 
     private suspend fun loadLeaderboard(group: Group, showLoading: Boolean) {
         _uiState.update { it.copy(isLoading = showLoading, hasLoadFailed = false, selectedGroup = group) }
-        // Scope the fetch to the selected calendar window (null,null => all-time).
-        val (from, to) = _uiState.value.selectedTimeRange.window() ?: (null to null)
-        leaderboardRepository.getLeaderboard(group.id, from, to)
+        val months = leaderboardRepository.getArchivedMonths(group.id).getOrDefault(emptyList())
+        val selectedMonth = _uiState.value.selectedSnapshotMonth?.takeIf(months::contains)
+        _uiState.update { it.copy(availableSnapshotMonths = months, selectedSnapshotMonth = selectedMonth) }
+        val indiaZone = ZoneId.of("Asia/Kolkata")
+        val (from, to) = LeaderboardTimeRange.MONTH.window(
+            today = java.time.LocalDate.now(indiaZone), zone = indiaZone)!!
+        leaderboardRepository.getLeaderboard(group.id, from, to, selectedMonth)
             .onSuccess { leaderboard ->
                 // The chosen metric deliberately survives here. It used to reset on every
-                // fetch, so a pull-refresh, a time-range switch or simply recording a match
+                // fetch, so a pull-refresh, a month switch or simply recording a match
                 // silently threw away the user's choice.
                 _uiState.update {
                     it.copy(

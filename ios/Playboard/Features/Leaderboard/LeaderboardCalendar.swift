@@ -11,8 +11,10 @@ struct SystemLeaderboardCalendar: LeaderboardCalendaring {
     private let calendar: Calendar
     private let locale: Locale
 
-    init(calendar: Calendar = .current, locale: Locale = .current) {
-        self.calendar = calendar
+    init(calendar: Calendar? = nil, locale: Locale = .current) {
+        var resolved = calendar ?? .current
+        if calendar == nil { resolved.timeZone = TimeZone(identifier: "Asia/Kolkata")! }
+        self.calendar = resolved
         self.locale = locale
     }
 

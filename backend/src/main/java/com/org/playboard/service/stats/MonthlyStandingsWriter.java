@@ -38,27 +38,11 @@ public class MonthlyStandingsWriter {
         String algorithm = winningEntry != null ? winningEntry.algorithmVersion()
                 : standings.entries().stream().findFirst().map(LeaderboardEntryDto::algorithmVersion)
                         .orElse(teamV2Enabled ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1");
-        if (winningEntry == null) {
-            if (!teamV2Enabled) {
-                claimed = trophyRepository.captureIfAbsent(groupId, null, month.atDay(1), null, null, null);
-            } else {
-                claimed = trophyRepository.captureIfAbsent(groupId, null, month.atDay(1), null, null, null, algorithm);
-            }
-        } else if ("wilson-v1".equals(algorithm)) {
-            claimed = trophyRepository.captureIfAbsent(
-                    groupId,
-                    winningEntry == null ? null : winningEntry.userId(),
-                    month.atDay(1),
-                    winningEntry == null ? null : winningEntry.rating(),
-                    winningEntry == null ? null : winningEntry.gamesPlayed(),
-                    winningEntry == null ? null : winningEntry.wins());
-        } else {
-            claimed = trophyRepository.captureIfAbsent(
-                    groupId, winningEntry == null ? null : winningEntry.userId(), month.atDay(1),
-                    winningEntry == null ? null : winningEntry.rating(),
-                    winningEntry == null ? null : winningEntry.gamesPlayed(),
-                    winningEntry == null ? null : winningEntry.wins(), algorithm);
-        }
+        claimed = trophyRepository.captureIfAbsent(
+                groupId, winningEntry == null ? null : winningEntry.userId(), month.atDay(1),
+                winningEntry == null ? null : winningEntry.rating(),
+                winningEntry == null ? null : winningEntry.gamesPlayed(),
+                winningEntry == null ? null : winningEntry.wins(), algorithm, standings.minGamesToRank());
         if (claimed == 0) {
             return false;
         }

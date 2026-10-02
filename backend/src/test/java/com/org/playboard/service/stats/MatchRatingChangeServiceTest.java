@@ -18,6 +18,8 @@ import com.org.playboard.repository.match.MatchRepository;
 import com.org.playboard.repository.match.MatchTeamRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -55,7 +57,9 @@ class MatchRatingChangeServiceTest {
         GroupMember winningMember = member(winnerId, GroupRole.MEMBER);
         GroupMember losingMember = member(loserId, GroupRole.MEMBER);
         when(members.findByGroupId(groupId)).thenReturn(List.of(winningMember, losingMember));
-        when(matches.findRatingMatchesThrough(groupId, playedAt, matchId)).thenReturn(List.of(match));
+        Instant monthStart = YearMonth.from(playedAt.atZone(ZoneId.of("Asia/Kolkata")))
+                .atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        when(matches.findRatingMatchesInWindowThrough(groupId, monthStart, playedAt, matchId)).thenReturn(List.of(match));
         when(teams.findByMatchIdInOrderByMatchIdAscTeamNoAsc(List.of(matchId)))
                 .thenReturn(List.of(winningTeam, losingTeam));
         when(participants.findByMatchTeamIdIn(List.of(winningTeamId, losingTeamId)))

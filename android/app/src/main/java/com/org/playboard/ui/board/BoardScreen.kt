@@ -81,7 +81,7 @@ fun BoardScreen(
     BoardContent(
         uiState = uiState,
         onCycleSortMetric = viewModel::onCycleSortMetric,
-        onTimeRangeSelected = viewModel::onTimeRangeSelected,
+        onSnapshotMonthSelected = viewModel::onSnapshotMonthSelected,
         onRetry = viewModel::refresh,
         onPullRefresh = viewModel::onPullRefresh,
         onPlayerClick = onPlayerClick,
@@ -97,7 +97,7 @@ fun BoardScreen(
 private fun BoardContent(
     uiState: BoardUiState,
     onCycleSortMetric: () -> Unit,
-    onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
+    onSnapshotMonthSelected: (String?) -> Unit,
     onRetry: () -> Unit,
     onPullRefresh: () -> Unit,
     onPlayerClick: (String) -> Unit,
@@ -124,18 +124,16 @@ private fun BoardContent(
                     contentPadding = PaddingValues(bottom = 24.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    // The header (and its time-range toggle) always shows, even for an
-                    // empty window, so the user can switch ranges when e.g. "This Week"
-                    // has no matches yet but "All Time" does.
                     item {
                         TopPlayersHeader(
-                            selectedRange = uiState.selectedTimeRange,
-                            onTimeRangeSelected = onTimeRangeSelected,
+                            selectedMonth = uiState.selectedSnapshotMonth,
+                            availableMonths = uiState.availableSnapshotMonths,
+                            onMonthSelected = onSnapshotMonthSelected,
                             onShare = onShare,
                         )
                     }
                     if (uiState.rankings.isEmpty()) {
-                        item { NoMatchesBlock(range = uiState.selectedTimeRange) }
+                        item { NoMatchesBlock(isSnapshot = uiState.selectedSnapshotMonth != null) }
                     } else {
                         item { PodiumRow(podium = uiState.podium, onPlayerClick = onPlayerClick) }
                         item {
@@ -157,8 +155,9 @@ private fun BoardContent(
 /** "TOP PLAYERS" label with the subtle calendar-window dropdown, and the share action. */
 @Composable
 private fun TopPlayersHeader(
-    selectedRange: LeaderboardTimeRange,
-    onTimeRangeSelected: (LeaderboardTimeRange) -> Unit,
+    selectedMonth: String?,
+    availableMonths: List<String>,
+    onMonthSelected: (String?) -> Unit,
     onShare: () -> Unit,
 ) {
     Row(
@@ -169,7 +168,7 @@ private fun TopPlayersHeader(
     ) {
         Text(text = "TOP PLAYERS", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
         Spacer(modifier = Modifier.width(6.dp))
-        TimeRangeSelector(selected = selectedRange, onSelected = onTimeRangeSelected)
+        TimeRangeSelector(selected = selectedMonth, availableMonths = availableMonths, onSelected = onMonthSelected)
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
             Icon(
@@ -189,8 +188,9 @@ private fun TopPlayersHeader(
  */
 @Composable
 private fun TimeRangeSelector(
-    selected: LeaderboardTimeRange,
-    onSelected: (LeaderboardTimeRange) -> Unit,
+    selected: String?,
+    availableMonths: List<String>,
+    onSelected: (String?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -201,7 +201,7 @@ private fun TimeRangeSelector(
                 .clickable { expanded = true }
                 .padding(horizontal = 4.dp, vertical = 2.dp),
         ) {
-            Text(text = selected.label, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
+            Text(text = selected?.snapshotLabel() ?: "This Month", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
             Text(text = " ▾", style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
         }
         DropdownMenu(
@@ -209,19 +209,18 @@ private fun TimeRangeSelector(
             onDismissRequest = { expanded = false },
             modifier = Modifier.background(PlayboardTheme.colors.surface),
         ) {
-            // Default (This Month) listed first; All Time last.
-            listOf(LeaderboardTimeRange.MONTH, LeaderboardTimeRange.ALL_TIME).forEach { range ->
+            (listOf<String?>(null) + availableMonths).forEach { month ->
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = range.label,
+                            text = month?.snapshotLabel() ?: "This Month",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (range == selected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary,
+                            color = if (month == selected) PlayboardTheme.colors.brand else PlayboardTheme.colors.textPrimary,
                         )
                     },
                     onClick = {
                         expanded = false
-                        onSelected(range)
+                        onSelected(month)
                     },
                 )
             }
@@ -230,11 +229,10 @@ private fun TimeRangeSelector(
 }
 
 /** Menu / label wording for each calendar window. */
-private val LeaderboardTimeRange.label: String
-    get() = when (this) {
-        LeaderboardTimeRange.MONTH -> "This Month"
-        LeaderboardTimeRange.ALL_TIME -> "All Time"
-    }
+private fun String.snapshotLabel(): String = runCatching {
+    val ym = java.time.YearMonth.parse(this)
+    "${ym.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())} ${ym.year}"
+}.getOrDefault(this)
 
 /** The top-3 podium row. */
 @Composable
@@ -450,11 +448,9 @@ private fun NoGroupsState() {
  * that has never recorded a match (All Time).
  */
 @Composable
-private fun NoMatchesBlock(range: LeaderboardTimeRange) {
-    val message = when (range) {
-        LeaderboardTimeRange.MONTH -> "No matches this month yet.\nRecord one to rank this month."
-        LeaderboardTimeRange.ALL_TIME -> "No matches recorded yet.\nRankings appear after the first match."
-    }
+private fun NoMatchesBlock(isSnapshot: Boolean) {
+    val message = if (isSnapshot) "No standings were saved for this month."
+        else "No matches this month yet.\nRecord one to rank this month."
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -505,7 +501,7 @@ private fun BoardContentPreview() {
             BoardContent(
                 uiState = previewState,
                 onCycleSortMetric = {},
-                onTimeRangeSelected = {},
+                onSnapshotMonthSelected = {},
                 onRetry = {},
                 onPullRefresh = {},
                 onPlayerClick = {},

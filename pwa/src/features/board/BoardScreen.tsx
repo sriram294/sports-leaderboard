@@ -5,7 +5,6 @@ import { Avatar, FormDots } from '../../components';
 import { Icon } from '../../icons';
 import {
   METRIC_LABEL,
-  RANGE_LABEL,
   metricColor,
   metricValue,
   nextMetric,
@@ -16,7 +15,6 @@ import {
   tableRows,
   winRatePercent,
   type RankingSortMetric,
-  type TimeRange,
 } from '../../domain';
 import crown from '../../assets/brand/crown-3d.png';
 
@@ -26,8 +24,9 @@ type Props = {
   algorithmVersion?: string;
   ratingPeriod?: string;
   groupId: string;
-  range: TimeRange;
-  onRangeChange: (range: TimeRange) => void;
+  selectedMonth: string | null;
+  availableMonths: string[];
+  onMonthChange: (month: string | null) => void;
   onPlayer: (userId: string) => void;
   shareStatus?: string;
   onShare: () => void | Promise<void>;
@@ -39,7 +38,7 @@ type Props = {
  * shown, so an empty window still lets the user switch ranges; below it sit the podium and
  * the RANKINGS card (whose header cycles the sort metric; each row's form dots come with it).
  */
-export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeChange, onPlayer, shareStatus, onShare, algorithmVersion, ratingPeriod }: Props) {
+export function BoardScreen({ rankings, minGamesToRank, groupId, selectedMonth, availableMonths, onMonthChange, onPlayer, shareStatus, onShare, algorithmVersion, ratingPeriod }: Props) {
   const [metric, setMetric] = useState<RankingSortMetric>('rating');
   // A different group is a different board, so the metric resets to the default.
   useEffect(() => setMetric('rating'), [groupId]);
@@ -52,7 +51,7 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
       <div className="board-head">
         <div className="board-head-title">
           <span className="eyebrow">TOP PLAYERS</span>
-          <RangeSelector range={range} onChange={onRangeChange} />
+          <RangeSelector selectedMonth={selectedMonth} availableMonths={availableMonths} onChange={onMonthChange} />
           {algorithmVersion === 'team-v1' && <span className="muted">September rankings</span>}
         </div>
         <button className="icon-button board-share" onClick={onShare} aria-label="Share leaderboard">
@@ -63,9 +62,9 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
 
       {rankings.length === 0 ? (
         <p className="board-empty">
-          {range === 'month'
-            ? 'No matches this month yet. Record one to rank this month.'
-            : 'No matches recorded yet. Rankings appear after the first match.'}
+          {selectedMonth
+            ? 'No standings were saved for this month.'
+            : 'No matches this month yet. Record one to rank this month.'}
         </p>
       ) : (
         <>
@@ -121,7 +120,7 @@ export function BoardScreen({ rankings, minGamesToRank, groupId, range, onRangeC
  * The muted calendar-window selector: a label + caret that opens a small menu. Deliberately
  * low-key so it reads as a refinement of "TOP PLAYERS" rather than a primary control.
  */
-function RangeSelector({ range, onChange }: { range: TimeRange; onChange: (range: TimeRange) => void }) {
+function RangeSelector({ selectedMonth, availableMonths, onChange }: { selectedMonth: string | null; availableMonths: string[]; onChange: (month: string | null) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -133,24 +132,29 @@ function RangeSelector({ range, onChange }: { range: TimeRange; onChange: (range
   return (
     <div className="range-selector" ref={ref}>
       <button className="range-trigger" onClick={() => setOpen(value => !value)} aria-haspopup="menu" aria-expanded={open}>
-        {RANGE_LABEL[range]} <span aria-hidden="true">▾</span>
+        {selectedMonth ? monthLabel(selectedMonth) : 'This Month'} <span aria-hidden="true">▾</span>
       </button>
       {open && (
         <div className="range-menu" role="menu">
-          {(['month', 'all'] as TimeRange[]).map(option => (
+          {[null, ...availableMonths].map(option => (
             <button
-              key={option}
+              key={option ?? 'current'}
               role="menuitem"
-              className={option === range ? 'selected' : ''}
+              className={option === selectedMonth ? 'selected' : ''}
               onClick={() => { onChange(option); setOpen(false); }}
             >
-              {RANGE_LABEL[option]}
+              {option ? monthLabel(option) : 'This Month'}
             </button>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function monthLabel(value: string): string {
+  const [year, month] = value.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
 /**

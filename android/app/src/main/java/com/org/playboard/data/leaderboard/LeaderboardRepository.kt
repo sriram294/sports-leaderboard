@@ -39,9 +39,10 @@ class LeaderboardRepository @Inject constructor(
         groupId: String,
         from: String? = null,
         to: String? = null,
+        month: String? = null,
     ): Result<Leaderboard> =
         runCatching {
-            val response = api.getLeaderboard(groupId, from, to)
+            val response = api.getLeaderboard(groupId, from, to, month)
             Leaderboard(
                 rankings = response.rankings.map(LeaderboardEntryDto::toPlayerRanking),
                 minGamesToRank = response.minGamesToRank ?: DEFAULT_MIN_GAMES_TO_RANK,
@@ -49,6 +50,9 @@ class LeaderboardRepository @Inject constructor(
                 ratingPeriod = response.ratingPeriod,
             )
         }
+
+    suspend fun getArchivedMonths(groupId: String): Result<List<String>> =
+        runCatching { api.getLeaderboardMonths(groupId) }
 }
 
 private fun LeaderboardEntryDto.toPlayerRanking() = PlayerRanking(
