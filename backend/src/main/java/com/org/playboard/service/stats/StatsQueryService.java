@@ -102,12 +102,17 @@ public class StatsQueryService {
     public LeaderboardResponse getLeaderboard(UUID groupId, UUID callerId, Instant from, Instant to) {
         membershipGuard.requireActiveMember(groupId, callerId);
         boolean teamV2 = teamV2Enabled;
-        Standings standings = teamV2
-                ? teamRankedStandings(groupId, from == null ? Instant.EPOCH : from, to == null ? Instant.now() : to, null)
-                : (from == null || to == null ? allTimeStandings(groupId, null) : rankedStandings(groupId, from, to, null));
+        // All Time is used by Stats for aggregate records and partner selection. Its
+        // materialized member_stats totals are sufficient; replaying every match through
+        // the Skill model here made a stats request unexpectedly expensive. Skill ratings
+        // are only needed for the live monthly Board.
+        boolean allTime = from == null || to == null;
+        Standings standings = allTime
+                ? allTimeStandings(groupId, null)
+                : (teamV2 ? teamRankedStandings(groupId, from, to, null) : rankedStandings(groupId, from, to, null));
         return new LeaderboardResponse(standings.entries(), standings.minGamesToRank(),
-                teamV2 ? TeamRatingService.ALGORITHM_VERSION : "wilson-v1",
-                teamV2 ? TeamRatingService.PERIOD : (from == null ? "all-time" : "window"));
+                allTime || !teamV2 ? "wilson-v1" : TeamRatingService.ALGORITHM_VERSION,
+                allTime ? "all-time-stats" : (teamV2 ? TeamRatingService.WINDOW_PERIOD : "window"));
     }
 
     /**
@@ -202,9 +207,9 @@ public class StatsQueryService {
         for (GroupMember member : groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)) {
             if (member.getRole() != GroupRole.GUEST) eligible.put(member.getUser().getId(), member.getUser());
         }
-        // Ratings always carry forward from the first match; `from` only scopes displayed
-        // statistics and qualification for the selected calendar range.
-        Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, Instant.EPOCH, to, eligible, from);
+        // Replay starts at the selected range: This Month gets a fresh skill prior, while
+        // the all-time path supplies EPOCH and remains cumulative.
+        Map<UUID, TeamRatingService.PlayerRating> ratings = teamRatingService.replay(groupId, from, to, eligible, from);
         Map<UUID, int[]> streaks = windowedStreaks(groupId, from, to);
         Map<UUID, List<Boolean>> form = recentFormByUser(groupId, from, to);
         int threshold = thresholdOverride != null
@@ -226,7 +231,8 @@ public class StatsQueryService {
                     team.games() - team.wins(), (int) row.getPointsFor(), (int) row.getPointsAgainst(),
                     LeaderboardRanker.winRate(team.wins(), team.games()), streak[0], streak[1], rating,
                     !qualifiedForThreshold, form.getOrDefault(row.getUserId(), List.of()), TeamRatingService.ALGORITHM_VERSION,
-                    TeamRatingService.PERIOD, team.uniquePartners(), team.maxPartnerShare(),
+                    (from.equals(Instant.EPOCH) ? TeamRatingService.CUMULATIVE_PERIOD : TeamRatingService.WINDOW_PERIOD),
+                    team.uniquePartners(), team.maxPartnerShare(),
                     qualifiedForThreshold ? null : "games", team.limitedPartnerVariety());
             (qualifiedForThreshold ? qualified : provisional).add(entry);
         }

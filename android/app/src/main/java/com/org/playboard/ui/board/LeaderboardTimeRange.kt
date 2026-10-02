@@ -4,8 +4,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * The window the Board leaderboard is scoped to. Calendar-based, not rolling:
- * [MONTH] is the current calendar month, and is the default.
+ * Calendar window used by statistics views. The Board uses its own current-month/archive selector.
  *
  * There is deliberately no weekly window. Ratings are computed over the selected window,
  * and a week is only one or two sessions — too few games for a confidence-adjusted rating

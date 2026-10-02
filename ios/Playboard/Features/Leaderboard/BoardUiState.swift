@@ -1,12 +1,5 @@
 import Foundation
 
-/// The only two supported leaderboard windows.
-enum LeaderboardRange: String, CaseIterable, Identifiable, Sendable {
-    case month = "This Month"
-    case allTime = "All Time"
-    var id: String { rawValue }
-}
-
 /// Optional client-side metric while canonical rank remains server-owned.
 enum LeaderboardMetric: String, CaseIterable, Sendable {
     case rating = "Skill rating"
@@ -28,7 +21,8 @@ struct BoardUiState: Equatable, Sendable {
     var isRefreshing = false
     var rankings: [LeaderboardEntry] = []
     var minGamesToRank = 1
-    var range: LeaderboardRange = .month
+    var selectedSnapshotMonth: String? = nil
+    var availableSnapshotMonths: [String] = []
     var metric: LeaderboardMetric = .rating
     var monthName = ""
     var errorMessage: String?

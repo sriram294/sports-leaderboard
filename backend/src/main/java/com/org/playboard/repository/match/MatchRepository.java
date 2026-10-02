@@ -24,6 +24,12 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
     List<Match> findRatingMatchesThrough(@Param("groupId") UUID groupId,
             @Param("playedAt") Instant playedAt, @Param("matchId") UUID matchId);
 
+    @Query("select m from Match m where m.group.id = :groupId and m.deleted = false "
+            + "and m.playedAt >= :from and (m.playedAt < :playedAt or (m.playedAt = :playedAt and m.id <= :matchId)) "
+            + "order by m.playedAt asc, m.id asc")
+    List<Match> findRatingMatchesInWindowThrough(@Param("groupId") UUID groupId, @Param("from") Instant from,
+            @Param("playedAt") Instant playedAt, @Param("matchId") UUID matchId);
+
     Optional<Match> findByIdAndGroupIdAndDeletedFalse(UUID id, UUID groupId);
 
     long countByGroupIdAndDeletedFalse(UUID groupId);

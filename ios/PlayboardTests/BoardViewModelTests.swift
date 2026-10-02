@@ -18,7 +18,7 @@ struct BoardViewModelTests {
         #expect(state.podium.map(\.userID) == ["a", "b"])
     }
 
-    @Test("This Month uses injected local boundaries and All Time removes them")
+    @Test("This Month is live and a prior month loads its frozen standings")
     func changesRangeWindow() async throws {
         let repository = BoardRepositoryFake()
         let now = Date(timeIntervalSince1970: 1_788_102_000)
@@ -27,12 +27,12 @@ struct BoardViewModelTests {
 
         viewModel.select(group: group(id: "g1"))
         try await waitUntil { await repository.windows.count == 1 }
-        viewModel.setRange(.allTime)
-        try await waitUntil { await repository.windows.count == 2 }
+        viewModel.setSnapshotMonth("2026-07")
+        try await waitUntil { await repository.archivedSelections.count == 1 }
 
         #expect(await repository.windows[0] == expected)
-        #expect(await repository.windows[1] == nil)
-        #expect(viewModel.state.range == .allTime)
+        #expect(await repository.archivedSelections == ["2026-07"])
+        #expect(viewModel.state.selectedSnapshotMonth == "2026-07")
         #expect(viewModel.state.monthName == "August")
     }
 
@@ -77,6 +77,7 @@ private struct BoardFixedCalendar: LeaderboardCalendaring {
 private actor BoardRepositoryFake: LeaderboardRepository {
     private let firstDelay: Duration?
     private(set) var windows: [DateInterval?] = []
+    private(set) var archivedSelections: [String] = []
     private var calls = 0
     init(firstDelay: Duration? = nil) { self.firstDelay = firstDelay }
 
@@ -85,6 +86,14 @@ private actor BoardRepositoryFake: LeaderboardRepository {
         windows.append(window)
         if calls == 1, let firstDelay { try await Task.sleep(for: firstDelay) }
         let row = LeaderboardEntry(rank: 1, userID: groupID, displayName: groupID, photoURL: nil, avatarID: nil, avatarColor: "#9ADE28", gamesPlayed: 3, wins: 2, losses: 1, pointsFor: 42, pointsAgainst: 30, winRate: 0.66, currentStreak: 1, bestStreak: 2, rating: 30, provisional: false, recentForm: [true])
+        return Leaderboard(rankings: [row], minGamesToRank: 2)
+    }
+
+    func archivedMonths(groupID: String) async throws -> [String] { ["2026-07"] }
+
+    func archivedLeaderboard(groupID: String, month: String) async throws -> Leaderboard {
+        archivedSelections.append(month)
+        let row = LeaderboardEntry(rank: 1, userID: groupID, displayName: groupID, photoURL: nil, avatarID: nil, avatarColor: "#9ADE28", gamesPlayed: 3, wins: 2, losses: 1, pointsFor: 42, pointsAgainst: 30, winRate: 0.66, rating: 30, provisional: false)
         return Leaderboard(rankings: [row], minGamesToRank: 2)
     }
 }

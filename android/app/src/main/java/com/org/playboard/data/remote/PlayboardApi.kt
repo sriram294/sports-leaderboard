@@ -99,7 +99,11 @@ interface PlayboardApi {
         @Path("groupId") groupId: String,
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
+        @Query("month") month: String? = null,
     ): LeaderboardResponseDto
+
+    @GET("api/v1/groups/{groupId}/leaderboard/months")
+    suspend fun getLeaderboardMonths(@Path("groupId") groupId: String): List<String>
 
     /**
      * The group's monthly winners, newest first. Months that closed with nobody eligible

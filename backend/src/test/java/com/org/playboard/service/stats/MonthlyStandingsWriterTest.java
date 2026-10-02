@@ -38,7 +38,8 @@ class MonthlyStandingsWriterTest {
         LeaderboardEntryDto provisional = entry(2, true);
         when(trophyRepository.captureIfAbsent(
                 eq(groupId), eq(winner.userId()), eq(month.atDay(1)),
-                eq(winner.rating()), eq(winner.gamesPlayed()), eq(winner.wins())))
+                eq(winner.rating()), eq(winner.gamesPlayed()), eq(winner.wins()),
+                eq("wilson-v1"), eq(2)))
                 .thenReturn(1);
 
         boolean captured = writer.capture(
@@ -62,7 +63,8 @@ class MonthlyStandingsWriterTest {
         UUID groupId = UUID.randomUUID();
         YearMonth month = YearMonth.of(2026, 9);
         when(trophyRepository.captureIfAbsent(
-                eq(groupId), isNull(), eq(month.atDay(1)), isNull(), isNull(), isNull()))
+                eq(groupId), isNull(), eq(month.atDay(1)), isNull(), isNull(), isNull(),
+                eq("wilson-v1"), eq(1)))
                 .thenReturn(0);
 
         assertThat(writer.capture(

@@ -20,13 +20,30 @@ export const matchesKey = (groupId?: string) => ['matches', groupId] as const;
  * blinks out to a spinner. Board keeps its existing all-time default; Stats selects its own
  * This Month default when it calls this hook.
  */
-export const useLeaderboard = (groupId?: string, range: TimeRange = 'all') =>
+export const useLeaderboard = (groupId?: string, range: TimeRange = 'all', month?: string, indiaMonth = false) =>
   useQuery({
-    queryKey: [...leaderboardKey(groupId), range],
-    queryFn: () => { const window = rangeWindow(range); return api.leaderboard(groupId!, window?.from, window?.to); },
+    queryKey: [...leaderboardKey(groupId), range, month],
+    queryFn: () => {
+      if (month) return api.leaderboard(groupId!, undefined, undefined, month);
+      const window = indiaMonth && range === 'month' ? indiaMonthWindow() : rangeWindow(range);
+      return api.leaderboard(groupId!, window?.from, window?.to);
+    },
     enabled: !!groupId,
     placeholderData: keepPreviousData,
   });
+
+function indiaMonthWindow(): { from: string; to: string } {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'numeric' }).formatToParts(now);
+  const year = Number(parts.find(part => part.type === 'year')?.value);
+  const month = Number(parts.find(part => part.type === 'month')?.value);
+  const start = new Date(Date.UTC(year, month - 1, 1) - 330 * 60_000);
+  const end = new Date(Date.UTC(year, month, 1) - 330 * 60_000);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+export const useArchivedLeaderboardMonths = (groupId?: string) =>
+  useQuery({ queryKey: [...leaderboardKey(groupId), 'months'], queryFn: () => api.leaderboardMonths(groupId!), enabled: !!groupId });
 
 /**
  * Cursor-paginated match log (Android's `getMatches(cursor, mine)` loop). `mine` scopes to

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../session';
 import { useGroups } from '../groups';
-import { invalidateGroupData, leaderboardKey, statsKey, useAttendance, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
+import { invalidateGroupData, leaderboardKey, statsKey, useArchivedLeaderboardMonths, useAttendance, useLeaderboard, useMatchDetail, useMatchesInfinite, useMembers, usePlayerStats, useTrophies } from '../queries';
 import { heatmapMonths, heatmapWindow, attendanceDays, matchTeam, rangeWindow, winningTeamNo, type TimeRange } from '../domain';
 import type { RecordMatchRequest, User } from '../models';
 import { api } from '../data';
@@ -32,10 +32,14 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 export function BoardRoute() {
   const { activeGroup } = useGroups();
   const navigate = useNavigate();
-  // The window persists across group switches (mirrors Android's selectedTimeRange).
-  const [range, setRange] = useState<TimeRange>('month');
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<string>();
-  const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id, range);
+  const archivedMonths = useArchivedLeaderboardMonths(activeGroup?.id);
+  const { data, isLoading, error, refetch } = useLeaderboard(activeGroup?.id, 'month', selectedMonth ?? undefined, true);
+  useEffect(() => setSelectedMonth(null), [activeGroup?.id]);
+  useEffect(() => {
+    if (selectedMonth && archivedMonths.data && !archivedMonths.data.includes(selectedMonth)) setSelectedMonth(null);
+  }, [archivedMonths.data, selectedMonth]);
   if (!activeGroup) return <NoGroup />;
   // Only the very first load spins; range switches keep the previous table (keepPreviousData).
   if (isLoading) return <Loading />;
@@ -48,8 +52,9 @@ export function BoardRoute() {
         algorithmVersion={data?.algorithmVersion}
         ratingPeriod={data?.ratingPeriod}
       groupId={activeGroup.id}
-      range={range}
-      onRangeChange={setRange}
+      selectedMonth={selectedMonth}
+      availableMonths={archivedMonths.data ?? []}
+      onMonthChange={setSelectedMonth}
       onPlayer={userId => navigate(`/player/${userId}`)}
       shareStatus={shareStatus}
       onShare={async () => {

@@ -31,15 +31,17 @@ final class BoardViewModel: ObservableObject {
         state.groupID = group?.id
         state.groupMemberCount = group?.memberCount ?? 0
         state.metric = .rating
+        state.selectedSnapshotMonth = nil
+        state.availableSnapshotMonths = []
         state.rankings = []
         state.errorMessage = nil
         guard group != nil else { state.isLoading = false; return }
         startLoad(showLoading: true)
     }
 
-    func setRange(_ range: LeaderboardRange) {
-        guard range != state.range else { return }
-        state.range = range
+    func setSnapshotMonth(_ month: String?) {
+        guard month != state.selectedSnapshotMonth else { return }
+        state.selectedSnapshotMonth = month
         startLoad(showLoading: true)
     }
 
@@ -64,9 +66,22 @@ final class BoardViewModel: ObservableObject {
         if showLoading { state.isLoading = true }
         state.errorMessage = nil
         state.staleMessage = nil
-        let window = state.range == .month ? calendar.monthInterval(containing: clock.now) : nil
+        state.monthName = calendar.monthName(containing: clock.now)
         do {
-            let leaderboard = try await repository.leaderboard(groupID: groupID, window: window)
+            let months = try await repository.archivedMonths(groupID: groupID)
+            try Task.checkCancellation()
+            guard state.groupID == groupID else { return }
+            state.availableSnapshotMonths = months
+            if let selected = state.selectedSnapshotMonth, !months.contains(selected) {
+                state.selectedSnapshotMonth = nil
+            }
+            let leaderboard: Leaderboard
+            if let month = state.selectedSnapshotMonth {
+                leaderboard = try await repository.archivedLeaderboard(groupID: groupID, month: month)
+            } else {
+                leaderboard = try await repository.leaderboard(
+                    groupID: groupID, window: calendar.monthInterval(containing: clock.now))
+            }
             try Task.checkCancellation()
             guard state.groupID == groupID else { return }
             state.rankings = leaderboard.rankings

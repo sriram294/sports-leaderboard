@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -55,7 +58,10 @@ public class MatchRatingChangeService {
             if (member.getRole() == GroupRole.GUEST) guestIds.add(member.getUser().getId());
         }
 
-        List<Match> history = matches.findRatingMatchesThrough(groupId, target.getPlayedAt(), target.getId());
+        Instant monthStart = YearMonth.from(target.getPlayedAt().atZone(ZoneId.of("Asia/Kolkata")))
+                .atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        List<Match> history = matches.findRatingMatchesInWindowThrough(
+                groupId, monthStart, target.getPlayedAt(), target.getId());
         List<UUID> matchIds = history.stream().map(Match::getId).toList();
         Map<UUID, List<MatchTeam>> teamsByMatch = new HashMap<>();
         Map<UUID, List<MatchParticipant>> participantsByTeam = new HashMap<>();

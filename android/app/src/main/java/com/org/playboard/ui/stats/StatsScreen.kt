@@ -439,7 +439,7 @@ private fun PlayerPicker(
             onDismissRequest = { menuExpanded = false },
             modifier = Modifier.background(PlayboardTheme.colors.surface),
         ) {
-            players.forEach { player ->
+            players.sortedBy { it.displayName.lowercase() }.forEach { player ->
                 DropdownMenuItem(
                     leadingIcon = {
                         PlayerAvatar(

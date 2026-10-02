@@ -20,8 +20,9 @@ data class BoardUiState(
     val sortMetric: RankingSortMetric = RankingSortMetric.RATING,
     /** Games needed before a player ranks rather than showing as provisional. */
     val minGamesToRank: Int = 1,
-    /** Calendar window the leaderboard is scoped to; drives the "TOP PLAYERS" toggle. */
-    val selectedTimeRange: LeaderboardTimeRange = LeaderboardTimeRange.MONTH,
+    /** Null means the live current month; otherwise YYYY-MM names a frozen snapshot. */
+    val selectedSnapshotMonth: String? = null,
+    val availableSnapshotMonths: List<String> = emptyList(),
 ) {
     /** Players over the games threshold, in canonical order. */
     val rankedPlayers: List<PlayerRanking> get() = rankings.filter { !it.provisional }

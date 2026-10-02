@@ -43,6 +43,7 @@ import org.junit.Test
 private class FakePlayboardApi(
     var groupsResult: suspend () -> GroupsResponseDto = { GroupsResponseDto(emptyList()) },
     var leaderboardResult: suspend (String) -> LeaderboardResponseDto = { LeaderboardResponseDto(emptyList()) },
+    var archivedMonthsResult: List<String> = emptyList(),
 ) : PlayboardApi {
     
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
@@ -58,11 +59,14 @@ private class FakePlayboardApi(
     /** The window params of the most recent leaderboard fetch, for range-scoping assertions. */
     var lastFrom: String? = null
     var lastTo: String? = null
-    override suspend fun getLeaderboard(groupId: String, from: String?, to: String?): LeaderboardResponseDto {
+    var lastMonth: String? = null
+    override suspend fun getLeaderboard(groupId: String, from: String?, to: String?, month: String?): LeaderboardResponseDto {
         lastFrom = from
         lastTo = to
+        lastMonth = month
         return leaderboardResult(groupId)
     }
+    override suspend fun getLeaderboardMonths(groupId: String): List<String> = archivedMonthsResult
     override suspend fun registerDevice(request: com.org.playboard.data.remote.dto.RegisterDeviceRequestDto) = error("not used in this test")
     override suspend fun unregisterDevice(request: com.org.playboard.data.remote.dto.UnregisterDeviceRequestDto) = error("not used in this test")
     override suspend fun getMembers(groupId: String): MembersResponseDto = MembersResponseDto(emptyList())
@@ -273,47 +277,29 @@ class BoardViewModelTest {
         repo.refreshGroups()
         advanceUntilIdle()
 
-        assertEquals(LeaderboardTimeRange.MONTH, viewModel.uiState.value.selectedTimeRange)
-        val (from, to) = LeaderboardTimeRange.MONTH.window()!!
+        val zone = java.time.ZoneId.of("Asia/Kolkata")
+        val (from, to) = LeaderboardTimeRange.MONTH.window(today = java.time.LocalDate.now(zone), zone = zone)!!
         assertEquals(from, api.lastFrom)
         assertEquals(to, api.lastTo)
     }
 
     @Test
-    fun `selecting All Time fetches without a window`() = runTest(testDispatcher) {
+    fun `selecting an archived month fetches its frozen snapshot`() = runTest(testDispatcher) {
         val api = FakePlayboardApi(
             groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
             leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
+            archivedMonthsResult = listOf("2026-09", "2026-08"),
         )
         val repo = repo(api)
         val viewModel = viewModel(repo, api)
         repo.refreshGroups()
         advanceUntilIdle()
 
-        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
+        viewModel.onSnapshotMonthSelected("2026-09")
         advanceUntilIdle()
 
-        assertEquals(LeaderboardTimeRange.ALL_TIME, viewModel.uiState.value.selectedTimeRange)
-        assertNull(api.lastFrom)
-        assertNull(api.lastTo)
-    }
-
-    @Test
-    fun `selecting All Time drops the window so the backend reads the snapshot`() = runTest(testDispatcher) {
-        val api = FakePlayboardApi(
-            groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"))) },
-            leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
-        )
-        val repo = repo(api)
-        val viewModel = viewModel(repo, api)
-        repo.refreshGroups()
-        advanceUntilIdle()
-
-        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
-        advanceUntilIdle()
-
-        assertNull(api.lastFrom)
-        assertNull(api.lastTo)
+        assertEquals("2026-09", viewModel.uiState.value.selectedSnapshotMonth)
+        assertEquals("2026-09", api.lastMonth)
     }
 
     @Test
@@ -327,21 +313,20 @@ class BoardViewModelTest {
         repo.refreshGroups()
         advanceUntilIdle()
 
-        // MONTH is the default, so selecting it directly would early-return without a
-        // fetch. Go via ALL_TIME so the switch back to MONTH is a real change.
-        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
+        viewModel.onSnapshotMonthSelected("2026-09")
         advanceUntilIdle()
-        viewModel.onTimeRangeSelected(LeaderboardTimeRange.MONTH)
+        viewModel.onSnapshotMonthSelected(null)
         advanceUntilIdle()
 
-        val (from, to) = LeaderboardTimeRange.MONTH.window()!!
+        val zone = java.time.ZoneId.of("Asia/Kolkata")
+        val (from, to) = LeaderboardTimeRange.MONTH.window(today = java.time.LocalDate.now(zone), zone = zone)!!
         assertNotNull(from)
         assertEquals(from, api.lastFrom)
         assertEquals(to, api.lastTo)
     }
 
     @Test
-    fun `the selected range persists across a group switch`() = runTest(testDispatcher) {
+    fun `snapshot month resets to live month across a group switch`() = runTest(testDispatcher) {
         val api = FakePlayboardApi(
             groupsResult = { GroupsResponseDto(listOf(groupDto("g1", "Saturday Smashers"), groupDto("g2", "Office League"))) },
             leaderboardResult = { LeaderboardResponseDto(listOf(entryDto(1, "Priya", 6, 6, 252, 1.0))) },
@@ -351,17 +336,16 @@ class BoardViewModelTest {
         repo.refreshGroups()
         advanceUntilIdle()
 
-        viewModel.onTimeRangeSelected(LeaderboardTimeRange.ALL_TIME)
+        viewModel.onSnapshotMonthSelected("2026-09")
         advanceUntilIdle()
 
-        // Switching groups keeps the range: g2's reload is also all-time (no window).
+        // A different group can have different snapshot months, so reset to its live board.
         repo.selectGroup("g2")
         advanceUntilIdle()
 
-        assertEquals(LeaderboardTimeRange.ALL_TIME, viewModel.uiState.value.selectedTimeRange)
+        assertNull(viewModel.uiState.value.selectedSnapshotMonth)
         assertEquals("g2", viewModel.uiState.value.selectedGroup?.id)
-        assertNull(api.lastFrom)
-        assertNull(api.lastTo)
+        assertNull(api.lastMonth)
     }
 
     @Test

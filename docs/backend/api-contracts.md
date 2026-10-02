@@ -243,14 +243,23 @@ cannot drift apart; there is deliberately no `ORDER BY` in the query.
     "pointsFor": 252, "pointsAgainst": 180, "winRate": 1.0,
     "currentStreak": 6, "bestStreak": 6, "rating": 54.1, "provisional": false,
     "recentForm": [true, true, false, true, true, true],
-    "algorithmVersion": "team-v2", "ratingPeriod": "cumulative",
+    "algorithmVersion": "team-v2", "ratingPeriod": "window",
     "uniquePartners": 3, "maxPartnerShare": 0.5000,
     "provisionalReason": null, "limitedPartnerVariety": false }
-], "minGamesToRank": 3, "algorithmVersion": "team-v2", "ratingPeriod": "cumulative" }
+], "minGamesToRank": 3, "algorithmVersion": "team-v2", "ratingPeriod": "window" }
 ```
 `pointsAgainst` was added alongside the difference tiebreak; `pointsFor` is
 retained (rather than replaced by a computed difference) so clients built
 against the earlier shape keep deserializing.
+
+The Board shows the live current month and does not expose an All Time
+leaderboard. `GET /groups/{groupId}/leaderboard/months` returns up to three
+most recent completed `YYYY-MM` values whose `monthly_trophy.standings_captured`
+flag is true. `GET /groups/{groupId}/leaderboard?month=YYYY-MM` returns that
+month's immutable `monthly_standing` rows. Months without a captured snapshot
+are not listed and are not reconstructed. The unwindowed form remains available
+to All Time Stats and uses materialized match totals; it does not calculate Skill
+ratings. The windowed form backs the live current-month Board.
 
 **`recentForm`** is the player's last 10 results within the standings window
 (the same `from`/`to` as the request), in **chronological** order — oldest
@@ -261,8 +270,9 @@ needs to reverse it. A player with fewer than 10 matches in the window simply
 gets a shorter list; one with none gets `[]`. Computed on demand in one
 set-based query per leaderboard fetch, not materialized.
 
-**`rating`** is the team-v2 skill rating: a cumulative two-team Gaussian replay
-starting every player at mean 25 and uncertainty 25/3. Each regular player's
+**`rating`** is the team-v2 skill rating: a two-team Gaussian replay starting
+every player at mean 25 and uncertainty 25/3. This Month starts the replay at
+the calendar month boundary; All Time starts at the first match. Each regular player's
 variance drifts by `(25/300)²` before an appearance; performance noise is
 `β = 25/6` per participant. The result updates every participant from the same
 pre-match state, including teammate and opponent uncertainty. The conservative
@@ -277,7 +287,8 @@ the largest-partner share is compared with the existing 60%/75%/100% caps.
 Partner variety does not affect qualification or rating updates.
 
 Team-v2 responses include `algorithmVersion: "team-v2"` and
-`ratingPeriod: "cumulative"` at both response and entry level. With
+`ratingPeriod: "window"` for This Month and `"cumulative"` for All Time at both
+response and entry level. With
 `PLAYBOARD_TEAM_V2_ENABLED=false`, the endpoint returns the legacy Wilson
 `wilson-v1` ranking and its `all-time`/`window` period values instead.
 
@@ -293,12 +304,10 @@ ranked entry and are excluded from the podium, but retain sequential API ranks
 **Optional time window (`?from=…&to=…`).** Supply both `from` and `to` as
 ISO-8601 instants to scope the statistics and qualification window to the
 half-open interval `[from, to)` by `match.playedAt` — this backs the Board's
-"This Month" toggle. The client computes calendar boundaries in device-local
-time and sends UTC instants. There is no weekly window. Team-v2 always replays
-all nondeleted matches from the group's first history through the exclusive
-`to` cutoff, while `from` controls only displayed statistics, qualification,
-recent form, and streaks. Omit both params for the live all-time response;
-team-v2 treats it as `[EPOCH, now)`.
+"This Month" toggle. The client computes Asia/Kolkata calendar boundaries and
+sends UTC instants. There is no weekly or All Time Board window. Team-v2 replays
+the requested monthly range from its initial prior. Omit both params for the
+All Time Stats response, which reads materialized totals without Skill replay.
 
 Former regular members remain in the historical replay even after leaving, but
 only current active regular members are returned. Guests use the fixed initial
@@ -306,8 +315,9 @@ prior on each appearance and never accumulate state. Matches and rosters are
 loaded in bulk; malformed matches are skipped with a diagnostic log. A window
 covering all history therefore produces the same team-v2 ratings as all-time for
 the same cutoff, while its statistics and qualification can still differ.
-Edits, deletions, and backdated matches affect the next read because ratings are
-replayed on demand; no checkpoint backfill is required.
+Edits and deletions in the current month affect the next live-month read because
+ratings are replayed for that month on demand; completed leaderboard snapshots
+remain frozen.
 
 The legacy path remains available behind `PLAYBOARD_TEAM_V2_ENABLED=false`.
 
@@ -440,7 +450,7 @@ the signed difference between the active rating display values immediately befor
 and after this match, calculated before endpoint rounding and rounded half-up to
 two decimals. The leaderboard itself remains displayed at one decimal. A null
 delta identifies a guest, who participates in the team prediction but is never rated. History is replayed
-through the target in `(playedAt, matchId)` order, skipping malformed and deleted
+from the target match's Asia/Kolkata month boundary through the target in `(playedAt, matchId)` order, skipping malformed and deleted
 matches. Consequently edits, deletions, and backdated inserts are reflected the
 next time any affected detail is requested. With team-v2 disabled, the same field
 uses the unrounded Wilson before/after difference, rounded half-up to two decimals.

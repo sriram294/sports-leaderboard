@@ -1,5 +1,13 @@
 import SwiftUI
 
+private func monthLabel(_ value: String) -> String {
+    let input = DateFormatter()
+    input.dateFormat = "yyyy-MM"
+    let output = DateFormatter()
+    output.dateFormat = "MMM yyyy"
+    return input.date(from: value).map { output.string(from: $0) } ?? value
+}
+
 /// Branded month/all-time leaderboard for the active group.
 struct BoardScreen: View {
     @ObservedObject var viewModel: BoardViewModel
@@ -32,7 +40,7 @@ struct BoardScreen: View {
                             )
                             .accessibilityIdentifier("leaderboard-empty")
                         } else {
-                            LeaderboardPodium(entries: viewModel.state.podium, range: viewModel.state.range)
+                            LeaderboardPodium(entries: viewModel.state.podium, period: viewModel.state.selectedSnapshotMonth.map(monthLabel) ?? "This Month")
                             RankingsCard(viewModel: viewModel)
                         }
                     }
@@ -47,9 +55,9 @@ struct BoardScreen: View {
 
     private var emptyMessage: String {
         if viewModel.state.groupMemberCount == 0 { return "Invite players to begin building a board." }
-        return viewModel.state.range == .month
+        return viewModel.state.selectedSnapshotMonth == nil
             ? "Record a match to start \(viewModel.state.monthName)'s standings."
-            : "Rankings appear after the group's first match."
+            : "No standings were saved for this month."
     }
 }
 
@@ -60,7 +68,7 @@ private struct BoardHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: PlayboardSpacing.extraSmall) {
-                Text(viewModel.state.range == .month ? "\(viewModel.state.monthName.uppercased()) STANDINGS" : "ALL-TIME STANDINGS")
+                Text("\((viewModel.state.selectedSnapshotMonth.map(monthLabel) ?? viewModel.state.monthName).uppercased()) STANDINGS")
                     .font(PlayboardTypography.eyebrow())
                     .tracking(1.2)
                     .foregroundStyle(palette.textMuted)
@@ -70,15 +78,16 @@ private struct BoardHeader: View {
             }
             Spacer()
             Menu {
-                ForEach(LeaderboardRange.allCases) { range in
-                    Button {
-                        viewModel.setRange(range)
-                    } label: {
-                        Label(range.rawValue, systemImage: range == viewModel.state.range ? "checkmark" : "calendar")
+                Button { viewModel.setSnapshotMonth(nil) } label: {
+                    Label("This Month", systemImage: viewModel.state.selectedSnapshotMonth == nil ? "checkmark" : "calendar")
+                }
+                ForEach(viewModel.state.availableSnapshotMonths, id: \.self) { month in
+                    Button { viewModel.setSnapshotMonth(month) } label: {
+                        Label(monthLabel(month), systemImage: month == viewModel.state.selectedSnapshotMonth ? "checkmark" : "calendar")
                     }
                 }
             } label: {
-                Label(viewModel.state.range.rawValue, systemImage: "chevron.down")
+                Label(viewModel.state.selectedSnapshotMonth.map(monthLabel) ?? "This Month", systemImage: "chevron.down")
                     .labelStyle(.titleAndIcon)
                     .font(PlayboardTypography.label())
                     .frame(minHeight: 44)
@@ -91,13 +100,13 @@ private struct BoardHeader: View {
 
 private struct LeaderboardPodium: View {
     let entries: [LeaderboardEntry]
-    let range: LeaderboardRange
+    let period: String
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(spacing: PlayboardSpacing.small) {
-                ForEach(entries) { PodiumSlot(entry: $0, champion: $0.rank == entries.first?.rank, range: range) }
+                ForEach(entries) { PodiumSlot(entry: $0, champion: $0.rank == entries.first?.rank, period: period) }
             }
         } else {
             HStack(alignment: .bottom, spacing: PlayboardSpacing.small) {
@@ -112,7 +121,7 @@ private struct LeaderboardPodium: View {
     @ViewBuilder
     private func podium(at index: Int, champion: Bool = false) -> some View {
         if entries.indices.contains(index) {
-            PodiumSlot(entry: entries[index], champion: champion, range: range)
+            PodiumSlot(entry: entries[index], champion: champion, period: period)
                 .frame(maxWidth: .infinity)
         } else {
             Color.clear.frame(maxWidth: .infinity, minHeight: 100).accessibilityHidden(true)
@@ -123,7 +132,7 @@ private struct LeaderboardPodium: View {
 private struct PodiumSlot: View {
     let entry: LeaderboardEntry
     let champion: Bool
-    let range: LeaderboardRange
+    let period: String
     @Environment(\.playboardPalette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -169,7 +178,7 @@ private struct PodiumSlot: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(playerColor.opacity(champion ? 0.45 : 0.2)))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Rank \(entry.rank), \(entry.displayName)")
-        .accessibilityValue("\(entry.rating.map { $0.formatted(.number.precision(.fractionLength(1))) + " skill rating" } ?? "win rate"), \(entry.wins) wins from \(entry.gamesPlayed) games, \(range.rawValue)")
+        .accessibilityValue("\(entry.rating.map { $0.formatted(.number.precision(.fractionLength(1))) + " skill rating" } ?? "win rate"), \(entry.wins) wins from \(entry.gamesPlayed) games, \(period)")
     }
 
     private var playerColor: Color { Color(leaderboardHex: entry.avatarColor) }

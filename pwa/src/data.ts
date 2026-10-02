@@ -73,13 +73,15 @@ export const api = {
   googleSignIn: (idToken: string) => request<AuthTokens>('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: session?.refreshToken }) }),
   groups: () => request<{ groups: Group[] }>('/groups'),
-  leaderboard: (id: string, from?: string, to?: string) => {
+  leaderboard: (id: string, from?: string, to?: string, month?: string) => {
     const query = new URLSearchParams();
     if (from) query.set('from', from);
     if (to) query.set('to', to);
+    if (month) query.set('month', month);
     const suffix = query.toString();
     return request<LeaderboardResponse>(`/groups/${id}/leaderboard${suffix ? `?${suffix}` : ''}`);
   },
+  leaderboardMonths: (id: string) => request<string[]>(`/groups/${id}/leaderboard/months`),
   matches: (id: string, cursor?: string, mine = false) => {
     const query = new URLSearchParams();
     if (cursor) query.set('cursor', cursor);

@@ -6,6 +6,15 @@ import FoundationNetworking
 /// Network boundary for existing leaderboard data.
 protocol LeaderboardRepository: Sendable {
     func leaderboard(groupID: String, window: DateInterval?) async throws -> Leaderboard
+    func archivedMonths(groupID: String) async throws -> [String]
+    func archivedLeaderboard(groupID: String, month: String) async throws -> Leaderboard
+}
+
+extension LeaderboardRepository {
+    func archivedMonths(groupID: String) async throws -> [String] { [] }
+    func archivedLeaderboard(groupID: String, month: String) async throws -> Leaderboard {
+        throw GroupRepositoryError.invalidResponse
+    }
 }
 
 /// Existing-API leaderboard repository with one S01 token refresh retry.
@@ -37,6 +46,36 @@ actor LiveLeaderboardRepository: LeaderboardRepository {
             ]
         }
         guard let url = components?.url else { throw GroupRepositoryError.invalidResponse }
+        return try await fetchLeaderboard(url: url)
+    }
+
+    func archivedLeaderboard(groupID: String, month: String) async throws -> Leaderboard {
+        var components = URLComponents(url: baseURL.appendingPathComponent("groups/\(groupID)/leaderboard"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "month", value: month)]
+        guard let url = components?.url else { throw GroupRepositoryError.invalidResponse }
+        return try await fetchLeaderboard(url: url)
+    }
+
+    func archivedMonths(groupID: String) async throws -> [String] {
+        let url = baseURL.appendingPathComponent("groups/\(groupID)/leaderboard/months")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        var response = try await apiResponse(for: request)
+        if response.statusCode == 401, let refreshAccessToken {
+            do { accessToken = try await refreshAccessToken() }
+            catch { throw GroupRepositoryError.permissionDenied }
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            response = try await apiResponse(for: request)
+        }
+        guard (200..<300).contains(response.statusCode) else {
+            throw response.statusCode == 403 ? GroupRepositoryError.permissionDenied : GroupRepositoryError.invalidResponse
+        }
+        do { return try decoder.decode([String].self, from: response.data) }
+        catch { throw GroupRepositoryError.invalidResponse }
+    }
+
+    private func fetchLeaderboard(url: URL) async throws -> Leaderboard {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")

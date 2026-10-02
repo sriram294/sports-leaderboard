@@ -178,6 +178,7 @@ function PartnersCard({ groupId, rankings, currentUserId }: { groupId: string; r
 /** Avatar + name pill that opens a dropdown of every player on the leaderboard, same pattern as Board's range selector. */
 function PlayerPicker({ players, selected, onSelect }: { players: Ranking[]; selected?: Ranking; onSelect: (userId: string) => void }) {
   const [open, setOpen] = useState(false);
+  const alphabeticalPlayers = [...players].sort((a, b) => a.displayName.localeCompare(b.displayName));
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -194,7 +195,7 @@ function PlayerPicker({ players, selected, onSelect }: { players: Ranking[]; sel
       </button>
       {open && (
         <div className="player-picker-menu" role="menu">
-          {players.map(player => (
+          {alphabeticalPlayers.map(player => (
             <button
               key={player.userId}
               role="menuitem"
