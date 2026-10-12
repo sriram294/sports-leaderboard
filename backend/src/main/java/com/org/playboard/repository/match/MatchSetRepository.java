@@ -12,6 +12,9 @@ public interface MatchSetRepository extends JpaRepository<MatchSet, UUID> {
 
     List<MatchSet> findByMatchIdOrderBySetNo(UUID matchId);
 
+    /** Loads every set for a match-list page in one query, retaining display order. */
+    List<MatchSet> findByMatchIdInOrderByMatchIdAscSetNoAsc(List<UUID> matchIds);
+
     void deleteByMatchId(UUID matchId);
 
     @Query("""

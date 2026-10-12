@@ -18,6 +18,18 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
 
     List<MatchParticipant> findByMatchTeamIdIn(List<UUID> matchTeamIds);
 
+    /**
+     * Loads participants for every team on a match-list page and joins users so DTO mapping
+     * cannot fall back to one lazy user select per participant.
+     */
+    @Query("""
+        select mp from MatchParticipant mp
+        join fetch mp.user
+        where mp.matchTeam.id in :matchTeamIds
+        order by mp.matchTeam.id asc, mp.id asc
+        """)
+    List<MatchParticipant> findWithUserByMatchTeamIdIn(@Param("matchTeamIds") List<UUID> matchTeamIds);
+
     List<MatchParticipant> findByUserId(UUID userId);
 
     void deleteByMatchId(UUID matchId);
