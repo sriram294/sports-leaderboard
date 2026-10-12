@@ -1,2 +1,4 @@
 /pwa/node_modules/*
 docs/icons/*
+/android/app/release/
+/backend/data/

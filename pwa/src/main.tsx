@@ -14,7 +14,16 @@ initTheme();
 // queries so Board, Matches, Profile, and Stats reload in lockstep (wired up per
 // slice as screens migrate to useQuery).
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      // Individual feature queries increase this for slower-changing data. Mutations
+      // still invalidate their group scope immediately.
+      staleTime: 30_000,
+      gcTime: 10 * 60_000,
+    },
+  },
 });
 
 if ('serviceWorker' in navigator) {

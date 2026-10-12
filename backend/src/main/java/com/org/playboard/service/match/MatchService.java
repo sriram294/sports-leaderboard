@@ -25,6 +25,7 @@ import com.org.playboard.entity.match.MatchSet;
 import com.org.playboard.entity.match.MatchTeam;
 import com.org.playboard.entity.user.User;
 import com.org.playboard.repository.group.GroupMemberRepository;
+import com.org.playboard.repository.group.GroupRepository;
 import com.org.playboard.repository.match.MatchEventRepository;
 import com.org.playboard.repository.match.MatchParticipantRepository;
 import com.org.playboard.repository.match.MatchRecordRequestRepository;
@@ -72,6 +73,7 @@ public class MatchService {
     private final MatchSetRepository matchSetRepository;
     private final MatchEventRepository matchEventRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final GroupMembershipGuard membershipGuard;
     private final StatsRecalculationService statsRecalculationService;
@@ -87,6 +89,7 @@ public class MatchService {
             MatchSetRepository matchSetRepository,
             MatchEventRepository matchEventRepository,
             GroupMemberRepository groupMemberRepository,
+            GroupRepository groupRepository,
             UserRepository userRepository,
             GroupMembershipGuard membershipGuard,
             StatsRecalculationService statsRecalculationService,
@@ -100,6 +103,7 @@ public class MatchService {
         this.matchSetRepository = matchSetRepository;
         this.matchEventRepository = matchEventRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.membershipGuard = membershipGuard;
         this.statsRecalculationService = statsRecalculationService;
@@ -208,6 +212,7 @@ public class MatchService {
         Set<UUID> affectedPlayers = applyRoster(match, request);
         recordEvent(match, caller.getUser(), MatchAction.CREATED);
         statsRecalculationService.recompute(group, affectedPlayers);
+        groupRepository.incrementLeaderboardVersion(group.getId());
 
         eventPublisher.publishEvent(new MatchRecordedEvent(
                 group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
@@ -267,6 +272,7 @@ public class MatchService {
         Set<UUID> affectedPlayers = new HashSet<>(oldPlayers);
         affectedPlayers.addAll(newPlayers);
         statsRecalculationService.recompute(group, affectedPlayers);
+        groupRepository.incrementLeaderboardVersion(group.getId());
 
         eventPublisher.publishEvent(new MatchUpdatedEvent(
                 group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
@@ -290,6 +296,7 @@ public class MatchService {
 
         recordEvent(match, caller.getUser(), MatchAction.DELETED);
         statsRecalculationService.recompute(match.getGroup(), affectedPlayers);
+        groupRepository.incrementLeaderboardVersion(match.getGroup().getId());
     }
 
     private Match findMatch(UUID groupId, UUID matchId) {

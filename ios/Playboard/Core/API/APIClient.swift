@@ -16,12 +16,27 @@ protocol APIClient: Sendable {
 
 /// URLSession-backed production API client.
 struct URLSessionAPIClient: APIClient {
+    private let session: URLSession
+
+    init(session: URLSession = Self.makeSession()) {
+        self.session = session
+    }
+
     func response(for request: URLRequest) async throws -> APIResponse {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIClientError.invalidResponse
         }
         return APIResponse(data: data, statusCode: httpResponse.statusCode)
+    }
+
+    private static func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.default
+        configuration.requestCachePolicy = .useProtocolCachePolicy
+        configuration.timeoutIntervalForRequest = 15
+        configuration.timeoutIntervalForResource = 30
+        configuration.urlCache = URLCache(memoryCapacity: 8 * 1024 * 1024, diskCapacity: 32 * 1024 * 1024)
+        return URLSession(configuration: configuration)
     }
 }
 

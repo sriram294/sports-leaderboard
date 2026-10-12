@@ -43,7 +43,7 @@ function indiaMonthWindow(): { from: string; to: string } {
 }
 
 export const useArchivedLeaderboardMonths = (groupId?: string) =>
-  useQuery({ queryKey: [...leaderboardKey(groupId), 'months'], queryFn: () => api.leaderboardMonths(groupId!), enabled: !!groupId });
+  useQuery({ queryKey: [...leaderboardKey(groupId), 'months'], queryFn: () => api.leaderboardMonths(groupId!), enabled: !!groupId, staleTime: 60 * 60_000 });
 
 /**
  * Cursor-paginated match log (Android's `getMatches(cursor, mine)` loop). `mine` scopes to
@@ -64,17 +64,17 @@ export const membersKey = (groupId?: string) => ['members', groupId] as const;
 
 /** The group roster (real members + guest fillers) for the Add-match player picker and management. */
 export const useMembers = (groupId?: string) =>
-  useQuery({ queryKey: membersKey(groupId), queryFn: () => api.members(groupId!), enabled: !!groupId });
+  useQuery({ queryKey: membersKey(groupId), queryFn: () => api.members(groupId!), enabled: !!groupId, staleTime: 5 * 60_000 });
 
 /** Group monthly-winner trophies (Stats "MONTHLY WINNERS"). Served, not derived. */
 export const useTrophies = (groupId?: string) =>
-  useQuery({ queryKey: ['trophies', groupId], queryFn: () => api.trophies(groupId!), enabled: !!groupId });
+  useQuery({ queryKey: ['trophies', groupId], queryFn: () => api.trophies(groupId!), enabled: !!groupId, staleTime: 60 * 60_000 });
 
 export const statsKey = (groupId?: string, userId?: string) => ['stats', groupId, userId] as const;
 
 /** A player's full profile stats (hero, tiles, recent matches, trophies). */
 export const usePlayerStats = (groupId?: string, userId?: string) =>
-  useQuery({ queryKey: statsKey(groupId, userId), queryFn: () => api.stats(groupId!, userId!), enabled: !!groupId && !!userId });
+  useQuery({ queryKey: statsKey(groupId, userId), queryFn: () => api.stats(groupId!, userId!), enabled: !!groupId && !!userId, staleTime: 5 * 60_000 });
 
 export const partnersKey = (groupId?: string, userId?: string) => ['partners', groupId, userId] as const;
 

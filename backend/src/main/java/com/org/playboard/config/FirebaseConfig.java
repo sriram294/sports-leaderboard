@@ -38,7 +38,9 @@ public class FirebaseConfig {
     @Bean
     @Nullable
     public FirebaseMessaging firebaseMessaging(
-            @Value("${playboard.firebase.credentials-base64:}") String credentialsBase64) {
+            @Value("${playboard.firebase.credentials-base64:}") String credentialsBase64,
+            @Value("${playboard.firebase.connect-timeout-ms:5000}") int connectTimeoutMs,
+            @Value("${playboard.firebase.read-timeout-ms:10000}") int readTimeoutMs) {
         if (credentialsBase64 == null || credentialsBase64.isBlank()) {
             log.info("Firebase not configured (playboard.firebase.credentials-base64 is blank); "
                     + "push notifications are disabled.");
@@ -56,6 +58,8 @@ public class FirebaseConfig {
                     // "Not in GZIP format" (works locally). ApacheHttpTransport decodes gzip
                     // itself and sidesteps HttpURLConnection entirely.
                     .setHttpTransport(new ApacheHttpTransport())
+                    .setConnectTimeout(connectTimeoutMs)
+                    .setReadTimeout(readTimeoutMs)
                     .build();
             FirebaseApp app = FirebaseApp.getApps().stream()
                     .filter(a -> APP_NAME.equals(a.getName()))
