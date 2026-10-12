@@ -40,6 +40,9 @@ public class Group extends Auditable {
     @Column(name = "avatar_color", nullable = false)
     private String avatarColor;
 
+    @Column(name = "leaderboard_version", nullable = false)
+    private long leaderboardVersion;
+
     // Daily playing-session window (local wall-clock); both null = no set window.
     @Column(name = "session_start")
     private LocalTime sessionStart;
@@ -89,6 +92,10 @@ public class Group extends Auditable {
 
     public void setAvatarColor(String avatarColor) {
         this.avatarColor = avatarColor;
+    }
+
+    public long getLeaderboardVersion() {
+        return leaderboardVersion;
     }
 
     public LocalTime getSessionStart() {

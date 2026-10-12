@@ -1,5 +1,6 @@
 package com.org.playboard.service.notification;
 
+import com.org.playboard.config.AsyncConfig;
 import com.org.playboard.entity.group.GroupRole;
 import com.org.playboard.entity.group.MemberStatus;
 import com.org.playboard.repository.group.GroupMemberRepository;
@@ -35,7 +36,7 @@ public class NotificationEventListener {
         this.pushNotificationService = pushNotificationService;
     }
 
-    @Async
+    @Async(AsyncConfig.NOTIFICATION_EXECUTOR)
     @TransactionalEventListener
     public void onMatchRecorded(MatchRecordedEvent event) {
         List<UUID> recipients = recipientsExcept(event.groupId(), event.actorUserId());
@@ -48,7 +49,7 @@ public class NotificationEventListener {
                 Map.of("type", "match", "groupId", event.groupId().toString(), "matchId", event.matchId().toString()));
     }
 
-    @Async
+    @Async(AsyncConfig.NOTIFICATION_EXECUTOR)
     @TransactionalEventListener
     public void onMatchUpdated(MatchUpdatedEvent event) {
         List<UUID> recipients = recipientsExcept(event.groupId(), event.actorUserId());
@@ -61,7 +62,7 @@ public class NotificationEventListener {
                 Map.of("type", "match", "groupId", event.groupId().toString(), "matchId", event.matchId().toString()));
     }
 
-    @Async
+    @Async(AsyncConfig.NOTIFICATION_EXECUTOR)
     @TransactionalEventListener
     public void onMemberAdded(MemberAddedEvent event) {
         log.info("MemberAdded to group {}: notifying the added user.", event.groupId());
@@ -78,7 +79,7 @@ public class NotificationEventListener {
      * someone they've been stripped of admin would be a worse experience than saying
      * nothing, and they'll see it on the group screen.
      */
-    @Async
+    @Async(AsyncConfig.NOTIFICATION_EXECUTOR)
     @TransactionalEventListener
     public void onMemberRoleChanged(MemberRoleChangedEvent event) {
         if (event.newRole() != GroupRole.ADMIN) {

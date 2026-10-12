@@ -10,6 +10,11 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/playboard}
     username: ${DB_USERNAME:playboard}
     password: ${DB_PASSWORD:playboard}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
   jpa:
     open-in-view: false
     hibernate:
@@ -31,6 +36,9 @@ playboard:
   ratings:
     # Active cumulative Gaussian team ratings. Set false for the legacy Wilson/team-v1 path.
     team-v2-enabled: ${PLAYBOARD_TEAM_V2_ENABLED:true}
+  leaderboard-cache:
+    enabled: ${PLAYBOARD_LEADERBOARD_CACHE_ENABLED:false}
+    ttl: ${PLAYBOARD_LEADERBOARD_CACHE_TTL:PT5M}
   # Comma-separated browser origins, for example:
   # https://playboardapp.vercel.app,http://localhost:5173
   web-origin: ${WEB_ORIGIN:http://localhost:5173}
@@ -56,6 +64,8 @@ playboard:
     # no-op (see FirebaseConfig / PushNotificationService). Encode the key with
     # e.g. `base64 -w0 service-account.json` and set it on Railway.
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+    connect-timeout-ms: ${PLAYBOARD_FIREBASE_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${PLAYBOARD_FIREBASE_READ_TIMEOUT_MS:10000}
   notifications:
     # End-of-session rank-change push (SessionRankChangeJob). A group's session is
     # considered over once no match has been logged for `session-quiet-period`; the
@@ -65,6 +75,11 @@ playboard:
     session-scan-interval: ${PLAYBOARD_SESSION_SCAN_INTERVAL:PT15M}
     session-scan-initial-delay: ${PLAYBOARD_SESSION_SCAN_INITIAL_DELAY:PT2M}
     session-lookback: ${PLAYBOARD_SESSION_LOOKBACK:PT24H}
+    executor:
+      core-pool-size: ${PLAYBOARD_NOTIFICATION_CORE_POOL_SIZE:2}
+      max-pool-size: ${PLAYBOARD_NOTIFICATION_MAX_POOL_SIZE:4}
+      queue-capacity: ${PLAYBOARD_NOTIFICATION_QUEUE_CAPACITY:100}
+      keep-alive-seconds: ${PLAYBOARD_NOTIFICATION_KEEP_ALIVE_SECONDS:30}
   trophies:
     # Monthly leaderboard crown (MonthlyTrophyJob). The job sweeps for *completed* months
     # that have no verdict yet, rather than firing on the 1st: this service sleeps on
