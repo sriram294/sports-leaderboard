@@ -76,7 +76,7 @@ android {
     buildTypes {
         release {
             optimization {
-                enable = false
+                enable = true
             }
             // Only sign when the keystore is present; otherwise the release APK
             // is built unsigned (uninstallable) rather than the build failing.

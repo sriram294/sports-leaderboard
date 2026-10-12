@@ -129,7 +129,7 @@ public class MatchService {
 
         boolean hasMore = page.size() > effectiveLimit;
         List<Match> items = hasMore ? page.subList(0, effectiveLimit) : page;
-        List<MatchSummaryDto> matches = items.stream().map(this::toSummary).toList();
+        List<MatchSummaryDto> matches = toSummaries(items);
         String nextCursor = hasMore ? encodeCursor(items.get(items.size() - 1)) : null;
         return new MatchListResponse(matches, nextCursor);
     }
@@ -402,6 +402,43 @@ public class MatchService {
         return new MatchSummaryDto(match.getId(), match.getPlayedAt(), buildTeams(match), buildSets(match));
     }
 
+    /**
+     * Hydrates one match page with a fixed number of queries. The old mapper called the
+     * single-match loaders for every row (and every team), which made the match history endpoint
+     * scale linearly in round trips rather than just payload size.
+     */
+    private List<MatchSummaryDto> toSummaries(List<Match> matches) {
+        if (matches.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> matchIds = matches.stream().map(Match::getId).toList();
+        Map<UUID, List<MatchTeam>> teamsByMatch = matchTeamRepository
+                .findByMatchIdInOrderByMatchIdAscTeamNoAsc(matchIds)
+                .stream()
+                .collect(Collectors.groupingBy(team -> team.getMatch().getId()));
+        Map<UUID, List<MatchSet>> setsByMatch = matchSetRepository
+                .findByMatchIdInOrderByMatchIdAscSetNoAsc(matchIds)
+                .stream()
+                .collect(Collectors.groupingBy(set -> set.getMatch().getId()));
+        List<UUID> teamIds = teamsByMatch.values().stream()
+                .flatMap(List::stream)
+                .map(MatchTeam::getId)
+                .toList();
+        Map<UUID, List<MatchParticipant>> participantsByTeam = teamIds.isEmpty()
+                ? Map.of()
+                : matchParticipantRepository.findWithUserByMatchTeamIdIn(teamIds).stream()
+                        .collect(Collectors.groupingBy(participant -> participant.getMatchTeam().getId()));
+
+        return matches.stream()
+                .map(match -> new MatchSummaryDto(
+                        match.getId(),
+                        match.getPlayedAt(),
+                        buildTeams(teamsByMatch.getOrDefault(match.getId(), List.of()), participantsByTeam),
+                        buildSets(setsByMatch.getOrDefault(match.getId(), List.of()))))
+                .toList();
+    }
+
     private MatchDetailDto toDetail(Match match) {
         List<MatchEventDto> events = matchEventRepository.findByMatchIdOrderByCreatedAt(match.getId()).stream()
                 .map(e -> new MatchEventDto(
@@ -424,9 +461,19 @@ public class MatchService {
     }
 
     private List<TeamDto> buildTeams(Match match) {
-        return matchTeamRepository.findByMatchIdOrderByTeamNo(match.getId()).stream()
+        return buildTeams(
+                matchTeamRepository.findByMatchIdOrderByTeamNo(match.getId()),
+                null);
+    }
+
+    private List<TeamDto> buildTeams(
+            List<MatchTeam> teams, Map<UUID, List<MatchParticipant>> participantsByTeam) {
+        return teams.stream()
                 .map(team -> {
-                    List<PlayerRefDto> players = matchParticipantRepository.findByMatchTeamId(team.getId()).stream()
+                    List<MatchParticipant> participants = participantsByTeam == null
+                            ? matchParticipantRepository.findByMatchTeamId(team.getId())
+                            : participantsByTeam.getOrDefault(team.getId(), List.of());
+                    List<PlayerRefDto> players = participants.stream()
                             .map(p -> {
                                 User user = p.getUser();
                                 return new PlayerRefDto(
@@ -443,7 +490,11 @@ public class MatchService {
     }
 
     private List<SetDto> buildSets(Match match) {
-        return matchSetRepository.findByMatchIdOrderBySetNo(match.getId()).stream()
+        return buildSets(matchSetRepository.findByMatchIdOrderBySetNo(match.getId()));
+    }
+
+    private List<SetDto> buildSets(List<MatchSet> sets) {
+        return sets.stream()
                 .map(s -> new SetDto(s.getSetNo(), s.getTeam1Score(), s.getTeam2Score()))
                 .toList();
     }
