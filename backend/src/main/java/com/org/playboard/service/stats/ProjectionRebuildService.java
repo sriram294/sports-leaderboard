@@ -2,6 +2,7 @@ package com.org.playboard.service.stats;
 
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,10 +12,10 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class ProjectionRebuildService {
     private final JdbcTemplate jdbc;
-    private final StatsQueryService stats;
+    private final ObjectProvider<StatsQueryService> stats;
     private final ObjectMapper json;
 
-    public ProjectionRebuildService(JdbcTemplate jdbc, StatsQueryService stats, ObjectMapper json) {
+    public ProjectionRebuildService(JdbcTemplate jdbc, ObjectProvider<StatsQueryService> stats, ObjectMapper json) {
         this.jdbc = jdbc;
         this.stats = stats;
         this.json = json;
@@ -33,7 +34,7 @@ public class ProjectionRebuildService {
     @Transactional
     public void rebuild(UUID groupId, Instant from, Instant to) {
         try {
-            var standings = stats.rankedStandings(groupId, from, to, null);
+            var standings = stats.getObject().rankedStandings(groupId, from, to, null);
             String payload = json.writeValueAsString(standings.entries());
             jdbc.update("""
                 update group_period_projection set status = 'ready', standings = cast(? as jsonb), rebuilt_at = now(), failure_message = null
