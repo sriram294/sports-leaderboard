@@ -39,10 +39,14 @@ import com.org.playboard.service.notification.events.MatchRecordedEvent;
 import com.org.playboard.service.notification.events.MatchUpdatedEvent;
 import com.org.playboard.service.stats.MatchRatingChangeService;
 import com.org.playboard.service.stats.StatsRecalculationService;
+import com.org.playboard.service.stats.ProjectionRebuildRequested;
+import com.org.playboard.service.stats.ProjectionRebuildService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,6 +81,7 @@ public class MatchService {
     private final UserRepository userRepository;
     private final GroupMembershipGuard membershipGuard;
     private final StatsRecalculationService statsRecalculationService;
+    private final ProjectionRebuildService projectionRebuildService;
     private final MatchRatingChangeService matchRatingChangeService;
     private final ApplicationEventPublisher eventPublisher;
     private final AvatarUrlResolver avatarUrls;
@@ -93,6 +98,7 @@ public class MatchService {
             UserRepository userRepository,
             GroupMembershipGuard membershipGuard,
             StatsRecalculationService statsRecalculationService,
+            ProjectionRebuildService projectionRebuildService,
             MatchRatingChangeService matchRatingChangeService,
             ApplicationEventPublisher eventPublisher,
             AvatarUrlResolver avatarUrls) {
@@ -107,6 +113,7 @@ public class MatchService {
         this.userRepository = userRepository;
         this.membershipGuard = membershipGuard;
         this.statsRecalculationService = statsRecalculationService;
+        this.projectionRebuildService = projectionRebuildService;
         this.matchRatingChangeService = matchRatingChangeService;
         this.eventPublisher = eventPublisher;
         this.avatarUrls = avatarUrls;
@@ -213,6 +220,7 @@ public class MatchService {
         recordEvent(match, caller.getUser(), MatchAction.CREATED);
         statsRecalculationService.recompute(group, affectedPlayers);
         groupRepository.incrementLeaderboardVersion(group.getId());
+        requestProjectionRebuild(group.getId(), match.getPlayedAt());
 
         eventPublisher.publishEvent(new MatchRecordedEvent(
                 group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
@@ -244,6 +252,7 @@ public class MatchService {
     @Transactional
     public MatchDetailDto updateMatch(UUID groupId, UUID matchId, UUID callerId, RecordMatchRequest request) {
         Match match = findMatch(groupId, matchId);
+        Instant oldPlayedAt = match.getPlayedAt();
         GroupMember caller = membershipGuard.requireActiveMember(groupId, callerId);
         requireEditPermission(match, caller);
 
@@ -273,6 +282,8 @@ public class MatchService {
         affectedPlayers.addAll(newPlayers);
         statsRecalculationService.recompute(group, affectedPlayers);
         groupRepository.incrementLeaderboardVersion(group.getId());
+        requestProjectionRebuild(group.getId(), oldPlayedAt);
+        requestProjectionRebuild(group.getId(), match.getPlayedAt());
 
         eventPublisher.publishEvent(new MatchUpdatedEvent(
                 group.getId(), group.getName(), caller.getUser().getId(), buildMatchSummary(match), match.getId()));
@@ -297,12 +308,21 @@ public class MatchService {
         recordEvent(match, caller.getUser(), MatchAction.DELETED);
         statsRecalculationService.recompute(match.getGroup(), affectedPlayers);
         groupRepository.incrementLeaderboardVersion(match.getGroup().getId());
+        requestProjectionRebuild(match.getGroup().getId(), match.getPlayedAt());
     }
 
     private Match findMatch(UUID groupId, UUID matchId) {
         return matchRepository
                 .findByIdAndGroupIdAndDeletedFalse(matchId, groupId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MATCH_NOT_FOUND", "Match not found"));
+    }
+
+    private void requestProjectionRebuild(UUID groupId, Instant playedAt) {
+        YearMonth month = YearMonth.from(playedAt.atZone(ZoneId.of("Asia/Kolkata")));
+        Instant from = month.atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        Instant to = month.plusMonths(1).atDay(1).atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant();
+        projectionRebuildService.markRebuilding(groupId, from, to);
+        eventPublisher.publishEvent(new ProjectionRebuildRequested(groupId, from, to));
     }
 
     private void requireEditPermission(Match match, GroupMember caller) {

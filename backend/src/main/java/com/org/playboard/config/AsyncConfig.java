@@ -21,6 +21,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class AsyncConfig {
 
     public static final String NOTIFICATION_EXECUTOR = "notificationExecutor";
+    public static final String PROJECTION_EXECUTOR = "projectionExecutor";
+
+    @Bean(name = PROJECTION_EXECUTOR)
+    public ThreadPoolTaskExecutor projectionExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("projection-");
+        executor.initialize();
+        return executor;
+    }
 
     @Bean(name = NOTIFICATION_EXECUTOR)
     public ThreadPoolTaskExecutor notificationExecutor(
