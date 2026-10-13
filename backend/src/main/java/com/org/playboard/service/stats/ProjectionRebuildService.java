@@ -1,9 +1,13 @@
 package com.org.playboard.service.stats;
 
+import java.sql.Types;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -28,7 +32,7 @@ public class ProjectionRebuildService {
             select id, ?, ?, 'team-v2', leaderboard_version, 'rebuilding' from groups where id = ?
             on conflict (group_id, period_start, period_end, algorithm_version) do update
               set source_version = excluded.source_version, status = 'rebuilding', requested_at = now(), failure_message = null
-            """, from, to, groupId);
+            """, timestamptz(from), timestamptz(to), groupId);
     }
 
     @Transactional
@@ -39,12 +43,16 @@ public class ProjectionRebuildService {
             jdbc.update("""
                 update group_period_projection set status = 'ready', standings = cast(? as jsonb), rebuilt_at = now(), failure_message = null
                 where group_id = ? and period_start = ? and period_end = ? and algorithm_version = 'team-v2'
-                """, payload, groupId, from, to);
+                """, payload, groupId, timestamptz(from), timestamptz(to));
         } catch (Exception exception) {
             jdbc.update("""
                 update group_period_projection set status = 'failed', failure_message = ?
                 where group_id = ? and period_start = ? and period_end = ? and algorithm_version = 'team-v2'
-                """, exception.getMessage(), groupId, from, to);
+                """, exception.getMessage(), groupId, timestamptz(from), timestamptz(to));
         }
+    }
+
+    private SqlParameterValue timestamptz(Instant instant) {
+        return new SqlParameterValue(Types.TIMESTAMP_WITH_TIMEZONE, OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
     }
 }
