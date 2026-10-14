@@ -75,9 +75,15 @@ android {
     }
     buildTypes {
         release {
-            optimization {
-                enable = true
-            }
+            // AGP 9.2's optimization DSL is experimental and requires the
+            // gradual-R8 opt-in. Use the stable release configuration until the
+            // project moves to AGP 9.3+, where the new DSL is supported.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "src/main/keepRules/rules.keep",
+            )
             // Only sign when the keystore is present; otherwise the release APK
             // is built unsigned (uninstallable) rather than the build failing.
             if (keystorePropertiesFile.exists()) {
