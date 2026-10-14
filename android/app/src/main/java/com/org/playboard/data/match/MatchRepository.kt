@@ -1,5 +1,6 @@
 package com.org.playboard.data.match
 
+import android.util.Log
 import com.org.playboard.data.group.GroupRepository
 import com.org.playboard.data.model.Match
 import com.org.playboard.data.model.MatchDetail
@@ -61,6 +62,7 @@ class MatchRepository @Inject constructor(
     ): Result<Unit> =
         runCatching { api.recordMatch(groupId, buildRequest(team1PlayerIds, team2PlayerIds, sets, winningTeamNo)); Unit }
             .onSuccess { groupRepository.notifyMatchesChanged() }
+            .onFailure { Log.e(TAG, "Failed to record match", it) }
             .recoverMatchValidation()
 
     /**
@@ -87,6 +89,7 @@ class MatchRepository @Inject constructor(
             Unit
         }
             .onSuccess { groupRepository.notifyMatchesChanged() }
+            .onFailure { Log.e(TAG, "Failed to edit match", it) }
             .recoverMatchValidation()
 
     private fun buildRequest(
@@ -142,6 +145,10 @@ class MatchRepository @Inject constructor(
     suspend fun deleteMatch(groupId: String, matchId: String): Result<Unit> =
         runCatching { api.deleteMatch(groupId, matchId) }
             .onSuccess { groupRepository.notifyMatchesChanged() }
+
+    private companion object {
+        const val TAG = "MatchRepository"
+    }
 }
 
 private fun MatchSummaryDto.toMatch() = Match(
