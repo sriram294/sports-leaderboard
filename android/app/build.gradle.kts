@@ -22,7 +22,7 @@ val keystoreProperties = Properties().apply {
 
 // Single source of truth for the app version — reused by both defaultConfig
 // (below) and the artifact name, so the two never drift.
-val appVersionName = "5.6"
+val appVersionName = "5.9"
 
 // Name the built artifacts "Playboard-<version>" instead of the module name
 // "app", so the APK is e.g. Playboard-1.5-debug.apk / Playboard-1.5-release.apk.
@@ -45,7 +45,7 @@ android {
         applicationId = "com.org.playboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 48
+        versionCode = 52
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -75,9 +75,15 @@ android {
     }
     buildTypes {
         release {
-            optimization {
-                enable = true
-            }
+            // AGP 9.2's optimization DSL is experimental and requires the
+            // gradual-R8 opt-in. Use the stable release configuration until the
+            // project moves to AGP 9.3+, where the new DSL is supported.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "src/main/keepRules/rules.keep",
+            )
             // Only sign when the keystore is present; otherwise the release APK
             // is built unsigned (uninstallable) rather than the build failing.
             if (keystorePropertiesFile.exists()) {
