@@ -174,7 +174,7 @@ private fun DaySquare(active: Boolean) {
     )
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B)
 @Composable
 private fun AttendanceCalendarPreview() {
     val months = heatmapMonths(LocalDate.of(2026, 7, 19))

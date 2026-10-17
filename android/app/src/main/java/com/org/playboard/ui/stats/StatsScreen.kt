@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,7 +54,6 @@ import com.org.playboard.data.model.PlayerRanking
 import com.org.playboard.ui.components.MonthlyCrownIcon
 import com.org.playboard.ui.components.PlayerAvatar
 import com.org.playboard.ui.components.PlayboardBackground
-import com.org.playboard.ui.components.avatarColor
 import com.org.playboard.ui.board.LeaderboardTimeRange
 import com.org.playboard.ui.theme.PlayboardTheme
 
@@ -171,7 +171,7 @@ private fun StatsHeader(
 
 @Composable
 private fun RecordsCard(records: Records) {
-    InsightCard {
+    InsightCard(PlayboardTheme.colors.brand) {
         SectionLabel("RECORDS")
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.Bottom) {
@@ -179,13 +179,13 @@ private fun RecordsCard(records: Records) {
                 text = records.totalMatches.toString(),
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 34.sp, lineHeight = 34.sp),
                 fontWeight = FontWeight.Bold,
-                color = PlayboardTheme.colors.brand,
+                color = PlayboardTheme.colors.onAccent,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = if (records.totalMatches == 1) "match played" else "matches played",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
-                color = PlayboardTheme.colors.textMuted,
+                color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
@@ -218,7 +218,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = PlayboardTheme.colors.textMuted,
+            color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             modifier = Modifier.width(96.dp),
         )
         PlayerAvatar(
@@ -232,7 +232,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
             text = player.displayName,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
             fontWeight = FontWeight.SemiBold,
-            color = PlayboardTheme.colors.textPrimary,
+            color = PlayboardTheme.colors.onAccent,
             maxLines = 1,
             modifier = Modifier
                 .weight(1f)
@@ -242,7 +242,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
             fontWeight = FontWeight.Bold,
-            color = PlayboardTheme.colors.brand,
+            color = PlayboardTheme.colors.onAccent,
         )
     }
 }
@@ -258,7 +258,7 @@ private fun LeaderRow(label: String, player: PlayerRanking, value: String) {
  */
 @Composable
 private fun MonthlyWinnersCard(winners: List<MonthlyTrophy>) {
-    InsightCard {
+    InsightCard(PlayboardTheme.colors.accentWisteria) {
         SectionLabel("MONTHLY WINNERS")
         Spacer(Modifier.height(14.dp))
         Row(
@@ -305,7 +305,7 @@ private fun MonthlyWinnerTile(winner: MonthlyTrophy) {
             text = winner.displayName,
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
             fontWeight = FontWeight.SemiBold,
-            color = PlayboardTheme.colors.textPrimary,
+            color = PlayboardTheme.colors.onAccent,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -315,7 +315,7 @@ private fun MonthlyWinnerTile(winner: MonthlyTrophy) {
             text = winner.shortMonthLabel,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             fontWeight = FontWeight.SemiBold,
-            color = PlayboardTheme.colors.textMuted,
+            color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             maxLines = 1,
             textAlign = TextAlign.Center,
         )
@@ -345,7 +345,7 @@ private fun PartnersCard(
     onToggle: () -> Unit,
     onPlayerSelected: (String) -> Unit,
 ) {
-    InsightCard {
+    InsightCard(PlayboardTheme.colors.accentWisteria) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -357,7 +357,7 @@ private fun PartnersCard(
             Text(
                 text = if (expanded) "▲" else "▼",
                 style = MaterialTheme.typography.labelSmall,
-                color = PlayboardTheme.colors.textMuted,
+                color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             )
         }
         if (!expanded) {
@@ -365,7 +365,7 @@ private fun PartnersCard(
             Text(
                 text = "Tap to see a player's partners",
                 style = MaterialTheme.typography.labelSmall,
-                color = PlayboardTheme.colors.textMuted,
+                color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             )
         } else {
             Spacer(Modifier.height(12.dp))
@@ -377,13 +377,13 @@ private fun PartnersCard(
                 Text(
                     text = "Couldn't load partners. Tap a player to retry.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = PlayboardTheme.colors.textMuted,
+                    color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
                 )
             } else if (partners.isEmpty()) {
                 Text(
                     text = "No completed matches with a teammate yet.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = PlayboardTheme.colors.textMuted,
+                    color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
                 )
             } else {
                 partners.forEachIndexed { index, partner ->
@@ -426,12 +426,12 @@ private fun PlayerPicker(
                 text = selected?.displayName ?: "Select a player",
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
                 fontWeight = FontWeight.SemiBold,
-                color = PlayboardTheme.colors.textPrimary,
+                color = PlayboardTheme.colors.onAccent,
             )
             Text(
                 text = if (menuExpanded) " ▴" else " ▾",
                 style = MaterialTheme.typography.labelSmall,
-                color = PlayboardTheme.colors.textMuted,
+                color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             )
         }
         DropdownMenu(
@@ -469,7 +469,6 @@ private fun PlayerPicker(
 
 @Composable
 private fun PartnerRow(partner: Partner) {
-    val accent = avatarColor(partner.avatarColor)
     Row(verticalAlignment = Alignment.CenterVertically) {
         PlayerAvatar(
             displayName = partner.displayName,
@@ -484,20 +483,20 @@ private fun PartnerRow(partner: Partner) {
                 text = partner.displayName,
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
                 fontWeight = FontWeight.SemiBold,
-                color = PlayboardTheme.colors.textPrimary,
+                color = PlayboardTheme.colors.onAccent,
                 maxLines = 1,
             )
             Text(
                 text = "${partner.winsTogether}W / ${partner.gamesTogether} games together",
                 style = MaterialTheme.typography.labelSmall,
-                color = PlayboardTheme.colors.textMuted,
+                color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             )
         }
         Text(
             text = "${partner.winRatePercent}%",
             style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp, lineHeight = 24.sp),
             fontWeight = FontWeight.Bold,
-            color = accent,
+            color = PlayboardTheme.colors.onAccent,
         )
     }
 }
@@ -507,7 +506,7 @@ private fun PartnerRow(partner: Partner) {
 @Composable
 private fun BiggestWinCard(biggestWin: BiggestWin) {
     val match = biggestWin.match
-    InsightCard {
+    InsightCard(PlayboardTheme.colors.accentOrange) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("BIGGEST WIN · recent")
             Spacer(Modifier.weight(1f))
@@ -534,7 +533,7 @@ private fun BiggestWinCard(biggestWin: BiggestWin) {
             Text(
                 text = match.sets.joinToString(", ") { "${it.team1Score}-${it.team2Score}" },
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 13.sp),
-                color = PlayboardTheme.colors.brand,
+                color = PlayboardTheme.colors.onAccent,
             )
         }
     }
@@ -548,14 +547,14 @@ private fun TeamLine(team: MatchTeam?, isWinner: Boolean) {
             text = if (isWinner) "W" else " ",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = PlayboardTheme.colors.brand,
+            color = PlayboardTheme.colors.onAccent,
             modifier = Modifier.width(16.dp),
         )
         Text(
             text = team.players.joinToString(" & ") { it.displayName },
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
             fontWeight = if (isWinner) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isWinner) PlayboardTheme.colors.textPrimary else PlayboardTheme.colors.textMuted,
+            color = if (isWinner) PlayboardTheme.colors.onAccent else PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
             maxLines = 1,
         )
     }
@@ -564,15 +563,15 @@ private fun TeamLine(team: MatchTeam?, isWinner: Boolean) {
 // ---- Shared bits ---------------------------------------------------------------
 
 @Composable
-private fun InsightCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
+private fun InsightCard(color: Color, content: @Composable ColumnScope.() -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = color, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
 }
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text = text, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted)
+    Text(text = text, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f))
 }
 
 @Composable
@@ -681,7 +680,7 @@ private val previewState = StatsUiState(
     ),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 980)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B, heightDp = 980)
 @Composable
 private fun StatsContentPreview() {
     PlayboardTheme {
@@ -691,7 +690,7 @@ private fun StatsContentPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 400)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B, heightDp = 400)
 @Composable
 private fun StatsEmptyPreview() {
     PlayboardTheme {

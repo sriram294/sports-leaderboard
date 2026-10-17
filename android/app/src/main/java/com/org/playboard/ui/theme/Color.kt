@@ -10,19 +10,19 @@ import androidx.compose.ui.graphics.Color
 // rendered inside a real PlayboardTheme and so follows the user's theme.
 // ---------------------------------------------------------------------------
 
-// Brand accent — the dark value's hex matches the backend's AvatarColorPicker
-// palette (com.org.playboard.common.AvatarColorPicker), an intentional tie-in.
-// Lime on white is illegible, so the light theme uses a darker lime that reads
-// both as accent text on a light background and as a button fill (with white on it).
-val DarkBrand = Color(0xFF9ADE28)
-val DarkOnBrand = Color(0xFF0A0A0A)
-val LightBrand = Color(0xFF4E8C0A)
+// Playboard's dashboard palette. The hues come from the supplied visual direction:
+// lime drives achievement and the primary action, wisteria supplies the cool UI
+// layer, Persian orange flags losses and warnings, and blue-black keeps cards calm.
+// The light palette deliberately remains tinted rather than reverting to generic white.
+val DarkBrand = Color(0xFFDDDE68)
+val DarkOnBrand = Color(0xFF2B2D3B)
+val LightBrand = Color(0xFF676386)
 val LightOnBrand = Color(0xFFFFFFFF)
 
-// Surfaces
-val DarkBackground = Color(0xFF0A0A0A)
-val DarkSurface = Color(0xFF141414)
-val LightBackground = Color(0xFFFAFAFA)
+// Surfaces — a layered midnight dashboard rather than a flat black canvas.
+val DarkBackground = Color(0xFF1F212E)
+val DarkSurface = Color(0xFF36394D)
+val LightBackground = Color(0xFFF3F2FA)
 val LightSurface = Color(0xFFFFFFFF)
 
 // Ambient background glow — two low-opacity radial light bleeds painted over the
@@ -30,29 +30,27 @@ val LightSurface = Color(0xFFFFFFFF)
 // baked into the constant so the whole effect is tunable from one place. These
 // stay faint on purpose: the leaderboard is dense numeric content, and the light
 // theme's muted text is only ~4.9:1 on its background before any tint is added.
-val DarkGlowWarm = Color(0x269ADE28)
-val DarkGlowCool = Color(0x1A5B8CFF)
-// The light theme deliberately reuses the *bright* lime rather than LightBrand —
-// the darker #4E8C0A reads as muddy olive when washed over near-white.
-val LightGlowWarm = Color(0x2B9ADE28)
-val LightGlowCool = Color(0x172563EB)
+val DarkGlowWarm = Color(0x26A5B2EB)
+val DarkGlowCool = Color(0x26676386)
+val LightGlowWarm = Color(0x29A5B2EB)
+val LightGlowCool = Color(0x1F676386)
 
 // Text
-val DarkTextPrimary = Color(0xFFF5F5F5)
-val DarkTextMuted = Color(0xFF9E9E9E)
-val LightTextPrimary = Color(0xFF1A1A1A)
-val LightTextMuted = Color(0xFF6B6B6B)
+val DarkTextPrimary = Color(0xFFF8F8FC)
+val DarkTextMuted = Color(0xFFC5C7D6)
+val LightTextPrimary = Color(0xFF2B2D3B)
+val LightTextMuted = Color(0xFF676386)
 
 // Stat accents (leaderboard.pdf) — wins/losses columns and win-rate tiers. The
 // light variants are darkened so they keep contrast against a white surface.
-val DarkStatWin = Color(0xFF4ADE80)
-val DarkStatLoss = Color(0xFFF87171)
-val DarkWinRateMid = Color(0xFFFACC15)
-val DarkWinRateLow = Color(0xFF60A5FA)
-val LightStatWin = Color(0xFF16A34A)
-val LightStatLoss = Color(0xFFDC2626)
-val LightWinRateMid = Color(0xFFCA8A04)
-val LightWinRateLow = Color(0xFF2563EB)
+val DarkStatWin = Color(0xFF55C879)
+val DarkStatLoss = Color(0xFFE76670)
+val DarkWinRateMid = Color(0xFFA5B2EB)
+val DarkWinRateLow = Color(0xFF8FD3E8)
+val LightStatWin = Color(0xFF238446)
+val LightStatLoss = Color(0xFFBF3F49)
+val LightWinRateMid = Color(0xFF676FAD)
+val LightWinRateLow = Color(0xFF367890)
 
 /**
  * The app's semantic color palette. UI reads these via `PlayboardTheme.colors`;
@@ -73,6 +71,11 @@ data class PlayboardColors(
     val brand: Color,
     /** Content color that sits on top of a [brand] fill. */
     val onBrand: Color,
+    /** Playful card fills, kept separate from semantic win/loss state. */
+    val accentWisteria: Color,
+    val accentOrange: Color,
+    /** Dark text/icons that sit on the bright accent-card fills. */
+    val onAccent: Color,
     val statWin: Color,
     val statLoss: Color,
     val winRateMid: Color,
@@ -88,6 +91,9 @@ val DarkPlayboardColors = PlayboardColors(
     textMuted = DarkTextMuted,
     brand = DarkBrand,
     onBrand = DarkOnBrand,
+    accentWisteria = Color(0xFFA5B2EB),
+    accentOrange = Color(0xFFDA935D),
+    onAccent = DarkBackground,
     statWin = DarkStatWin,
     statLoss = DarkStatLoss,
     winRateMid = DarkWinRateMid,
@@ -103,6 +109,9 @@ val LightPlayboardColors = PlayboardColors(
     textMuted = LightTextMuted,
     brand = LightBrand,
     onBrand = LightOnBrand,
+    accentWisteria = Color(0xFFA5B2EB),
+    accentOrange = Color(0xFFDA935D),
+    onAccent = DarkBackground,
     statWin = LightStatWin,
     statLoss = LightStatLoss,
     winRateMid = LightWinRateMid,

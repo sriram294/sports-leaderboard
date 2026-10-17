@@ -539,7 +539,7 @@ private val previewRoster = listOf(
     Member("u4", "Kiran", null, null, "#EAC72B", "member"),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1200)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B, heightDp = 1200)
 @Composable
 private fun AddMatchFormPreview() {
     PlayboardTheme {

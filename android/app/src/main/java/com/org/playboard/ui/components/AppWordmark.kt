@@ -62,7 +62,7 @@ fun AppWordmark(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B)
 @Composable
 private fun AppWordmarkPreview() {
     PlayboardTheme {
