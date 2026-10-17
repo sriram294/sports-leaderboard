@@ -517,9 +517,9 @@ private fun StatTilesGrid(stats: PlayerStats) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.height(IntrinsicSize.Min),
         ) {
-            StatTile("WINS", stats.wins.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
-            StatTile("LOSSES", stats.losses.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
-            StatTile("PTS FOR", stats.pointsFor.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
+            StatTile("WINS", stats.wins.toString(), PlayboardTheme.colors.statWin, modifier = Modifier.weight(1f).fillMaxHeight())
+            StatTile("LOSSES", stats.losses.toString(), PlayboardTheme.colors.statLoss, modifier = Modifier.weight(1f).fillMaxHeight())
+            StatTile("PTS FOR", stats.pointsFor.toString(), PlayboardTheme.colors.accentWisteria, modifier = Modifier.weight(1f).fillMaxHeight())
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -528,11 +528,11 @@ private fun StatTilesGrid(stats: PlayerStats) {
             StatTile(
                 "CURRENT STREAK",
                 stats.currentStreak.toString(),
-                valueColor = PlayboardTheme.colors.brand,
+                cardColor = PlayboardTheme.colors.brand,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
-            StatTile("BEST STREAK", stats.bestStreak.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
-            StatTile("PTS AGNST", stats.pointsAgainst.toString(), modifier = Modifier.weight(1f).fillMaxHeight())
+            StatTile("BEST STREAK", stats.bestStreak.toString(), PlayboardTheme.colors.accentOrange, modifier = Modifier.weight(1f).fillMaxHeight())
+            StatTile("PTS AGNST", stats.pointsAgainst.toString(), PlayboardTheme.colors.accentWisteria, modifier = Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
@@ -541,11 +541,11 @@ private fun StatTilesGrid(stats: PlayerStats) {
 private fun StatTile(
     label: String,
     value: String,
+    cardColor: Color,
     modifier: Modifier = Modifier,
-    valueColor: Color = PlayboardTheme.colors.textPrimary,
     subLabel: String? = null,
 ) {
-    Surface(shape = RoundedCornerShape(16.dp), color = PlayboardTheme.colors.surface, modifier = modifier) {
+    Surface(shape = RoundedCornerShape(16.dp), color = cardColor, modifier = modifier) {
         Column(
             modifier = Modifier.padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -554,15 +554,15 @@ private fun StatTile(
                 text = value,
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 26.sp, lineHeight = 28.sp),
                 fontWeight = FontWeight.Bold,
-                color = valueColor,
+                color = PlayboardTheme.colors.onAccent,
             )
             Spacer(Modifier.height(6.dp))
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.textMuted, textAlign = TextAlign.Center)
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f), textAlign = TextAlign.Center)
             if (subLabel != null) {
                 Text(
                     text = subLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = PlayboardTheme.colors.textMuted,
+                    color = PlayboardTheme.colors.onAccent.copy(alpha = 0.72f),
                     modifier = Modifier.padding(top = 2.dp),
                     textAlign = TextAlign.Center
                 )
@@ -697,7 +697,7 @@ private fun PartnerRow(partner: Partner) {
 
 @Composable
 private fun RecentMatchRowCard(row: RecentMatchRow) {
-    val accent = if (row.isWin) PlayboardTheme.colors.brand else PlayboardTheme.colors.statLoss
+    val accent = if (row.isWin) PlayboardTheme.colors.statWin else PlayboardTheme.colors.statLoss
     Surface(shape = RoundedCornerShape(14.dp), color = PlayboardTheme.colors.surface, modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             Box(modifier = Modifier.width(4.dp).fillMaxHeight().background(accent))
@@ -735,7 +735,7 @@ private fun RecentMatchRowCard(row: RecentMatchRow) {
 
 @Composable
 private fun ResultBadge(isWin: Boolean) {
-    val color = if (isWin) PlayboardTheme.colors.brand else PlayboardTheme.colors.statLoss
+    val color = if (isWin) PlayboardTheme.colors.statWin else PlayboardTheme.colors.statLoss
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
@@ -744,7 +744,7 @@ private fun ResultBadge(isWin: Boolean) {
     ) {
         Text(
             text = if (isWin) "WIN" else "LOSS",
-            color = if (isWin) PlayboardTheme.colors.onBrand else PlayboardTheme.colors.textPrimary,
+            color = PlayboardTheme.colors.onAccent,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
         )
@@ -876,7 +876,7 @@ private val previewAttendanceDays: Set<LocalDate> = setOf(
     LocalDate.of(2026, 7, 3), LocalDate.of(2026, 7, 12), LocalDate.of(2026, 7, 13),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1250)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B, heightDp = 1250)
 @Composable
 private fun ProfileContentPreview() {
     PlayboardTheme {
@@ -898,7 +898,7 @@ private fun ProfileContentPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 1250)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B, heightDp = 1250)
 @Composable
 private fun ViewedPlayerProfilePreview() {
     PlayboardTheme {

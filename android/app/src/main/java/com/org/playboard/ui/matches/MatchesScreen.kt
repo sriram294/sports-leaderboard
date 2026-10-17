@@ -612,7 +612,7 @@ private val previewDetail = MatchDetail(
     ),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A, heightDp = 700)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B, heightDp = 700)
 @Composable
 private fun MatchesContentPreview() {
     PlayboardTheme {

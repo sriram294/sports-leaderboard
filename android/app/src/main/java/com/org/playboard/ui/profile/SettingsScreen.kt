@@ -284,7 +284,7 @@ private fun BackRowForSettings(onBack: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B)
 @Composable
 private fun SettingsScreenPreview() {
     PlayboardTheme(darkTheme = true) {

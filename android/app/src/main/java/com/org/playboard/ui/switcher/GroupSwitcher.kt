@@ -400,7 +400,7 @@ private val previewGroups = listOf(
     Group(id = "g2", name = "Office League", avatarColor = "#3DB4FF", memberCount = 4, matchCount = 4, myRole = "member"),
 )
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B)
 @Composable
 private fun GroupSwitcherCollapsedPreview() {
     PlayboardTheme {
@@ -421,7 +421,7 @@ private fun GroupSwitcherCollapsedPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B)
 @Composable
 private fun GroupSwitcherExpandedPreview() {
     PlayboardTheme {
@@ -443,7 +443,7 @@ private fun GroupSwitcherExpandedPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
+@Preview(showBackground = true, backgroundColor = 0xFF2B2D3B)
 @Composable
 private fun GroupSwitcherNoGroupPreview() {
     PlayboardTheme {

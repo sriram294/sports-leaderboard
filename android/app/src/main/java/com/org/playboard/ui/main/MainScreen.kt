@@ -39,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -261,31 +262,56 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
 @Composable
 private fun MainBottomBar(selectedTab: MainTab, onTabSelected: (MainTab) -> Unit) {
-    // Transparent so the ambient glow runs unbroken to the bottom of the screen instead of
-    // being cut off by a 76.dp slab. Safe because the Scaffold's inner padding already
-    // reserves this bar's height, so content never scrolls underneath it — the only thing
-    // behind the bar is the background itself. A hairline keeps the bar legible as a bar.
+    // The glass layer is intentionally isolated behind the navigation content: the blurred
+    // blooms soften the ambient background while tab icons and text remain perfectly sharp.
+    // Scaffold still reserves this bar's height, so it never changes the page layout.
     val hairline = PlayboardTheme.colors.textMuted.copy(alpha = 0.12f)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    val glassBase = PlayboardTheme.colors.background.copy(alpha = 0.76f)
+    val glassBloom = Brush.linearGradient(
+        colors = listOf(
+            PlayboardTheme.colors.accentWisteria.copy(alpha = 0.24f),
+            Color.Transparent,
+            PlayboardTheme.colors.brand.copy(alpha = 0.14f),
+        ),
+    )
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawLine(hairline, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
-            }
             .navigationBarsPadding()
             .height(76.dp),
     ) {
-        MainTab.entries.forEach { tab ->
-            if (tab == MainTab.Add) {
-                AddTabItem(onClick = { onTabSelected(MainTab.Add) }, modifier = Modifier.weight(1f))
-            } else {
-                TabItem(
-                    tab = tab,
-                    isSelected = tab == selectedTab,
-                    onClick = { onTabSelected(tab) },
-                    modifier = Modifier.weight(1f),
-                )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(glassBase),
+        )
+        // Blur only this decorative gradient, not the controls layered above it. This keeps
+        // the frosted effect smooth on every supported API level without a backdrop capture.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(18.dp)
+                .background(glassBloom),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    drawLine(hairline, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+                },
+        ) {
+            MainTab.entries.forEach { tab ->
+                if (tab == MainTab.Add) {
+                    AddTabItem(onClick = { onTabSelected(MainTab.Add) }, modifier = Modifier.weight(1f))
+                } else {
+                    TabItem(
+                        tab = tab,
+                        isSelected = tab == selectedTab,
+                        onClick = { onTabSelected(tab) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
