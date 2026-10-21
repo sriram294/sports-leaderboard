@@ -25,6 +25,7 @@ import com.org.playboard.data.remote.dto.MatchDetailDto
 import com.org.playboard.data.remote.dto.MatchListResponseDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
+import com.org.playboard.data.remote.dto.ReviewerSignInRequestDto
 import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import kotlinx.coroutines.CoroutineScope
@@ -37,19 +38,35 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import com.org.playboard.data.model.SessionState
+import java.io.IOException
+import kotlinx.coroutines.flow.first
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
+import retrofit2.Response
 
 private class FakeGoogleAuthClient(private val result: GoogleAuthResult) : GoogleAuthClient {
     override suspend fun signIn(): GoogleAuthResult = result
 }
 
-private class FakePlayboardApi(private val signInResult: suspend (GoogleSignInRequestDto) -> TokenResponseDto) :
-    PlayboardApi {
+private class FakePlayboardApi(
+    private val reviewerResult: suspend (ReviewerSignInRequestDto) -> TokenResponseDto = { error("not called") },
+    private val signInResult: suspend (GoogleSignInRequestDto) -> TokenResponseDto,
+) : PlayboardApi {
+    val reviewerRequests = mutableListOf<ReviewerSignInRequestDto>()
+
     
+    override suspend fun signInAsReviewer(request: ReviewerSignInRequestDto): TokenResponseDto {
+        reviewerRequests += request
+        return reviewerResult(request)
+    }
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = signInResult(request)
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("not used in this test")
     override suspend fun getGroups(): GroupsResponseDto = error("not used in this test")
@@ -189,5 +206,92 @@ class LoginViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(false, state.isLoading)
         assertNull(state.error)
+    }
+
+    private fun reviewerViewModel(api: FakePlayboardApi) = LoginViewModel(
+        googleAuthClient = FakeGoogleAuthClient(GoogleAuthResult.Cancelled),
+        authRepository = AuthRepository(api, tokenStore, com.org.playboard.data.device.DeviceRegistrar(api)),
+    )
+
+    private fun tokens() = TokenResponseDto(
+        "access-r",
+        "refresh-r",
+        900,
+        UserSummaryDto("reviewer-1", "App Reviewer", "reviewer@reviewer.playboard.invalid", null, null, "#7ED321"),
+    )
+
+    @Test
+    fun `reviewer login is hidden until the logo is long pressed`() {
+        val viewModel = reviewerViewModel(FakePlayboardApi { error("not called") })
+        assertFalse(viewModel.uiState.value.isReviewerLoginVisible)
+
+        viewModel.onLogoLongPressed()
+
+        assertTrue(viewModel.uiState.value.isReviewerLoginVisible)
+    }
+
+    @Test
+    fun `successful reviewer sign in saves the session and clears the password`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(reviewerResult = { tokens() }) { error("not called") }
+        val viewModel = reviewerViewModel(api)
+        viewModel.onLogoLongPressed()
+        viewModel.onReviewerUsernameChanged("  play-reviewer ")
+        viewModel.onReviewerPasswordChanged("secret")
+
+        viewModel.onReviewerSignInClicked()
+        advanceUntilIdle()
+
+        assertEquals(listOf(ReviewerSignInRequestDto("play-reviewer", "secret")), api.reviewerRequests)
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.error)
+        assertEquals("", state.reviewerPassword)
+        assertTrue(tokenStore.sessionState.first() is SessionState.SignedIn)
+    }
+
+    @Test
+    fun `rejected reviewer credentials surface a specific error`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(
+            reviewerResult = { throw HttpException(Response.error<Any>(401, "".toResponseBody())) },
+        ) { error("not called") }
+        val viewModel = reviewerViewModel(api)
+        viewModel.onLogoLongPressed()
+        viewModel.onReviewerUsernameChanged("play-reviewer")
+        viewModel.onReviewerPasswordChanged("wrong")
+
+        viewModel.onReviewerSignInClicked()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(LoginError.InvalidReviewerCredentials, state.error)
+        assertFalse(state.isLoading)
+        assertTrue(state.isReviewerLoginVisible)
+        assertEquals("", state.reviewerPassword)
+    }
+
+    @Test
+    fun `reviewer network failure surfaces a generic error`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(reviewerResult = { throw IOException("offline") }) { error("not called") }
+        val viewModel = reviewerViewModel(api)
+        viewModel.onReviewerUsernameChanged("play-reviewer")
+        viewModel.onReviewerPasswordChanged("secret")
+
+        viewModel.onReviewerSignInClicked()
+        advanceUntilIdle()
+
+        assertEquals(LoginError.Generic("network unavailable"), viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `reviewer sign in is ignored until both fields are filled`() = runTest(testDispatcher) {
+        val api = FakePlayboardApi(reviewerResult = { tokens() }) { error("not called") }
+        val viewModel = reviewerViewModel(api)
+        viewModel.onReviewerUsernameChanged("play-reviewer")
+
+        viewModel.onReviewerSignInClicked()
+        advanceUntilIdle()
+
+        assertTrue(api.reviewerRequests.isEmpty())
+        assertFalse(viewModel.uiState.value.canSubmitReviewerLogin)
     }
 }

@@ -30,7 +30,7 @@ product requirements this schema serves).
 | Table | Purpose |
 |---|---|
 | `users` | Account identity/avatar, or anonymous deleted-account tombstone |
-| `user_auth_identities` | Provider-neutral Google/Apple subjects linked to accounts |
+| `user_auth_identities` | Provider-neutral Google/Apple subjects (plus the internal store-review `reviewer` login) linked to accounts |
 | `sports` | Lookup: sport/format rules (team size, scoring) |
 | `groups` | A play group, tied to one sport |
 | `group_members` | Membership + role, many-to-many users↔groups |
@@ -124,7 +124,7 @@ original provider subject and email can therefore create a new unrelated account
 create table user_auth_identities (
     id          uuid primary key default gen_random_uuid(),
     user_id     uuid not null references users(id) on delete cascade,
-    provider    text not null check (provider in ('google', 'apple')),
+    provider    text not null check (provider in ('google', 'apple', 'reviewer')),  -- 'reviewer' added in V22
     subject     text not null,
     created_at  timestamptz not null default now(),
     unique (provider, subject),

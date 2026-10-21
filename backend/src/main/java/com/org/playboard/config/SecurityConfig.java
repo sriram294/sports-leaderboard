@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/google",
                                 "/api/v1/auth/apple",
+                                "/api/v1/auth/reviewer",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/app/update")
                         .permitAll()

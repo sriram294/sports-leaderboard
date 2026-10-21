@@ -6,6 +6,8 @@ import com.org.playboard.data.model.SessionState
 import com.org.playboard.data.model.UserSession
 import com.org.playboard.data.remote.PlayboardApi
 import com.org.playboard.data.remote.dto.GoogleSignInRequestDto
+import com.org.playboard.data.remote.dto.ReviewerSignInRequestDto
+import com.org.playboard.data.remote.dto.TokenResponseDto
 import com.org.playboard.data.remote.dto.UserSummaryDto
 import com.org.playboard.di.AuthApi
 import java.io.IOException
@@ -40,15 +42,29 @@ class AuthRepository @Inject constructor(
 
     suspend fun signInWithGoogle(idToken: String): Result<Unit> = runCatching {
         Log.i(TAG, "Exchanging Google id token with backend (tokenLen=${idToken.length})")
-        val response = authApi.signInWithGoogle(GoogleSignInRequestDto(idToken))
+        completeSignIn(authApi.signInWithGoogle(GoogleSignInRequestDto(idToken)))
+    }.onFailure { logSignInFailure(it) }
+
+    /**
+     * Hidden store-review login (username/password, revealed by long-pressing the logo).
+     * Issues the same tokens as Google sign-in, so the rest of the app is unaffected.
+     */
+    suspend fun signInAsReviewer(username: String, password: String): Result<Unit> = runCatching {
+        Log.i(TAG, "Exchanging reviewer credentials with backend")
+        completeSignIn(authApi.signInAsReviewer(ReviewerSignInRequestDto(username.trim(), password)))
+    }.onFailure { logSignInFailure(it) }
+
+    /** Whether [cause] is the backend rejecting reviewer credentials (vs. a network/server fault). */
+    fun isInvalidCredentials(cause: Throwable): Boolean = cause is HttpException && cause.code() == 401
+
+    private suspend fun completeSignIn(response: TokenResponseDto) {
         val user = requireNotNull(response.user) { "Sign-in response missing user" }
         tokenStore.save(response.accessToken, response.refreshToken, user.toUserSession())
         Log.i(TAG, "Backend sign-in succeeded for userId=${user.id}")
         // Best-effort, off the sign-in path: the session is now valid, so the
         // authenticated register call will carry a bearer token.
         repositoryScope.launch { deviceRegistrar.register() }
-        Unit
-    }.onFailure { logSignInFailure(it) }
+    }
 
     /**
      * Turns a swallowed backend/network failure into a diagnosable Logcat entry.

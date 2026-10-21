@@ -21,6 +21,7 @@ import com.org.playboard.data.remote.dto.RecordMatchRequestDto
 import com.org.playboard.data.remote.dto.RecordMatchResponseDto
 import com.org.playboard.data.remote.dto.RefreshRequestDto
 import com.org.playboard.data.remote.dto.RegisterDeviceRequestDto
+import com.org.playboard.data.remote.dto.ReviewerSignInRequestDto
 import com.org.playboard.data.remote.dto.RenameGroupRequestDto
 import com.org.playboard.data.remote.dto.UpdateRoleRequestDto
 import com.org.playboard.data.remote.dto.UpdateSessionRequestDto
@@ -53,6 +54,10 @@ interface PlayboardApi {
 
     @POST("api/v1/auth/google")
     suspend fun signInWithGoogle(@Body request: GoogleSignInRequestDto): TokenResponseDto
+
+    /** Hidden store-review username/password login; same token response as Google sign-in. */
+    @POST("api/v1/auth/reviewer")
+    suspend fun signInAsReviewer(@Body request: ReviewerSignInRequestDto): TokenResponseDto
 
     @POST("api/v1/auth/refresh")
     suspend fun refresh(@Body request: RefreshRequestDto): TokenResponseDto

@@ -12,6 +12,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,11 +49,26 @@ import com.org.playboard.ui.theme.PlayboardTheme
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
-    LoginContent(uiState = uiState, onContinueWithGoogleClicked = viewModel::onContinueWithGoogleClicked)
+    LoginContent(
+        uiState = uiState,
+        onContinueWithGoogleClicked = viewModel::onContinueWithGoogleClicked,
+        onLogoLongPressed = viewModel::onLogoLongPressed,
+        onReviewerUsernameChanged = viewModel::onReviewerUsernameChanged,
+        onReviewerPasswordChanged = viewModel::onReviewerPasswordChanged,
+        onReviewerSignInClicked = viewModel::onReviewerSignInClicked,
+    )
 }
 
 @Composable
-private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () -> Unit) {
+private fun LoginContent(
+    uiState: LoginUiState,
+    onContinueWithGoogleClicked: () -> Unit,
+    onLogoLongPressed: () -> Unit = {},
+    onReviewerUsernameChanged: (String) -> Unit = {},
+    onReviewerPasswordChanged: (String) -> Unit = {},
+    onReviewerSignInClicked: () -> Unit = {},
+) {
+    val haptics = LocalHapticFeedback.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -54,9 +79,30 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp)) {
             Spacer(modifier = Modifier.weight(1f))
 
-            AppWordmark(modifier = Modifier.fillMaxWidth())
+            // Long-pressing the logo reveals the hidden store-review login. No ripple or
+            // other affordance — regular users should never notice it.
+            Box(
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures(onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLogoLongPressed()
+                    })
+                },
+            ) {
+                AppWordmark(modifier = Modifier.fillMaxWidth())
+            }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            if (uiState.isReviewerLoginVisible) {
+                ReviewerLoginForm(
+                    uiState = uiState,
+                    onUsernameChanged = onReviewerUsernameChanged,
+                    onPasswordChanged = onReviewerPasswordChanged,
+                    onSignInClicked = onReviewerSignInClicked,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             if (uiState.error != null) {
                 Column(
@@ -121,8 +167,51 @@ private fun LoginContent(uiState: LoginUiState, onContinueWithGoogleClicked: () 
     }
 }
 
+/** Username/password fields for app-store reviewers, who can't use Google Sign-In. */
+@Composable
+private fun ReviewerLoginForm(
+    uiState: LoginUiState,
+    onUsernameChanged: (String) -> Unit,
+    onPasswordChanged: (String) -> Unit,
+    onSignInClicked: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = uiState.reviewerUsername,
+            onValueChange = onUsernameChanged,
+            label = { Text("Username") },
+            singleLine = true,
+            enabled = !uiState.isLoading,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = uiState.reviewerPassword,
+            onValueChange = onPasswordChanged,
+            label = { Text("Password") },
+            singleLine = true,
+            enabled = !uiState.isLoading,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSignInClicked() }),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onSignInClicked,
+            enabled = uiState.canSubmitReviewerLogin,
+            shape = RoundedCornerShape(percent = 50),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+        ) {
+            Text(text = "Sign in", fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
 private fun LoginError.toMessage(): String = when (this) {
     LoginError.NoGoogleAccount -> "No Google account found on this device."
+    LoginError.InvalidReviewerCredentials -> "Incorrect username or password."
     is LoginError.Generic -> "Something went wrong. Please try again."
 }
 
@@ -139,6 +228,17 @@ private fun LoginContentPreview() {
 private fun LoginContentErrorPreview() {
     PlayboardTheme {
         LoginContent(uiState = LoginUiState(error = LoginError.NoGoogleAccount), onContinueWithGoogleClicked = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoginContentReviewerPreview() {
+    PlayboardTheme {
+        LoginContent(
+            uiState = LoginUiState(isReviewerLoginVisible = true, reviewerUsername = "reviewer"),
+            onContinueWithGoogleClicked = {},
+        )
     }
 }
 

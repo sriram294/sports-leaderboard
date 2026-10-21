@@ -25,6 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
+    // The reviewer credential maps to one fixed identity, so rotating the configured
+    // username/password keeps the same account and demo data.
+    private static final String REVIEWER_SUBJECT = "store-reviewer";
+    private static final String REVIEWER_EMAIL = "reviewer@reviewer.playboard.invalid";
+    private static final String REVIEWER_DISPLAY_NAME = "App Reviewer";
+
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserAuthIdentityRepository identityRepository;
@@ -32,6 +38,8 @@ public class AuthService {
     private final AppleTokenVerifier appleTokenVerifier;
     private final JwtService jwtService;
     private final AvatarUrlResolver avatarUrls;
+    private final ReviewerCredentialVerifier reviewerCredentialVerifier;
+    private final ReviewerDemoSeeder reviewerDemoSeeder;
 
     public AuthService(
             UserRepository userRepository,
@@ -40,7 +48,9 @@ public class AuthService {
             GoogleTokenVerifier googleTokenVerifier,
             AppleTokenVerifier appleTokenVerifier,
             JwtService jwtService,
-            AvatarUrlResolver avatarUrls) {
+            AvatarUrlResolver avatarUrls,
+            ReviewerCredentialVerifier reviewerCredentialVerifier,
+            ReviewerDemoSeeder reviewerDemoSeeder) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.identityRepository = identityRepository;
@@ -48,6 +58,8 @@ public class AuthService {
         this.appleTokenVerifier = appleTokenVerifier;
         this.jwtService = jwtService;
         this.avatarUrls = avatarUrls;
+        this.reviewerCredentialVerifier = reviewerCredentialVerifier;
+        this.reviewerDemoSeeder = reviewerDemoSeeder;
     }
 
     @Transactional
@@ -74,6 +86,19 @@ public class AuthService {
                 identity.subject(),
                 identity.email(),
                 identity.displayName());
+        return authenticatedResponse(user);
+    }
+
+    /**
+     * Hidden store-review login: checks the configured reviewer credential, resolves
+     * the dedicated reviewer user (created on first use, or again after an account
+     * deletion), seeds its demo group if it has none, and issues normal tokens.
+     */
+    @Transactional
+    public TokenResponse signInAsReviewer(String username, String password) {
+        reviewerCredentialVerifier.verify(username, password);
+        User user = resolveUser(AuthProvider.REVIEWER, REVIEWER_SUBJECT, REVIEWER_EMAIL, REVIEWER_DISPLAY_NAME);
+        reviewerDemoSeeder.ensureDemoGroup(user.getId());
         return authenticatedResponse(user);
     }
 
@@ -170,7 +195,9 @@ public class AuthService {
 
     private TokenResponse authenticatedResponse(User user) {
         TokenPair tokens = issueTokenPair(user.getId());
+        // REVIEWER is an internal credential, not a provider clients know how to render.
         List<String> providers = identityRepository.findAllByUserIdOrderByProvider(user.getId()).stream()
+                .filter(identity -> identity.getProvider() != AuthProvider.REVIEWER)
                 .map(identity -> identity.getProvider().apiValue())
                 .toList();
         return new TokenResponse(

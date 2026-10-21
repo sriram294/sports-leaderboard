@@ -1,9 +1,14 @@
 package com.org.playboard.entity.auth;
 
-/** External identity providers accepted by Playboard authentication. */
+/**
+ * Identity providers accepted by Playboard authentication. {@link #REVIEWER} is the
+ * internal store-review credential (see ReviewerCredentialVerifier), not an external
+ * provider, and is never exposed in {@code authProviders}.
+ */
 public enum AuthProvider {
     GOOGLE("google"),
-    APPLE("apple");
+    APPLE("apple"),
+    REVIEWER("reviewer");
 
     private final String apiValue;
 

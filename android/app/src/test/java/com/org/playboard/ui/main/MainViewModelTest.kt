@@ -44,6 +44,7 @@ private class FakePlayboardApi(
     var groupsResult: suspend () -> GroupsResponseDto = { GroupsResponseDto(emptyList()) },
 ) : PlayboardApi {
     
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto = error("unused")
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")
     override suspend fun getGroups(): GroupsResponseDto = groupsResult()

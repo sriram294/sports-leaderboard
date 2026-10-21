@@ -183,6 +183,7 @@ private open class FakeApi(
     val members: MutableMap<String, MutableList<MemberDto>> = mutableMapOf(),
     val guests: MutableMap<String, MutableList<MemberDto>> = mutableMapOf(),
 ) : PlayboardApi {
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: com.org.playboard.data.remote.dto.GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, UserSummaryDto("u1", "Owner", "owner@example.com", null, null, "#7ED321"))
     override suspend fun getGroups(): GroupsResponseDto = GroupsResponseDto(groups.toList())

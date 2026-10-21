@@ -52,6 +52,7 @@ private class FakePlayboardApi(
     var addMemberResult: suspend (AddMemberRequestDto) -> MemberDto = { error("addMember not stubbed") },
 ) : PlayboardApi {
     
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         error("not used in this test")
 
