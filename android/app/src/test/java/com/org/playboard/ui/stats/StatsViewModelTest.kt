@@ -67,6 +67,7 @@ private open class FakePlayboardApi(
     var lastPartnersFrom: String? = null
     var lastPartnersTo: String? = null
     
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, UserSummaryDto(signedInUserId, signedInUserId, "$signedInUserId@example.com", null, null, "#9ADE28"))
     override suspend fun refresh(request: RefreshRequestDto): TokenResponseDto = error("unused")

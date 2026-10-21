@@ -6,8 +6,8 @@ against the schema in [data-model.md](data-model.md).
 
 ## Conventions
 
-- **Auth**: every endpoint except `GET /app/update`, `POST /auth/google`, `POST /auth/apple`, and `POST /auth/refresh`
-  requires `Authorization: Bearer <accessToken>`.
+- **Auth**: every endpoint except `GET /app/update`, `POST /auth/google`, `POST /auth/apple`,
+  `POST /auth/reviewer`, and `POST /auth/refresh` requires `Authorization: Bearer <accessToken>`.
 - **Google Sign-In flow**: Android gets a Google ID token via Credential
   Manager (`GetGoogleIdOption`, using a Web-application OAuth Client ID as
   `serverClientId` so the token's `aud` is verifiable server-side). The
@@ -77,6 +77,26 @@ authorization. Response `200` matches `/auth/google`; `authProviders` contains
 every linked provider. `401 APPLE_TOKEN_INVALID` rejects invalid tokens, `503
 APPLE_AUTH_NOT_CONFIGURED` fails safely when `APPLE_CLIENT_IDS` is empty, and
 `409 AUTH_EMAIL_REQUIRED` applies when an unlinked identity supplies no email.
+
+### `POST /auth/reviewer`
+Hidden username/password login for app-store reviewers, who can't use Google
+Sign-In. On Android it is revealed by long-pressing the logo on the login screen.
+
+Request:
+```json
+{ "username": "<reviewer-username>", "password": "<reviewer-password>" }
+```
+Response `200` matches `/auth/google`. The reviewer is a dedicated account (a
+`reviewer` row in `user_auth_identities`, never listed in `authProviders`). When
+it has no active group, sign-in seeds a "Playboard Demo" group: the reviewer as
+owner, three demo members, the shared guests, and 12 recorded matches.
+
+Configured with `REVIEWER_USERNAME` + `REVIEWER_PASSWORD_HASH` (BCrypt). The
+endpoint is disabled when either is blank or the hash is malformed. Every
+failure, including the disabled case, returns the same `401
+REVIEWER_CREDENTIALS_INVALID`, so the response never says which field was
+wrong. After 10 failed attempts within 15 minutes the endpoint returns `429
+REVIEWER_LOGIN_RATE_LIMITED` until the window slides.
 
 ### `POST /auth/refresh`
 Request: `{ "refreshToken": "..." }`

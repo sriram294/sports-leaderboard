@@ -3,6 +3,7 @@ package com.org.playboard.controller.auth;
 import com.org.playboard.dto.auth.AppleSignInRequest;
 import com.org.playboard.dto.auth.GoogleSignInRequest;
 import com.org.playboard.dto.auth.RefreshRequest;
+import com.org.playboard.dto.auth.ReviewerSignInRequest;
 import com.org.playboard.dto.auth.TokenResponse;
 import com.org.playboard.service.auth.AuthService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -37,6 +38,14 @@ public class AuthController {
     public TokenResponse signInWithApple(@Valid @RequestBody AppleSignInRequest request) {
         return authService.signInWithApple(
                 request.identityToken(), request.givenName(), request.familyName());
+    }
+
+    // Hidden store-review login (long-press the logo on the Android login screen).
+    // Disabled unless REVIEWER_USERNAME + REVIEWER_PASSWORD_HASH are configured.
+    @SecurityRequirements
+    @PostMapping("/reviewer")
+    public TokenResponse signInAsReviewer(@Valid @RequestBody ReviewerSignInRequest request) {
+        return authService.signInAsReviewer(request.username(), request.password());
     }
 
     @SecurityRequirements

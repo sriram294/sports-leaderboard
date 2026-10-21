@@ -46,6 +46,7 @@ private class FakePlayboardApi(
     var archivedMonthsResult: List<String> = emptyList(),
 ) : PlayboardApi {
     
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, UserSummaryDto("u1", "Raj", "raj@example.com", null, null, "#9ADE28"))
 

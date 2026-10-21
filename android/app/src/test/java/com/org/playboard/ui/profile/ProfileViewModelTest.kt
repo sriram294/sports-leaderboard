@@ -76,6 +76,7 @@ private open class FakePlayboardApi(
 
     private fun currentUser() = UserSummaryDto("u1", userName, "raj@example.com", userPhotoUrl, userAvatarId, "#9ADE28")
 
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         TokenResponseDto("access", "refresh", 900, currentUser())
     override suspend fun updateDisplayName(request: UpdateUserRequestDto): UserSummaryDto {

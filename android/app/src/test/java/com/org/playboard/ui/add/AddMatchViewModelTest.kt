@@ -71,6 +71,7 @@ private class FakePlayboardApi(
     var lastEditRequest: RecordMatchRequestDto? = null
     var lastEditMatchId: String? = null
 
+    override suspend fun signInAsReviewer(request: com.org.playboard.data.remote.dto.ReviewerSignInRequestDto): com.org.playboard.data.remote.dto.TokenResponseDto = error("unused")
     override suspend fun signInWithGoogle(request: GoogleSignInRequestDto): TokenResponseDto =
         error("not used in this test")
 
