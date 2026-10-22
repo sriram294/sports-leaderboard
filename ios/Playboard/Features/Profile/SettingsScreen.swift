@@ -9,7 +9,6 @@ struct SettingsScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.playboardPalette) private var palette
     @State private var showsDeleteAccount = false
-    @State private var confirmsSignOut = false
 
     var body: some View {
         NavigationStack {
@@ -20,7 +19,10 @@ struct SettingsScreen: View {
                         Text(user.email).font(PlayboardTypography.body()).foregroundStyle(palette.textMuted)
                     }
                     .accessibilityElement(children: .combine)
-                    Button(role: .destructive) { confirmsSignOut = true } label: {
+                    Button(role: .destructive) {
+                        dismiss()
+                        signOut()
+                    } label: {
                         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                     .accessibilityIdentifier("sign-out-button")
@@ -46,12 +48,6 @@ struct SettingsScreen: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .confirmationDialog("Sign out of Playboard?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
-                Button("Sign out", role: .destructive) {
-                    dismiss()
-                    signOut()
-                }
-            }
             .sheet(isPresented: $showsDeleteAccount) {
                 AccountDeletionSheet(deleteAccount: deleteAccount, onDeleted: { dismiss() })
             }

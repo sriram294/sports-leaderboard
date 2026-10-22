@@ -178,6 +178,10 @@ private struct MatchHistoryCard: View {
         PlayboardCard {
             VStack(alignment: .leading, spacing: PlayboardSpacing.medium) {
                 summaryButton
+                if isExpanded {
+                    Divider().overlay(palette.textMuted.opacity(0.18))
+                    expandedContent
+                }
                 if isExpanded && canModify {
                     HStack(spacing: PlayboardSpacing.medium) {
                         Button(action: onEdit) {
@@ -211,10 +215,6 @@ private struct MatchHistoryCard: View {
                         Spacer(minLength: 0)
                         scores
                     }
-                }
-                if isExpanded {
-                    Divider().overlay(palette.textMuted.opacity(0.18))
-                    expandedContent
                 }
             }
             .contentShape(Rectangle())

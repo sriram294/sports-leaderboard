@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class MatchesUITests: XCTestCase {
     func testBrowsesAndExpandsMatchHistory() {
         let app = launch(matchScenario: "standard")
@@ -8,7 +9,7 @@ final class MatchesUITests: XCTestCase {
         app.descendants(matching: .any)["match-card-match-preview"].tap()
         XCTAssertTrue(app.staticTexts["GAME BREAKDOWN"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["RATING CHANGE"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["Test Player, rating increased by 4.2"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Test Player, rating increased by 4.20"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["Kiran, not rated"].exists)
         XCTAssertTrue(app.staticTexts["HISTORY"].exists)
         attachScreenshot(app, name: "matches-expanded")
@@ -56,7 +57,8 @@ final class MatchesUITests: XCTestCase {
         app.buttons["record-match-button"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["add-match-error"].waitForExistence(timeout: 3))
         app.buttons["record-match-button"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["matches-screen"].waitForExistence(timeout: 3))
+        // A newly recorded match returns to the Board, matching Android.
+        XCTAssertTrue(app.descendants(matching: .any)["leaderboard-screen"].waitForExistence(timeout: 3))
     }
 
     func testLeavingDirtyFormRequiresConfirmation() {

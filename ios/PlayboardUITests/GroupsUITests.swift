@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class GroupsUITests: XCTestCase {
     func testEmptyStateCreatesFirstGroup() {
         let app = launch(groupScenario: "empty")
