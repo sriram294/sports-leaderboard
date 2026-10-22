@@ -7,16 +7,16 @@ struct GroupEntrySheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Group action", selection: Binding(get: { viewModel.state.entryMode }, set: viewModel.setEntryMode)) {
+                Picker("Group action", selection: Binding(get: { viewModel.state.entryMode }, set: { viewModel.setEntryMode($0) })) {
                     ForEach(GroupEntryMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 if viewModel.state.entryMode == .create {
-                    TextField("Group name", text: Binding(get: { viewModel.state.groupName }, set: viewModel.setGroupName))
+                    TextField("Group name", text: Binding(get: { viewModel.state.groupName }, set: { viewModel.setGroupName($0) }))
                         .textContentType(.organizationName)
                         .accessibilityIdentifier("group-name-field")
                 } else {
-                    TextField("Invite code", text: Binding(get: { viewModel.state.inviteCode }, set: viewModel.setInviteCode))
+                    TextField("Invite code", text: Binding(get: { viewModel.state.inviteCode }, set: { viewModel.setInviteCode($0) }))
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("invite-code-field")
@@ -43,7 +43,7 @@ struct RenameGroupSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Group name", text: Binding(get: { viewModel.state.groupName }, set: viewModel.setGroupName))
+                TextField("Group name", text: Binding(get: { viewModel.state.groupName }, set: { viewModel.setGroupName($0) }))
                     .accessibilityIdentifier("rename-group-field")
                 InlineGroupError(message: viewModel.state.actionMessage)
             }
@@ -111,9 +111,9 @@ struct MembersSheet: View {
                     }
                     if viewModel.state.selectedGroup?.canManage == true {
                         Section("Add by email") {
-                            TextField("Email", text: Binding(get: { viewModel.state.memberEmail }, set: viewModel.setMemberEmail))
+                            TextField("Email", text: Binding(get: { viewModel.state.memberEmail }, set: { viewModel.setMemberEmail($0) }))
                                 .keyboardType(.emailAddress).textInputAutocapitalization(.never)
-                            TextField("Display name", text: Binding(get: { viewModel.state.memberName }, set: viewModel.setMemberName))
+                            TextField("Display name", text: Binding(get: { viewModel.state.memberName }, set: { viewModel.setMemberName($0) }))
                             Button("Add player") { Task { await viewModel.addMember() } }.disabled(!viewModel.state.canAddMember)
                         }
                     } else {
@@ -175,9 +175,9 @@ struct SessionTimeSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Start (HH:mm)", text: Binding(get: { viewModel.state.sessionStart }, set: viewModel.setSessionStart))
+                    TextField("Start (HH:mm)", text: Binding(get: { viewModel.state.sessionStart }, set: { viewModel.setSessionStart($0) }))
                         .keyboardType(.numbersAndPunctuation)
-                    TextField("End (HH:mm)", text: Binding(get: { viewModel.state.sessionEnd }, set: viewModel.setSessionEnd))
+                    TextField("End (HH:mm)", text: Binding(get: { viewModel.state.sessionEnd }, set: { viewModel.setSessionEnd($0) }))
                         .keyboardType(.numbersAndPunctuation)
                 } footer: {
                     Text("Use 24-hour local time. Clear both fields to remove the playing window.")

@@ -325,7 +325,7 @@ private struct EditNameSheet: View {
             Form {
                 TextField("Display name", text: Binding(
                     get: { viewModel.state.renameSheet?.input ?? "" },
-                    set: viewModel.setRenameInput
+                    set: { viewModel.setRenameInput($0) }
                 ))
                 .textContentType(.name)
                 .submitLabel(.done)
