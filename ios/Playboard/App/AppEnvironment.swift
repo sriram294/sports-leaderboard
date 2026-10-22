@@ -457,28 +457,43 @@ private actor UITestLeaderboardRepository: LeaderboardRepository {
         if scenario == .failure { throw GroupRepositoryError.offline }
         if scenario == .empty { return Leaderboard(rankings: [], minGamesToRank: 3) }
         let count = scenario == .dense ? 12 : 4
-        let rows = (1...count).map { rank in
-            LeaderboardEntry(
-                rank: rank,
-                userID: "player-\(rank)",
-                displayName: rank == 1 ? "Priya" : "Player \(rank)",
-                photoURL: rank == 2 ? "https://example.invalid/missing.png" : nil,
-                avatarID: "avatar\(rank % 16)",
-                avatarColor: rank.isMultiple(of: 2) ? "#5B8CFF" : "#9ADE28",
-                gamesPlayed: max(1, 14 - rank),
-                wins: max(1, 10 - rank / 2),
-                losses: rank / 2,
-                pointsFor: 500 - rank * 12,
-                pointsAgainst: 390 + rank * 5,
-                winRate: max(0.1, 0.82 - Double(rank) * 0.04),
-                currentStreak: max(0, 5 - rank),
-                bestStreak: max(1, 7 - rank / 2),
-                rating: max(8.0, 58.0 - Double(rank) * 3.2),
-                provisional: rank == count,
-                recentForm: [true, rank.isMultiple(of: 2), false, true]
-            )
-        }
+        let rows = (1...count).map { Self.entry(rank: $0, count: count) }
         return Leaderboard(rankings: rows, minGamesToRank: 3)
+    }
+
+    /// Deterministic fixture row; explicit types keep the type checker fast.
+    private static func entry(rank: Int, count: Int) -> LeaderboardEntry {
+        let even = rank.isMultiple(of: 2)
+        let rankValue = Double(rank)
+        let winRate: Double = max(0.1, 0.82 - rankValue * 0.04)
+        let rating: Double = max(8.0, 58.0 - rankValue * 3.2)
+        let gamesPlayed: Int = max(1, 14 - rank)
+        let wins: Int = max(1, 10 - rank / 2)
+        let pointsFor: Int = 500 - rank * 12
+        let pointsAgainst: Int = 390 + rank * 5
+        let currentStreak: Int = max(0, 5 - rank)
+        let bestStreak: Int = max(1, 7 - rank / 2)
+        let displayName = rank == 1 ? "Priya" : "Player \(rank)"
+        let photoURL: String? = rank == 2 ? "https://example.invalid/missing.png" : nil
+        return LeaderboardEntry(
+            rank: rank,
+            userID: "player-\(rank)",
+            displayName: displayName,
+            photoURL: photoURL,
+            avatarID: "avatar\(rank % 16)",
+            avatarColor: even ? "#5B8CFF" : "#9ADE28",
+            gamesPlayed: gamesPlayed,
+            wins: wins,
+            losses: rank / 2,
+            pointsFor: pointsFor,
+            pointsAgainst: pointsAgainst,
+            winRate: winRate,
+            currentStreak: currentStreak,
+            bestStreak: bestStreak,
+            rating: rating,
+            provisional: rank == count,
+            recentForm: [true, even, false, true]
+        )
     }
 }
 
