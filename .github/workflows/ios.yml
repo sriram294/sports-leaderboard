@@ -1,0 +1,140 @@
+name: iOS build
+
+# Builds, tests, and (optionally) archives the native iOS app in ios/.
+#
+# Manual only: there are no push, pull_request, or schedule triggers, and the job
+# refuses to run for anyone but the repository owner. Start it from
+# Actions → "iOS build" → Run workflow, or `gh workflow run ios.yml --ref <branch>`.
+#
+# The repository is public, so GitHub-hosted macOS minutes are free. Nothing secret
+# is used: the archive is unsigned (CODE_SIGNING_ALLOWED=NO) and must be re-signed
+# before it can be installed. The API base URL and Google client ids are public
+# identifiers, read from repository *variables* (Settings → Secrets and variables →
+# Actions → Variables), never secrets:
+#   IOS_API_BASE_URL              e.g. https://playboard-prd.cooperbcknd.in/api/v1
+#   IOS_GOOGLE_CLIENT_ID          the iOS OAuth client id
+#   IOS_GOOGLE_REVERSED_CLIENT_ID its reversed form (the URL scheme)
+# Leave them unset to build an app that shows its "not configured" state.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: Run unit and UI tests on a simulator
+        type: boolean
+        default: true
+      archive:
+        description: Build an unsigned Release archive and IPA
+        type: boolean
+        default: false
+      xcode_version:
+        description: Xcode version installed on the runner
+        type: string
+        default: '26.2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    if: github.actor == github.repository_owner
+    runs-on: macos-26
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      PLAYBOARD_XCODE_VERSION: ${{ inputs.xcode_version }}
+      API_BASE_URL: ${{ vars.IOS_API_BASE_URL }}
+      GOOGLE_CLIENT_ID: ${{ vars.IOS_GOOGLE_CLIENT_ID }}
+      GOOGLE_REVERSED_CLIENT_ID: ${{ vars.IOS_GOOGLE_REVERSED_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ inputs.xcode_version }}
+        run: |
+          set -euo pipefail
+          app="/Applications/Xcode_${PLAYBOARD_XCODE_VERSION}.app"
+          if [[ ! -d "${app}" ]]; then
+            echo "::error::Xcode ${PLAYBOARD_XCODE_VERSION} is not installed on this runner. Available:"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "${app}/Contents/Developer"
+          xcodebuild -version
+
+      - name: Scan for secrets and signing files
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name 'GoogleService-Info.plist' -o -name '*.mobileprovision' -o -name '*.p12' -o -name '*.p8' -o -name '*.cer' -o -name '*.key' \) -print -quit | grep -q .; then
+            echo "::error::Forbidden provider or signing file found in ios/."
+            exit 1
+          fi
+          python3 scripts/verify_no_secrets.py . ../docs/ios ../codemagic.yaml
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ios/build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ inputs.xcode_version }}-${{ hashFiles('ios/Playboard.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      - name: Resolve locked packages
+        run: ./scripts/resolve-packages.sh
+
+      - name: Build (Debug, warnings as errors)
+        run: ./scripts/build.sh
+
+      - name: Run unit and UI tests
+        if: inputs.run_tests
+        run: ./scripts/test.sh
+
+      - name: Publish test report
+        if: always() && inputs.run_tests
+        run: |
+          if [[ -f build/junit.xml ]]; then
+            python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+          root = ET.parse("build/junit.xml").getroot()
+          suites = [root] if root.tag == "testsuite" else list(root)
+          total = sum(int(s.get("tests", 0)) for s in suites)
+          failed = sum(int(s.get("failures", 0)) + int(s.get("errors", 0)) for s in suites)
+          print(f"### iOS tests\n\n{total - failed}/{total} passed")
+          for case in root.iter("testcase"):
+              if case.find("failure") is not None or case.find("error") is not None:
+                  print(f"- ❌ {case.get('classname')} › {case.get('name')}")
+          PY
+          fi
+
+      - name: Archive unsigned Release
+        if: inputs.archive
+        run: ./scripts/archive-unsigned.sh
+
+      - name: Upload logs and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ github.run_number }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            ios/build/logs/*.log
+            ios/build/junit.xml
+            ios/build/test-results.json
+            ios/build/TestResults.xcresult
+            ios/build/gallery-*.png
+            ios/build/attachments/**/*.png
+
+      - name: Upload unsigned IPA
+        if: inputs.archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa-${{ github.run_number }}
+          retention-days: 14
+          path: |
+            ios/build/Playboard-unsigned.ipa
+            ios/build/Playboard.xcarchive/dSYMs

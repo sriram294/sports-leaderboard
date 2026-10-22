@@ -38,6 +38,18 @@ final class SessionViewModel: ObservableObject {
         state = .signedIn(session)
     }
 
+    /// Applies a profile change (rename, avatar) to the live and persisted session.
+    func updateUser(_ user: AuthenticatedUser) async {
+        guard case .signedIn(let session) = state else { return }
+        await repository.updateUser(user)
+        state = .signedIn(AuthSession(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+            accessTokenExpiresAt: session.accessTokenExpiresAt,
+            user: user
+        ))
+    }
+
     func signOut() async {
         await repository.logout()
         googleProvider.signOut()

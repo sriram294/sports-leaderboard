@@ -9,18 +9,65 @@ final class MatchesViewModel: ObservableObject {
     private var loadTask: Task<Void, Never>?
     private var detailTask: Task<Void, Never>?
 
-    init(repository: any MatchRepository) { self.repository = repository }
+    init(repository: any MatchRepository, currentUserID: String = "") {
+        self.repository = repository
+        state.currentUserID = currentUserID
+    }
 
     func select(group: PlayGroup?) {
+        state.canModerate = group?.canManage ?? false
         if state.groupID == group?.id {
             state.groupMatchCount = group?.matchCount ?? 0
             return
         }
         loadTask?.cancel()
         detailTask?.cancel()
-        state = MatchesUiState(groupID: group?.id, groupMatchCount: group?.matchCount ?? 0)
+        state = MatchesUiState(
+            groupID: group?.id,
+            groupMatchCount: group?.matchCount ?? 0,
+            currentUserID: state.currentUserID,
+            canModerate: group?.canManage ?? false
+        )
         guard group != nil else { return }
         startLoad(showLoading: true)
+    }
+
+    /// Whether a day's section is expanded: a user override, else only the newest day.
+    func isDayExpanded(_ day: Date, calendar: Calendar = .current) -> Bool {
+        state.expandedDays[day] ?? (day == sections(calendar: calendar).first?.day)
+    }
+
+    func toggleDay(_ day: Date, calendar: Calendar = .current) {
+        state.expandedDays[day] = !isDayExpanded(day, calendar: calendar)
+    }
+
+    func requestDelete(matchID: String) {
+        state.deleteErrorMessage = nil
+        state.pendingDeletionID = matchID
+    }
+
+    func cancelDelete() {
+        guard !state.isDeleting else { return }
+        state.pendingDeletionID = nil
+    }
+
+    func confirmDelete() async {
+        guard let groupID = state.groupID, let matchID = state.pendingDeletionID, !state.isDeleting else { return }
+        state.isDeleting = true
+        do {
+            try await repository.delete(groupID: groupID, matchID: matchID)
+            state.matches.removeAll { $0.id == matchID }
+            if state.expandedMatchID == matchID {
+                state.expandedMatchID = nil
+                state.detail = nil
+            }
+            state.groupMatchCount = max(0, state.groupMatchCount - 1)
+            state.lastDeletedMatchID = matchID
+        } catch {
+            state.deleteErrorMessage = message(for: error)
+        }
+        state.isDeleting = false
+        state.pendingDeletionID = nil
     }
 
     func retry() { startLoad(showLoading: true) }
@@ -30,6 +77,12 @@ final class MatchesViewModel: ObservableObject {
         state.isRefreshing = true
         await load(showLoading: false)
         state.isRefreshing = false
+        // An edit changes the open card's breakdown, so re-fetch it too.
+        if let groupID = state.groupID, let matchID = state.expandedMatchID,
+           let detail = try? await repository.detail(groupID: groupID, matchID: matchID),
+           state.expandedMatchID == matchID {
+            state.detail = detail
+        }
     }
 
     func toggleMineOnly() {

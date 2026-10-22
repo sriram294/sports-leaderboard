@@ -12,8 +12,19 @@ struct AddMatchScreen: View {
             if viewModel.state.groupID == nil {
                 PlayboardEmptyView(title: "No active group", message: "Create or join a group before recording a match.")
                     .padding(PlayboardSpacing.extraLarge)
-            } else if viewModel.state.isLoading && viewModel.state.roster.isEmpty {
-                PlayboardLoadingView(message: "Loading players")
+            } else if viewModel.state.isLoading && (viewModel.state.roster.isEmpty || viewModel.state.isEditing) {
+                PlayboardLoadingView(message: viewModel.state.isEditing ? "Loading match" : "Loading players")
+            } else if viewModel.state.isEditing, viewModel.state.editingPlayedAt == nil, let error = viewModel.state.errorMessage {
+                VStack(spacing: PlayboardSpacing.large) {
+                    PlayboardErrorView(message: error) {
+                        if let matchID = viewModel.state.editingMatchID {
+                            viewModel.cancelEditing()
+                            viewModel.startEditing(matchID: matchID)
+                        }
+                    }
+                    Button("Cancel edit", action: viewModel.cancelEditing).frame(minHeight: 44)
+                }
+                .padding(PlayboardSpacing.extraLarge)
             } else if viewModel.state.roster.isEmpty, let error = viewModel.state.errorMessage {
                 PlayboardErrorView(message: error, retry: viewModel.retryRoster)
                     .padding(PlayboardSpacing.extraLarge)
@@ -27,11 +38,26 @@ struct AddMatchScreen: View {
     private var form: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: PlayboardSpacing.large) {
-                VStack(alignment: .leading, spacing: PlayboardSpacing.extraSmall) {
-                    Text("RECORD A MATCH").font(PlayboardTypography.eyebrow()).tracking(1.2).foregroundStyle(palette.textMuted)
-                    Text("Build teams and add scores").font(PlayboardTypography.title()).foregroundStyle(palette.textPrimary)
-                    Text("Recording as \(recorder.displayName) · \(recorder.email)")
-                        .font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: PlayboardSpacing.extraSmall) {
+                        Text(viewModel.state.isEditing ? "EDIT MATCH" : "RECORD A MATCH")
+                            .font(PlayboardTypography.eyebrow()).tracking(1.2).foregroundStyle(palette.textMuted)
+                        Text(viewModel.state.isEditing ? "Update teams and scores" : "Build teams and add scores")
+                            .font(PlayboardTypography.title()).foregroundStyle(palette.textPrimary)
+                        if let playedAt = viewModel.state.editingPlayedAt {
+                            Text("Played \(playedAt.formatted(date: .abbreviated, time: .shortened)) · the date stays unchanged")
+                                .font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                        } else {
+                            Text("Recording as \(recorder.displayName) · \(recorder.email)")
+                                .font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
+                        }
+                    }
+                    Spacer()
+                    if viewModel.state.isEditing {
+                        Button("Cancel", action: viewModel.cancelEditing)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("cancel-edit-match")
+                    }
                 }
 
                 PlayboardCard {
@@ -94,7 +120,7 @@ struct AddMatchScreen: View {
                         if viewModel.state.isSubmitting {
                             ProgressView().tint(palette.onBrand)
                         } else {
-                            Label("Record match", systemImage: "checkmark.circle.fill")
+                            Label(viewModel.state.isEditing ? "Save changes" : "Record match", systemImage: "checkmark.circle.fill")
                         }
                     }
                     .font(PlayboardTypography.label())
@@ -137,7 +163,8 @@ private struct TeamBuilder: View {
                                     avatarID: player.avatarID,
                                     photoURL: player.photoURL,
                                     color: Color(addMatchHex: player.avatarColor),
-                                    size: 48
+                                    size: 48,
+                                    previewsOnTap: false
                                 )
                                 Text(player.role == .guest ? "Guest" : player.displayName)
                                     .font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textPrimary).lineLimit(1)

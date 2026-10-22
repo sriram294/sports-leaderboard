@@ -1,92 +1,111 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
-/// A player's group-scoped profile and statistics payload.
-struct PlayerStats: Codable, Equatable, Sendable {
-    struct MonthlyFinish: Codable, Equatable, Sendable, Identifiable {
-        let month: String
-        let rank: Int?
-        let qualifiedPlayers: Int
-        var id: String { month }
-    }
-
-    let userID: String
-    let displayName: String
-    let photoURL: String?
-    let avatarColor: String
-    let matchesPlayed: Int
-    let wins: Int
-    let losses: Int
-    let pointsFor: Int
-    let pointsAgainst: Int
-    let winRate: Double
-    let currentStreak: Int
-    let bestStreak: Int
-    let recentMatches: [MatchSummary]
-    let monthlyFinishes: [MonthlyFinish]
-
-    enum CodingKeys: String, CodingKey {
-        case userID = "userId", displayName, photoURL = "photoUrl", avatarColor
-        case matchesPlayed, wins, losses, pointsFor, pointsAgainst, winRate
-        case currentStreak, bestStreak, recentMatches, monthlyFinishes
-    }
-}
-
-/// One player's best-partner summary.
-struct PartnerStats: Codable, Equatable, Sendable, Identifiable {
-    let userID: String
-    let displayName: String
-    let avatarColor: String
-    let gamesTogether: Int
-    let winsTogether: Int
-    let winRate: Double
-    var id: String { userID }
-    enum CodingKeys: String, CodingKey {
-        case userID = "userId", displayName, avatarColor, gamesTogether, winsTogether, winRate
-    }
-}
-
-/// API boundary for profile, stats, and appearance-related data.
+/// API boundary for profile, stats, attendance, trophies, and account appearance.
 protocol ProfileRepository: Sendable {
     func stats(groupID: String, userID: String) async throws -> PlayerStats
-    func partners(groupID: String, userID: String) async throws -> [PartnerStats]
+    /// Partners within `window`, or all time when nil.
+    func partners(groupID: String, userID: String, window: DateInterval?) async throws -> [PartnerStats]
+    /// Distinct instants the player was in a match within `window`.
+    func attendance(groupID: String, userID: String, window: DateInterval) async throws -> [Date]
+    /// The group's monthly winners, newest first.
+    func trophies(groupID: String, limit: Int) async throws -> [MonthlyTrophy]
     func updateDisplayName(_ name: String) async throws -> AuthenticatedUser
+    /// Selects one of the bundled default avatars; the server clears any uploaded photo.
+    func updateAvatar(_ avatarID: String) async throws -> AuthenticatedUser
+    /// Uploads a replacement profile photo.
+    func uploadPhoto(_ data: Data, mimeType: String) async throws -> AuthenticatedUser
 }
 
-/// Live implementation of the existing profile and player-stat contracts.
+/// How many completed months the Stats "Monthly winners" card shows.
+let groupTrophyLimit = 6
+
+/// Live implementation of the profile, stats, and user contracts.
 actor LiveProfileRepository: ProfileRepository {
-    private let apiClient: any APIClient
-    private let baseURL: URL
-    private var accessToken: String
-    private let refreshAccessToken: (@Sendable () async throws -> String)?
-    private let decoder: JSONDecoder
-    private let encoder = JSONEncoder()
+    private let api: AuthorizedAPI
+    private let decoder = PlayboardJSON.decoder()
+    private let encoder = PlayboardJSON.encoder()
 
     init(apiClient: any APIClient, baseURL: URL, accessToken: String, refreshAccessToken: (@Sendable () async throws -> String)? = nil) {
-        self.apiClient = apiClient; self.baseURL = baseURL; self.accessToken = accessToken; self.refreshAccessToken = refreshAccessToken
-        decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        api = AuthorizedAPI(apiClient: apiClient, baseURL: baseURL, accessToken: accessToken, refreshAccessToken: refreshAccessToken)
     }
 
     func stats(groupID: String, userID: String) async throws -> PlayerStats {
-        try await send(path: "groups/\(groupID)/members/\(userID)/stats", method: "GET", body: nil, response: PlayerStats.self)
+        try await get("groups/\(groupID)/members/\(userID)/stats", as: PlayerStats.self)
     }
 
-    func partners(groupID: String, userID: String) async throws -> [PartnerStats] {
-        try await send(path: "groups/\(groupID)/members/\(userID)/stats/partners", method: "GET", body: nil, response: [PartnerStats].self)
+    func partners(groupID: String, userID: String, window: DateInterval?) async throws -> [PartnerStats] {
+        try await get("groups/\(groupID)/members/\(userID)/stats/partners", query: Self.windowQuery(window), as: [PartnerStats].self)
+    }
+
+    func attendance(groupID: String, userID: String, window: DateInterval) async throws -> [Date] {
+        let response = try await get(
+            "groups/\(groupID)/members/\(userID)/attendance", query: Self.windowQuery(window), as: AttendanceResponse.self)
+        return response.playedAt.compactMap(PlayboardJSON.parseDate)
+    }
+
+    func trophies(groupID: String, limit: Int) async throws -> [MonthlyTrophy] {
+        try await get("groups/\(groupID)/trophies", query: [URLQueryItem(name: "limit", value: String(limit))], as: [MonthlyTrophy].self)
+            .filter(\.isValid)
     }
 
     func updateDisplayName(_ name: String) async throws -> AuthenticatedUser {
-        try await send(path: "users/me", method: "PATCH", body: NameBody(displayName: name.trimmingCharacters(in: .whitespacesAndNewlines)), response: AuthenticatedUser.self)
+        let body = try encoder.encode(NameBody(displayName: name.trimmingCharacters(in: .whitespacesAndNewlines)))
+        return try decode(try await api.send(path: "users/me", method: "PATCH", body: body), as: AuthenticatedUser.self)
     }
 
-    private func send<Body: Encodable, Response: Decodable>(path: String, method: String, body: Body?, response: Response.Type) async throws -> Response {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path)); request.httpMethod = method
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let body { request.httpBody = try encoder.encode(body) }
-        var result = try await apiClient.response(for: request)
-        if result.statusCode == 401, let refreshAccessToken { accessToken = try await refreshAccessToken(); request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization"); result = try await apiClient.response(for: request) }
-        guard (200..<300).contains(result.statusCode) else { throw GroupRepositoryError.invalidResponse }
-        do { return try decoder.decode(response, from: result.data) } catch { throw GroupRepositoryError.invalidResponse }
+    func updateAvatar(_ avatarID: String) async throws -> AuthenticatedUser {
+        let body = try encoder.encode(AvatarBody(avatarId: avatarID))
+        return try decode(try await api.send(path: "users/me/avatar", method: "PATCH", body: body), as: AuthenticatedUser.self)
+    }
+
+    func uploadPhoto(_ data: Data, mimeType: String) async throws -> AuthenticatedUser {
+        let boundary = "Playboard-\(UUID().uuidString)"
+        let fileExtension = mimeType == "image/png" ? "png" : "jpg"
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.\(fileExtension)\"\r\n".utf8))
+        body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+        body.append(data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        let response = try await api.send(
+            path: "users/me/photo", method: "POST", body: body, contentType: "multipart/form-data; boundary=\(boundary)")
+        return try decode(response, as: AuthenticatedUser.self)
+    }
+
+    private func get<Response: Decodable>(_ path: String, query: [URLQueryItem] = [], as type: Response.Type) async throws -> Response {
+        try decode(try await api.send(path: path, method: "GET", query: query), as: type)
+    }
+
+    private func decode<Response: Decodable>(_ response: APIResponse, as type: Response.Type) throws -> Response {
+        guard (200..<300).contains(response.statusCode) else {
+            throw response.statusCode == 403 ? GroupRepositoryError.permissionDenied : GroupRepositoryError.invalidResponse
+        }
+        do { return try decoder.decode(type, from: response.data) }
+        catch { throw GroupRepositoryError.invalidResponse }
+    }
+
+    private static func windowQuery(_ window: DateInterval?) -> [URLQueryItem] {
+        guard let window else { return [] }
+        return [
+            URLQueryItem(name: "from", value: PlayboardJSON.queryString(window.start)),
+            URLQueryItem(name: "to", value: PlayboardJSON.queryString(window.end))
+        ]
     }
 }
 
+/// Maps transport and API failures from profile flows to user-facing copy.
+func profileErrorMessage(_ error: Error) -> String {
+    switch error {
+    case AuthorizedAPIError.offline: GroupRepositoryError.offline.message
+    case AuthorizedAPIError.unauthorized: "Your session expired. Sign in again to continue."
+    case let error as GroupRepositoryError: error.message
+    default: GroupRepositoryError.invalidResponse.message
+    }
+}
+
+private struct AttendanceResponse: Decodable { let playedAt: [String] }
 private struct NameBody: Encodable { let displayName: String }
+private struct AvatarBody: Encodable { let avatarId: String }

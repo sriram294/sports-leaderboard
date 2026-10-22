@@ -8,6 +8,10 @@ insights. It's an Android app backed by a custom REST API.
 - `android/` — Kotlin + Jetpack Compose app (package `com.org.playboard`).
 - `backend/` — Java + Spring Boot + Postgres API (package `com.org.playboard`), deployed
   on **Railway from `master`** at `https://playboard-prd.cooperbcknd.in`.
+- `ios/` — Swift 6 + SwiftUI app (`docs/ios/` holds its roadmap, parity matrix, and hand-off
+  memory). No Xcode on this Linux box: `ios/scripts/linux-check.sh` (Docker) type-checks the
+  non-UI sources and runs the unit tests; real builds go through the manual-only
+  `.github/workflows/ios.yml` ("iOS build", `macos-26`, owner-triggered).
 - `docs/` — the source of truth:
   - `docs/requirements/00–06-*.md` — per-screen specs (Login, Board, Matches, Add, Profile, Stats).
   - `docs/backend/api-contracts.md` — REST contract; `docs/backend/data-model.md` — schema.

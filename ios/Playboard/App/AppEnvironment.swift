@@ -14,6 +14,7 @@ struct AppEnvironment {
     let matchRepositoryFactory: (String) -> any MatchRepository
     let profileRepositoryFactory: (String) -> any ProfileRepository
     let accountRepositoryFactory: (String) -> any AccountRepository
+    let deviceRepositoryFactory: (String) -> any DeviceRepository
     let updateRepository: any UpdateRepository
 
     /// Production dependencies are created exactly once for the app process.
@@ -47,11 +48,13 @@ struct AppEnvironment {
             baseURL: configuration.apiBaseURL,
             clock: SystemPlayboardClock()
         )
+        // Repositories need a concrete URL; a build without one shows the login configuration notice instead.
+        let baseURL = configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!
         let keyValueStore = UserDefaultsKeyValueStore()
         let selectedGroupStore = KeyValueSelectedGroupStore(store: keyValueStore)
         let updateRepository = LiveUpdateRepository(
             apiClient: apiClient,
-            baseURL: configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!
+            baseURL: baseURL
         )
         return AppEnvironment(
             configuration: configuration,
@@ -64,7 +67,7 @@ struct AppEnvironment {
                 LiveGroupRepository(
                     apiClient: apiClient,
                     selectedGroupStore: selectedGroupStore,
-                    baseURL: configuration.apiBaseURL,
+                    baseURL: baseURL,
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
@@ -72,7 +75,7 @@ struct AppEnvironment {
             leaderboardRepositoryFactory: { accessToken in
                 LiveLeaderboardRepository(
                     apiClient: apiClient,
-                    baseURL: configuration.apiBaseURL,
+                    baseURL: baseURL,
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
@@ -80,7 +83,7 @@ struct AppEnvironment {
             matchRepositoryFactory: { accessToken in
                 LiveMatchRepository(
                     apiClient: apiClient,
-                    baseURL: configuration.apiBaseURL,
+                    baseURL: baseURL,
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
@@ -88,7 +91,7 @@ struct AppEnvironment {
             profileRepositoryFactory: { accessToken in
                 LiveProfileRepository(
                     apiClient: apiClient,
-                    baseURL: configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!,
+                    baseURL: baseURL,
                     accessToken: accessToken,
                     refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
@@ -96,8 +99,16 @@ struct AppEnvironment {
             accountRepositoryFactory: { accessToken in
                 LiveAccountRepository(
                     apiClient: apiClient,
-                    baseURL: configuration.apiBaseURL ?? URL(string: "https://example.invalid/api/v1")!,
+                    baseURL: baseURL,
                     accessToken: accessToken
+                )
+            },
+            deviceRepositoryFactory: { accessToken in
+                LiveDeviceRepository(
+                    apiClient: apiClient,
+                    baseURL: baseURL,
+                    accessToken: accessToken,
+                    refreshAccessToken: { try await authRepository.refreshSession().accessToken }
                 )
             },
             updateRepository: updateRepository
@@ -122,6 +133,7 @@ struct AppEnvironment {
             matchRepositoryFactory: { _ in PreviewMatchRepository() }
             ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
             ,accountRepositoryFactory: { _ in PreviewAccountRepository() }
+            ,deviceRepositoryFactory: { _ in PreviewDeviceRepository() }
             ,updateRepository: PreviewUpdateRepository()
         )
     }
@@ -149,6 +161,7 @@ struct AppEnvironment {
             matchRepositoryFactory: { _ in UITestMatchRepository(scenario: matchScenario) }
             ,profileRepositoryFactory: { _ in PreviewProfileRepository() }
             ,accountRepositoryFactory: { _ in PreviewAccountRepository() }
+            ,deviceRepositoryFactory: { _ in PreviewDeviceRepository() }
             ,updateRepository: PreviewUpdateRepository()
         )
     }
@@ -174,10 +187,26 @@ private actor PreviewMatchRepository: MatchRepository {
 
 private actor PreviewProfileRepository: ProfileRepository {
     func stats(groupID: String, userID: String) async throws -> PlayerStats {
-        PlayerStats(userID: userID, displayName: "Test Player", photoURL: nil, avatarColor: "#9ADE28", matchesPlayed: 12, wins: 9, losses: 3, pointsFor: 504, pointsAgainst: 420, winRate: 0.75, currentStreak: 3, bestStreak: 5, recentMatches: [.preview], monthlyFinishes: [PlayerStats.MonthlyFinish(month: "2026-08", rank: 2, qualifiedPlayers: 6)])
+        PlayerStats(userID: userID, displayName: "Test Player", photoURL: nil, avatarID: "avatar1", avatarColor: "#9ADE28", matchesPlayed: 12, wins: 9, losses: 3, pointsFor: 504, pointsAgainst: 420, winRate: 0.75, currentStreak: 3, bestStreak: 5, recentMatches: [.preview],
+                    trophies: [MonthlyTrophy(month: "2026-08", userID: userID, displayName: "Test Player", avatarID: "avatar1", avatarColor: "#9ADE28")],
+                    monthlyFinishes: [PlayerStats.MonthlyFinish(month: "2026-07", rank: 3, qualifiedPlayers: 6), PlayerStats.MonthlyFinish(month: "2026-08", rank: 1, qualifiedPlayers: 6)])
     }
-    func partners(groupID: String, userID: String) async throws -> [PartnerStats] { [PartnerStats(userID: "player-3", displayName: "Dev", avatarColor: "#FF9F43", gamesTogether: 4, winsTogether: 3, winRate: 0.75)] }
-    func updateDisplayName(_ name: String) async throws -> AuthenticatedUser { AuthenticatedUser(id: "ui-user", displayName: name, email: "player@example.com", photoURL: nil, avatarID: "avatar1", avatarColor: "#9ADE28", authProviders: [.google]) }
+    func partners(groupID: String, userID: String, window: DateInterval?) async throws -> [PartnerStats] { [PartnerStats(userID: "player-3", displayName: "Dev", avatarColor: "#FF9F43", gamesTogether: 4, winsTogether: 3, winRate: 0.75)] }
+    func attendance(groupID: String, userID: String, window: DateInterval) async throws -> [Date] { [MatchSummary.preview.playedAt] }
+    func trophies(groupID: String, limit: Int) async throws -> [MonthlyTrophy] {
+        [MonthlyTrophy(month: "2026-08", userID: "ui-user", displayName: "Test Player", avatarID: "avatar1", avatarColor: "#9ADE28", rating: 46.2, gamesPlayed: 12, wins: 9)]
+    }
+    func updateDisplayName(_ name: String) async throws -> AuthenticatedUser { Self.user(name: name, avatarID: "avatar1") }
+    func updateAvatar(_ avatarID: String) async throws -> AuthenticatedUser { Self.user(name: "Test Player", avatarID: avatarID) }
+    func uploadPhoto(_ data: Data, mimeType: String) async throws -> AuthenticatedUser { Self.user(name: "Test Player", avatarID: nil) }
+    private static func user(name: String, avatarID: String?) -> AuthenticatedUser {
+        AuthenticatedUser(id: "ui-user", displayName: name, email: "player@example.com", photoURL: nil, avatarID: avatarID, avatarColor: "#9ADE28", authProviders: [.google])
+    }
+}
+
+private actor PreviewDeviceRepository: DeviceRepository {
+    func register(token: String) async throws {}
+    func unregister(token: String) async throws {}
 }
 
 private actor PreviewUpdateRepository: UpdateRepository {

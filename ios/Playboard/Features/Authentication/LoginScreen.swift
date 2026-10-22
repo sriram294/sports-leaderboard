@@ -24,6 +24,8 @@ struct LoginScreen: View {
                 VStack(spacing: PlayboardSpacing.section) {
                     Spacer(minLength: 72)
                     AppWordmark(logoHeight: 64, fontSize: 48)
+                        // Hidden store-review login: a long press reveals username/password fields.
+                        .onLongPressGesture(minimumDuration: 1.2) { viewModel.revealReviewerLogin() }
                     VStack(spacing: PlayboardSpacing.small) {
                         Text("Welcome to the court")
                             .font(PlayboardTypography.title())
@@ -62,6 +64,10 @@ struct LoginScreen: View {
                                 .disabled(!canUseApple)
                                 .opacity(canUseApple ? 1 : 0.45)
                                 .accessibilityLabel("Sign in with Apple")
+                            }
+
+                            if viewModel.state.isReviewerFormVisible {
+                                reviewerForm
                             }
 
                             if let message = configurationMessage {
@@ -112,6 +118,34 @@ struct LoginScreen: View {
             return "Google sign-in is unavailable in this build. Apple sign-in can still be used."
         }
         return nil
+    }
+
+    private var reviewerForm: some View {
+        VStack(spacing: PlayboardSpacing.medium) {
+            Divider()
+            TextField("Username", text: Binding(get: { viewModel.state.reviewerUsername }, set: viewModel.setReviewerUsername))
+                .textContentType(.username)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("reviewer-username")
+            SecureField("Password", text: Binding(get: { viewModel.state.reviewerPassword }, set: viewModel.setReviewerPassword))
+                .textContentType(.password)
+                .textFieldStyle(.roundedBorder)
+                .submitLabel(.go)
+                .onSubmit { Task { @MainActor in await viewModel.signInAsReviewer() } }
+                .accessibilityIdentifier("reviewer-password")
+            if viewModel.state.activeProvider == .reviewer {
+                providerProgress("Signing in")
+            } else {
+                PlayboardPrimaryButton("Sign in", systemImage: "person.badge.key") {
+                    Task { @MainActor in await viewModel.signInAsReviewer() }
+                }
+                .disabled(!viewModel.state.canSubmitReviewer || configuration.apiBaseURL == nil)
+                .opacity(viewModel.state.canSubmitReviewer ? 1 : 0.45)
+                .accessibilityIdentifier("reviewer-sign-in")
+            }
+        }
     }
 
     private func providerProgress(_ message: String) -> some View {

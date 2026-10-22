@@ -62,8 +62,7 @@ actor LiveGroupRepository: GroupRepository {
         self.baseURL = baseURL
         self.accessToken = accessToken
         self.refreshAccessToken = refreshAccessToken
-        decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder = PlayboardJSON.decoder()
     }
 
     func loadGroups() async throws -> [PlayGroup] {

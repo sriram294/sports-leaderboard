@@ -35,7 +35,11 @@ struct URLSessionAPIClient: APIClient {
         configuration.requestCachePolicy = .useProtocolCachePolicy
         configuration.timeoutIntervalForRequest = 15
         configuration.timeoutIntervalForResource = 30
+        #if canImport(FoundationNetworking)
+        configuration.urlCache = URLCache(memoryCapacity: 8 * 1024 * 1024, diskCapacity: 32 * 1024 * 1024, diskPath: nil)
+        #else
         configuration.urlCache = URLCache(memoryCapacity: 8 * 1024 * 1024, diskCapacity: 32 * 1024 * 1024)
+        #endif
         return URLSession(configuration: configuration)
     }
 }

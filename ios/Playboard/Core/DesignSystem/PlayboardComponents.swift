@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Racket-as-P Playboard wordmark.
 struct AppWordmark: View {
@@ -74,6 +75,8 @@ struct PlayerAvatar: View {
     var photoURL: String? = nil
     let color: Color
     var size: CGFloat = 48
+    /// False inside rows that are themselves tappable, so the row's action wins.
+    var previewsOnTap = true
     @State private var showsPreview = false
 
     var body: some View {
@@ -102,10 +105,7 @@ struct PlayerAvatar: View {
         .frame(width: size, height: size)
         .overlay(Circle().stroke(color, lineWidth: max(2, size / 18)))
         .contentShape(Circle())
-        .onTapGesture { showsPreview = true }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("View \(displayName)'s profile image")
-        .accessibilityAddTraits(.isButton)
+        .modifier(AvatarPreviewTap(enabled: previewsOnTap, displayName: displayName, showsPreview: $showsPreview))
         .sheet(isPresented: $showsPreview) {
             VStack(spacing: PlayboardSpacing.large) {
                 PlayerAvatar(displayName: displayName, avatarID: avatarID, photoURL: photoURL, color: color, size: 260)
@@ -118,6 +118,72 @@ struct PlayerAvatar: View {
             .accessibilityLabel("\(displayName)'s profile image")
         }
     }
+}
+
+/// Adds the tap-to-enlarge affordance only where the avatar is the tap target.
+private struct AvatarPreviewTap: ViewModifier {
+    let enabled: Bool
+    let displayName: String
+    @Binding var showsPreview: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .onTapGesture { showsPreview = true }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("View \(displayName)'s profile image")
+                .accessibilityAddTraits(.isButton)
+        } else {
+            content
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(displayName)
+        }
+    }
+}
+
+/// Small uppercase heading used above cards and lists.
+struct PlayboardSectionLabel: View {
+    @Environment(\.playboardPalette) private var palette
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(PlayboardTypography.eyebrow())
+            .tracking(1.2)
+            .foregroundStyle(palette.textMuted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Monthly-winner crown with its month label, used on the profile shelf and Stats tiles.
+struct MonthlyCrownBadge: View {
+    @Environment(\.playboardPalette) private var palette
+    let monthLabel: String
+    var crownSize: CGFloat = 34
+
+    var body: some View {
+        VStack(spacing: PlayboardSpacing.extraSmall) {
+            Image("Crown").resizable().scaledToFit().frame(width: crownSize, height: crownSize)
+                .accessibilityHidden(true)
+            Text(monthLabel).font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textPrimary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Won \(monthLabel)")
+    }
+}
+
+/// UIKit share sheet bridged into SwiftUI for rendered images.
+struct ActivityShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 /// Standard progress state with spoken context.

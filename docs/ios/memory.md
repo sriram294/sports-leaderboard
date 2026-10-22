@@ -31,3 +31,17 @@ Run on macOS with Xcode 26.2 and record durable paths for build, tests,
 accessibility/large Dynamic Type checks, and light/dark screenshots. Keep S09
 `in_progress` until that evidence exists; do not claim store signing or
 publication from this Linux workspace.
+
+## Android parity pass — 2026-10-22
+
+- Branch `feature/ios-parity-gaps` off `master` `41f7a1c`; scope and file map in
+  [parity-matrix.md](parity-matrix.md#android-parity-pass-2026-10-22-branch-featureios-parity-gaps).
+- Linux verification (no Xcode here): `ios/scripts/linux-check.sh` type-checks the 37 non-UI
+  sources under Swift 6 strict concurrency with warnings as errors and runs 58 Swift Testing
+  cases — all passing. SwiftUI screens, Firebase, and UI tests are unverified until the manual
+  **iOS build** workflow runs on `macos-26`.
+- `scripts/verify-repository.sh` already fails on `master`: it only counts slices `S00`–`S08`
+  as in progress, so with S09 active it demands an empty `memory.md`. The workflow runs the
+  secret and signing-file checks directly instead.
+- Push needs `GoogleService-Info.plist` (kept out of git) and an APNs key in Firebase; the
+  backend's FCM sender has only been exercised with Android tokens.

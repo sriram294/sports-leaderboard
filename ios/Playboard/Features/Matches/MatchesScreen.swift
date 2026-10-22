@@ -4,6 +4,8 @@ import SwiftUI
 /// Paginated, locally grouped match history for the active group.
 struct MatchesScreen: View {
     @ObservedObject var viewModel: MatchesViewModel
+    /// Opens the Add tab pre-filled to edit the given match.
+    var onEdit: (String) -> Void = { _ in }
     @Environment(\.playboardPalette) private var palette
 
     var body: some View {
@@ -21,12 +23,28 @@ struct MatchesScreen: View {
             }
         }
         .accessibilityIdentifier("matches-screen")
+        .alert("Delete this match?", isPresented: deleteAlertBinding) {
+            Button("Cancel", role: .cancel) { viewModel.cancelDelete() }
+            Button("Delete", role: .destructive) { Task { await viewModel.confirmDelete() } }
+        } message: {
+            Text("Its result is removed from the leaderboard and everyone's stats. This cannot be undone.")
+        }
+    }
+
+    private var deleteAlertBinding: Binding<Bool> {
+        Binding(get: { viewModel.state.pendingDeletionID != nil }, set: { if !$0 { viewModel.cancelDelete() } })
     }
 
     private var history: some View {
         ScrollView {
             LazyVStack(spacing: PlayboardSpacing.medium) {
                 header
+                if let error = viewModel.state.deleteErrorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(PlayboardTypography.body())
+                        .foregroundStyle(palette.statLoss)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if let stale = viewModel.state.staleMessage {
                     Label(stale, systemImage: "wifi.slash")
                         .font(PlayboardTypography.eyebrow())
@@ -43,7 +61,7 @@ struct MatchesScreen: View {
                     .accessibilityIdentifier("matches-empty")
                 } else {
                     ForEach(viewModel.sections()) { section in
-                        MatchDayView(section: section, viewModel: viewModel)
+                        MatchDayView(section: section, viewModel: viewModel, onEdit: onEdit)
                     }
                     if viewModel.state.nextCursor != nil {
                         Button {
@@ -97,26 +115,47 @@ struct MatchesScreen: View {
 private struct MatchDayView: View {
     let section: MatchDaySection
     @ObservedObject var viewModel: MatchesViewModel
+    let onEdit: (String) -> Void
     @Environment(\.playboardPalette) private var palette
 
     var body: some View {
+        let expanded = viewModel.isDayExpanded(section.day)
         Section {
-            ForEach(section.matches) { match in
-                MatchHistoryCard(
-                    match: match,
-                    isExpanded: viewModel.state.expandedMatchID == match.id,
-                    detail: viewModel.state.expandedMatchID == match.id ? viewModel.state.detail : nil,
-                    isDetailLoading: viewModel.state.expandedMatchID == match.id && viewModel.state.isDetailLoading,
-                    detailError: viewModel.state.expandedMatchID == match.id ? viewModel.state.detailErrorMessage : nil,
-                    action: { viewModel.toggleDetail(matchID: match.id) }
-                )
+            if expanded {
+                ForEach(section.matches) { match in
+                    let isOpen = viewModel.state.expandedMatchID == match.id
+                    MatchHistoryCard(
+                        match: match,
+                        isExpanded: isOpen,
+                        detail: isOpen ? viewModel.state.detail : nil,
+                        isDetailLoading: isOpen && viewModel.state.isDetailLoading,
+                        detailError: isOpen ? viewModel.state.detailErrorMessage : nil,
+                        canModify: isOpen && viewModel.state.detail.map(viewModel.state.canModify) == true,
+                        isDeleting: viewModel.state.isDeleting && viewModel.state.pendingDeletionID == match.id,
+                        action: { viewModel.toggleDetail(matchID: match.id) },
+                        onEdit: { onEdit(match.id) },
+                        onDelete: { viewModel.requestDelete(matchID: match.id) }
+                    )
+                }
             }
         } header: {
-            Text("\(section.day.formatted(date: .abbreviated, time: .omitted)) · \(section.matches.count) \(section.matches.count == 1 ? "match" : "matches")")
-                .font(PlayboardTypography.eyebrow())
-                .foregroundStyle(palette.textMuted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, PlayboardSpacing.small)
+            Button { viewModel.toggleDay(section.day) } label: {
+                HStack {
+                    Text("\(section.day.formatted(date: .abbreviated, time: .omitted)) · \(section.matches.count) \(section.matches.count == 1 ? "match" : "matches")")
+                        .font(PlayboardTypography.eyebrow())
+                        .foregroundStyle(palette.textMuted)
+                    Spacer()
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(palette.textMuted)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            .accessibilityHint("Shows or hides this day's matches")
+            .padding(.top, PlayboardSpacing.small)
         }
     }
 }
@@ -127,34 +166,62 @@ private struct MatchHistoryCard: View {
     let detail: MatchDetail?
     let isDetailLoading: Bool
     let detailError: String?
+    let canModify: Bool
+    let isDeleting: Bool
     let action: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
     @Environment(\.playboardPalette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         PlayboardCard {
-            Button(action: action) {
-                VStack(alignment: .leading, spacing: PlayboardSpacing.medium) {
-                    if dynamicTypeSize.isAccessibilitySize {
-                        VStack(alignment: .leading, spacing: PlayboardSpacing.small) { teams; scores }
-                    } else {
-                        HStack(alignment: .center, spacing: PlayboardSpacing.medium) {
-                            teams
-                            Spacer(minLength: 0)
-                            scores
+            VStack(alignment: .leading, spacing: PlayboardSpacing.medium) {
+                summaryButton
+                if isExpanded && canModify {
+                    HStack(spacing: PlayboardSpacing.medium) {
+                        Button(action: onEdit) {
+                            Label("Edit match", systemImage: "pencil").frame(maxWidth: .infinity, minHeight: 44)
                         }
-                    }
-                    if isExpanded {
-                        Divider().overlay(palette.textMuted.opacity(0.18))
-                        expandedContent
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("edit-match-\(match.id)")
+                        Button(role: .destructive, action: onDelete) {
+                            Group {
+                                if isDeleting { ProgressView() } else { Label("Delete", systemImage: "trash") }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isDeleting)
+                        .accessibilityIdentifier("delete-match-\(match.id)")
                     }
                 }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .accessibilityHint(isExpanded ? "Collapses match details" : "Expands game breakdown and history")
-            .accessibilityIdentifier("match-card-\(match.id)")
         }
+    }
+
+    private var summaryButton: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: PlayboardSpacing.medium) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: PlayboardSpacing.small) { teams; scores }
+                } else {
+                    HStack(alignment: .center, spacing: PlayboardSpacing.medium) {
+                        teams
+                        Spacer(minLength: 0)
+                        scores
+                    }
+                }
+                if isExpanded {
+                    Divider().overlay(palette.textMuted.opacity(0.18))
+                    expandedContent
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(isExpanded ? "Collapses match details" : "Expands game breakdown and history")
+        .accessibilityIdentifier("match-card-\(match.id)")
     }
 
     private var teams: some View {
@@ -173,7 +240,8 @@ private struct MatchHistoryCard: View {
                         avatarID: player.avatarID,
                         photoURL: player.photoURL,
                         color: Color(matchHex: player.avatarColor),
-                        size: 34
+                        size: 34,
+                        previewsOnTap: false
                     )
                 }
                 Text(team.players.map(\.displayName).joined(separator: " & "))
@@ -226,7 +294,7 @@ private struct MatchHistoryCard: View {
                 Text("HISTORY").font(PlayboardTypography.eyebrow()).foregroundStyle(palette.textMuted)
                 ForEach(detail.events) { event in
                     Label {
-                        Text("\(event.displayName) · \(event.action.capitalized) · \(event.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                        Text("\(event.displayName) · \(eventLabel(event.action)) · \(event.createdAt.formatted(date: .abbreviated, time: .shortened))")
                     } icon: {
                         Image(systemName: event.action == "created" ? "plus.circle" : "pencil.circle")
                     }
@@ -249,6 +317,15 @@ private struct MatchHistoryCard: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Audit-log copy for one match event.
+private func eventLabel(_ action: String) -> String {
+    switch action {
+    case "created": "Recorded this match"
+    case "edited", "updated": "Edited this match"
+    default: action.capitalized
     }
 }
 

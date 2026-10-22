@@ -4,13 +4,6 @@ import GoogleSignIn
 import SwiftUI
 import UIKit
 
-/// Injected native Google provider boundary.
-@MainActor
-protocol GoogleAuthProviding: AnyObject {
-    func signIn() async throws -> ProviderCredential
-    func signOut()
-}
-
 /// Configured Google Sign-In SDK adapter.
 @MainActor
 final class GoogleAuthProvider: GoogleAuthProviding {
