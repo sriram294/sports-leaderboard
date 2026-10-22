@@ -6,7 +6,7 @@ import GoogleSignIn
 struct PlayboardApp: App {
     @UIApplicationDelegateAdaptor(PlayboardAppDelegate.self) private var appDelegate
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.dark
-    private let environment = AppEnvironment.live
+    private let environment = AppEnvironment.live()
 
     var body: some Scene {
         WindowGroup {
