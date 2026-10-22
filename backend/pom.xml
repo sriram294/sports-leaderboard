@@ -123,6 +123,25 @@
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
             <version>9.4.3</version>
+            <!-- We only use FCM. Cloud Storage + Firestore drag in the whole gRPC/protobuf
+                 stack, which the native-image build must analyse (pushing it past 8 GB RAM)
+                 though nothing here calls it. FirebaseApp only loads them lazily. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-storage</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-firestore</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- firebase-admin needs JacksonFactory at init but only got it transitively via
+             google-cloud-storage (excluded above). Version pinned in dependencyManagement. -->
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-jackson2</artifactId>
         </dependency>
 
         <!-- Issues/verifies our own access + refresh JWTs (Google's token is never used as an ongoing API credential) -->
@@ -169,13 +188,6 @@
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
                 <artifactId>native-maven-plugin</artifactId>
-                <configuration>
-                    <buildArgs>
-                        <!-- protobuf (via firebase-admin) folds this enum constant into a
-                             method at build time; it's a plain enum, safe to initialize early. -->
-                        <buildArg>--initialize-at-build-time=com.google.protobuf.RuntimeVersion$RuntimeDomain</buildArg>
-                    </buildArgs>
-                </configuration>
             </plugin>
         </plugins>
     </build>
