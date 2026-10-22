@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(Security)
 import Security
+#endif
 
 /// Persisted Playboard access/refresh pair and the identity needed during refresh.
 struct AuthSession: Codable, Equatable, Sendable {
@@ -16,6 +18,7 @@ protocol SessionStore: Sendable {
     func clear() async throws
 }
 
+#if canImport(Security)
 /// Keychain-backed token storage scoped to this app installation.
 actor KeychainSessionStore: SessionStore {
     private let service: String
@@ -78,6 +81,8 @@ actor KeychainSessionStore: SessionStore {
     }
 }
 
+#endif
+
 /// Deterministic session persistence for tests and previews.
 actor InMemorySessionStore: SessionStore {
     private var session: AuthSession?
@@ -99,6 +104,8 @@ actor InMemorySessionStore: SessionStore {
     }
 }
 
+#if canImport(Security)
 enum SessionStoreError: Error, Sendable {
     case keychain(OSStatus)
 }
+#endif

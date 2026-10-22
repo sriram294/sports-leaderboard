@@ -36,6 +36,23 @@ final class AddMatchViewModel: ObservableObject {
         loadTask = Task { [weak self] in await self?.loadRoster(groupID: group.id) }
     }
 
+    /// Enters edit mode, pre-filling the form from `matchID`'s current detail.
+    func startEditing(matchID: String) {
+        guard let groupID = state.groupID, state.editingMatchID != matchID else { return }
+        loadTask?.cancel()
+        pendingRequestID = nil
+        pendingRequest = nil
+        state = AddMatchUiState(groupID: groupID, isLoading: true, roster: state.roster, editingMatchID: matchID)
+        loadTask = Task { [weak self] in await self?.loadForEditing(groupID: groupID, matchID: matchID) }
+    }
+
+    /// Leaves edit mode without saving and returns to a blank create form.
+    func cancelEditing() {
+        guard state.isEditing else { return }
+        loadTask?.cancel()
+        discardChanges()
+    }
+
     func retryRoster() {
         guard let groupID = state.groupID else { return }
         loadTask?.cancel()
@@ -84,6 +101,10 @@ final class AddMatchViewModel: ObservableObject {
     func submit() async {
         guard !state.isSubmitting, state.canSubmit, let groupID = state.groupID,
               let scores = state.parsedSets, let winner = state.selectedWinner else { return }
+        if let matchID = state.editingMatchID {
+            await submitEdit(groupID: groupID, matchID: matchID, scores: scores, winner: winner)
+            return
+        }
         let requestID = pendingRequestID ?? requestIDs.next()
         pendingRequestID = requestID
         let request = pendingRequest ?? RecordMatchRequest(
@@ -101,6 +122,7 @@ final class AddMatchViewModel: ObservableObject {
             let match = try await matchRepository.record(groupID: groupID, request: request, requestID: requestID)
             state.isSubmitting = false
             state.successfulMatchID = match.id
+            state.lastSuccessWasEdit = false
             state.successMessage = "Match recorded."
             pendingRequestID = nil
             pendingRequest = nil
@@ -121,6 +143,64 @@ final class AddMatchViewModel: ObservableObject {
         pendingRequestID = nil
         pendingRequest = nil
         state = AddMatchUiState(groupID: state.groupID, roster: state.roster)
+    }
+
+    private func submitEdit(groupID: String, matchID: String, scores: [(Int, Int)], winner: Int) async {
+        // An edit must round-trip the original played time; without it the form never finished loading.
+        guard let playedAt = state.editingPlayedAt else { return }
+        let request = RecordMatchRequest(
+            playedAt: playedAt,
+            teams: [.init(teamNo: 1, playerIds: state.team1), .init(teamNo: 2, playerIds: state.team2)],
+            sets: scores.enumerated().map { .init(setNo: $0.offset + 1, team1Score: $0.element.0, team2Score: $0.element.1) },
+            winningTeamNo: winner
+        )
+        state.isSubmitting = true
+        state.errorMessage = nil
+        do {
+            let match = try await matchRepository.edit(groupID: groupID, matchID: matchID, request: request)
+            state.isSubmitting = false
+            state.successfulMatchID = match.id
+            state.lastSuccessWasEdit = true
+            state.successMessage = "Match updated."
+        } catch is CancellationError {
+            state.isSubmitting = false
+        } catch {
+            state.isSubmitting = false
+            state.errorMessage = (error as? MatchRepositoryError)?.message ?? MatchRepositoryError.invalidResponse.message
+        }
+    }
+
+    private func loadForEditing(groupID: String, matchID: String) async {
+        do {
+            async let rosterResult = groupRepository.loadRoster(groupID: groupID)
+            async let detailResult = matchRepository.detail(groupID: groupID, matchID: matchID)
+            let roster = try await rosterResult
+            let detail = try await detailResult
+            try Task.checkCancellation()
+            guard state.groupID == groupID, state.editingMatchID == matchID else { return }
+            var members = roster.members + roster.guests
+            // A player who has since left the group still appears in the match being edited.
+            for player in detail.teams.flatMap(\.players) where !members.contains(where: { $0.userID == player.userID }) {
+                members.append(GroupMember(userID: player.userID, displayName: player.displayName, photoURL: player.photoURL,
+                                           avatarID: player.avatarID, avatarColor: player.avatarColor, role: .member))
+            }
+            state.roster = members
+            state.team1 = detail.team(1)?.players.map(\.userID) ?? []
+            state.team2 = detail.team(2)?.players.map(\.userID) ?? []
+            state.sets = detail.sets.sorted { $0.setNo < $1.setNo }.map { MatchSetDraft(team1: String($0.team1Score), team2: String($0.team2Score)) }
+            if state.sets.isEmpty { state.sets = [MatchSetDraft()] }
+            state.selectedWinner = detail.winningTeam?.teamNo
+            state.editingPlayedAt = detail.playedAt
+            state.isLoading = false
+        } catch is CancellationError {
+            return
+        } catch {
+            guard state.editingMatchID == matchID else { return }
+            state.isLoading = false
+            state.errorMessage = (error as? MatchRepositoryError)?.message
+                ?? (error as? GroupRepositoryError)?.message
+                ?? MatchRepositoryError.invalidResponse.message
+        }
     }
 
     private func loadRoster(groupID: String) async {

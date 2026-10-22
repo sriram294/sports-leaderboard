@@ -75,7 +75,7 @@ struct AuthRepositoryTests {
 
         #expect(signedIn.user.displayName == "Priya")
         #expect(signedIn.user.authProviders == [.google, .apple])
-        let persisted = try await store.load()
+        let persisted = await store.load()
         let lastPath = await client.lastPath
         let lastBody = await client.lastBody
         #expect(persisted == signedIn)

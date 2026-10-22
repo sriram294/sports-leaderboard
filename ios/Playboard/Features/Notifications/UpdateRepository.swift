@@ -16,6 +16,12 @@ struct AppUpdate: Codable, Equatable, Sendable {
         case downloadURL = "downloadUrl"
         case available
     }
+
+    /// Whether this advertised release is newer than the running build number.
+    func isNewer(thanBuild build: Int) -> Bool {
+        guard available, let versionCode, downloadURL != nil else { return false }
+        return versionCode > build
+    }
 }
 
 /// Stable failures for the non-authenticated update check.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Native S02 tab shell scoped by one persisted active group.
+/// Signed-in tab shell scoped by one persisted active group.
 struct AppShellScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: GroupViewModel
@@ -8,30 +8,56 @@ struct AppShellScreen: View {
     @StateObject private var matchesViewModel: MatchesViewModel
     @StateObject private var addMatchViewModel: AddMatchViewModel
     @StateObject private var profileViewModel: ProfileViewModel
+    @StateObject private var statsViewModel: StatsViewModel
     @State private var selectedTab = AppTab.board
     @State private var pendingTab: AppTab?
+    @State private var showsSettings = false
+    @State private var viewedPlayer: ViewedPlayer?
+    @State private var availableUpdate: AppUpdate?
     private let session: AuthSession
+    private let profileRepository: any ProfileRepository
+    private let deviceRepository: any DeviceRepository
+    private let updateRepository: any UpdateRepository
+    private let deleteAccount: () async throws -> Void
     private let signOut: () -> Void
 
-    init(environment: AppEnvironment, session: AuthSession, deleteAccount: @escaping () async throws -> Void, signOut: @escaping () -> Void) {
+    init(
+        environment: AppEnvironment,
+        session: AuthSession,
+        onUserUpdated: @escaping (AuthenticatedUser) -> Void = { _ in },
+        deleteAccount: @escaping () async throws -> Void,
+        signOut: @escaping () -> Void
+    ) {
         self.session = session
+        self.deleteAccount = deleteAccount
         self.signOut = signOut
         let groupRepository = environment.groupRepositoryFactory(session.accessToken)
         let matchRepository = environment.matchRepositoryFactory(session.accessToken)
+        let leaderboardRepository = environment.leaderboardRepositoryFactory(session.accessToken)
+        let profileRepository = environment.profileRepositoryFactory(session.accessToken)
+        self.profileRepository = profileRepository
+        deviceRepository = environment.deviceRepositoryFactory(session.accessToken)
+        updateRepository = environment.updateRepository
         _viewModel = StateObject(wrappedValue: GroupViewModel(
             repository: groupRepository,
             currentUserID: session.user.id
         ))
-        _boardViewModel = StateObject(wrappedValue: BoardViewModel(
-            repository: environment.leaderboardRepositoryFactory(session.accessToken)
-        ))
-        _matchesViewModel = StateObject(wrappedValue: MatchesViewModel(repository: matchRepository))
+        _boardViewModel = StateObject(wrappedValue: BoardViewModel(repository: leaderboardRepository))
+        _matchesViewModel = StateObject(wrappedValue: MatchesViewModel(repository: matchRepository, currentUserID: session.user.id))
         _addMatchViewModel = StateObject(wrappedValue: AddMatchViewModel(
             matchRepository: matchRepository,
             groupRepository: groupRepository
         ))
         _profileViewModel = StateObject(wrappedValue: ProfileViewModel(
-            repository: environment.profileRepositoryFactory(session.accessToken), user: session.user
+            repository: profileRepository,
+            user: session.user,
+            onUserUpdated: onUserUpdated
+        ))
+        _statsViewModel = StateObject(wrappedValue: StatsViewModel(
+            leaderboardRepository: leaderboardRepository,
+            matchRepository: matchRepository,
+            profileRepository: profileRepository,
+            currentUserID: session.user.id
         ))
     }
 
@@ -52,22 +78,30 @@ struct AppShellScreen: View {
             }
         }
         .task { await viewModel.load() }
-        .onChange(of: viewModel.state.selectedGroup, initial: true) { _, group in
+        .task { await startServices() }
+        .onChange(of: viewModel.state.selectedGroup, initial: true) { old, group in
+            if old?.id != group?.id { viewedPlayer = nil }
             boardViewModel.select(group: group)
             matchesViewModel.select(group: group)
             addMatchViewModel.select(group: group)
             profileViewModel.select(group: group)
+            statsViewModel.select(group: group)
         }
         .onChange(of: addMatchViewModel.state.successfulMatchID) { _, matchID in
             guard matchID != nil else { return }
+            let wasEdit = addMatchViewModel.state.lastSuccessWasEdit
             Task {
-                await viewModel.refresh()
-                await matchesViewModel.refresh()
-                boardViewModel.retry()
-                selectedTab = .matches
+                // Edits return to the Matches log; new results go to the Board.
+                selectedTab = wasEdit ? .matches : .board
                 addMatchViewModel.resetAfterSuccess()
+                await refreshAfterDataChange()
             }
         }
+        .onChange(of: matchesViewModel.state.lastDeletedMatchID) { _, matchID in
+            // A deleted result changes the board, stats, and profile too.
+            if matchID != nil { Task { await refreshAfterDataChange(includeMatches: false) } }
+        }
+        .onChange(of: session.user) { _, user in profileViewModel.updateOwnUser(user) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, viewModel.state.phase == .loaded {
                 Task { await viewModel.refresh() }
@@ -76,6 +110,17 @@ struct AppShellScreen: View {
         .sheet(item: sheetBinding) { sheet in
             sheetView(sheet)
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showsSettings) {
+            SettingsScreen(user: session.user, signOut: signOutAndUnregister, deleteAccount: deleteAccount)
+        }
+        .sheet(item: $viewedPlayer) { player in
+            PlayerProfileSheet(
+                repository: profileRepository,
+                user: session.user,
+                player: player,
+                group: viewModel.state.selectedGroup
+            )
         }
         .accessibilityIdentifier("signed-in-screen")
         .alert("Discard this match?", isPresented: discardAlertBinding) {
@@ -86,15 +131,23 @@ struct AppShellScreen: View {
                 pendingTab = nil
             }
         } message: {
-            Text("Your selected players and scores have not been recorded.")
+            Text(addMatchViewModel.state.isEditing
+                 ? "Your changes to this match have not been saved."
+                 : "Your selected players and scores have not been recorded.")
         }
     }
 
     private var shell: some View {
         VStack(spacing: 0) {
-            GroupSwitcherHeader(viewModel: viewModel)
+            GroupSwitcherHeader(viewModel: viewModel, onOpenSettings: { showsSettings = true })
                 .padding(.horizontal, PlayboardSpacing.large)
                 .padding(.top, PlayboardSpacing.small)
+
+            if let update = availableUpdate, let url = update.downloadURL {
+                UpdateBanner(versionName: update.versionName, url: url) { availableUpdate = nil }
+                    .padding(.horizontal, PlayboardSpacing.large)
+                    .padding(.top, PlayboardSpacing.small)
+            }
 
             if viewModel.state.groups.isEmpty {
                 Spacer()
@@ -111,19 +164,26 @@ struct AppShellScreen: View {
                 Spacer()
             } else {
                 TabView(selection: tabBinding) {
-                    BoardScreen(viewModel: boardViewModel)
-                        .tabItem { Label("Board", systemImage: "trophy") }
-                        .tag(AppTab.board)
-                    MatchesScreen(viewModel: matchesViewModel)
-                        .tabItem { Label("Matches", systemImage: "list.bullet.rectangle") }
-                        .tag(AppTab.matches)
+                    BoardScreen(
+                        viewModel: boardViewModel,
+                        groupName: viewModel.state.selectedGroup?.name ?? "",
+                        onPlayerTap: openProfile
+                    )
+                    .tabItem { Label("Board", systemImage: "trophy") }
+                    .tag(AppTab.board)
+                    MatchesScreen(viewModel: matchesViewModel, onEdit: { matchID in
+                        addMatchViewModel.startEditing(matchID: matchID)
+                        selectedTab = .add
+                    })
+                    .tabItem { Label("Matches", systemImage: "list.bullet.rectangle") }
+                    .tag(AppTab.matches)
                     AddMatchScreen(viewModel: addMatchViewModel, recorder: session.user)
                         .tabItem { Label("Add", systemImage: "plus.circle.fill") }
                         .tag(AppTab.add)
-                    StatsScreen(boardViewModel: boardViewModel, matchesViewModel: matchesViewModel)
+                    StatsScreen(viewModel: statsViewModel)
                         .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
                         .tag(AppTab.stats)
-                    ProfileScreen(viewModel: profileViewModel, email: session.user.email, signOut: signOut, deleteAccount: deleteAccount)
+                    ProfileScreen(viewModel: profileViewModel, onOpenSettings: { showsSettings = true })
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                         .tag(AppTab.profile)
                 }
@@ -164,6 +224,107 @@ struct AppShellScreen: View {
         Binding(get: { pendingTab != nil }, set: { if !$0 { pendingTab = nil } })
     }
 
+    /// Tapping yourself on the leaderboard opens the Profile tab instead of a read-only copy.
+    private func openProfile(_ entry: LeaderboardEntry) {
+        if entry.userID == session.user.id {
+            selectedTab = .profile
+        } else {
+            viewedPlayer = ViewedPlayer(userID: entry.userID, displayName: entry.displayName)
+        }
+    }
+
+    private func refreshAfterDataChange(includeMatches: Bool = true) async {
+        await viewModel.refresh()
+        if includeMatches { await matchesViewModel.refresh() }
+        boardViewModel.retry()
+        await statsViewModel.refresh()
+        await profileViewModel.refresh()
+    }
+
+    /// Registers for push (when Firebase is configured) and checks for a newer App Store build.
+    private func startServices() async {
+        let devices = deviceRepository
+        PushNotificationService.shared.onTokenChange = { token in
+            Task { try? await devices.register(token: token) }
+        }
+        await PushNotificationService.shared.requestAuthorization()
+        if let update = try? await updateRepository.latest(), update.isNewer(thanBuild: Self.currentBuild) {
+            availableUpdate = update
+        }
+    }
+
+    private func signOutAndUnregister() {
+        PushNotificationService.shared.onTokenChange = nil
+        let token = PushNotificationService.shared.currentToken
+        let devices = deviceRepository
+        let signOut = signOut
+        Task {
+            if let token { try? await devices.unregister(token: token) }
+            signOut()
+        }
+    }
+
+    private static var currentBuild: Int {
+        Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "") ?? 0
+    }
+}
+
+/// A leaderboard player opened from the Board.
+private struct ViewedPlayer: Identifiable, Equatable {
+    let userID: String
+    let displayName: String
+    var id: String { userID }
+}
+
+/// Another player's profile, presented over the Board with its own view model.
+private struct PlayerProfileSheet: View {
+    @StateObject private var viewModel: ProfileViewModel
+    private let player: ViewedPlayer
+    private let group: PlayGroup?
+    @Environment(\.dismiss) private var dismiss
+
+    init(repository: any ProfileRepository, user: AuthenticatedUser, player: ViewedPlayer, group: PlayGroup?) {
+        self.player = player
+        self.group = group
+        _viewModel = StateObject(wrappedValue: ProfileViewModel(repository: repository, user: user, viewedUserID: player.userID))
+    }
+
+    var body: some View {
+        NavigationStack {
+            PlayboardBackground {
+                ProfileScreen(viewModel: viewModel)
+            }
+            .navigationTitle(player.displayName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+        .task { viewModel.select(group: group) }
+        .accessibilityIdentifier("player-profile-sheet")
+    }
+}
+
+/// Prompt shown when the backend advertises a newer iOS build.
+private struct UpdateBanner: View {
+    let versionName: String?
+    let url: URL
+    let onDismiss: () -> Void
+    @Environment(\.playboardPalette) private var palette
+
+    var body: some View {
+        HStack(spacing: PlayboardSpacing.medium) {
+            Image(systemName: "arrow.down.app").foregroundStyle(palette.brand).accessibilityHidden(true)
+            Text(versionName.map { "Playboard \($0) is available." } ?? "A new version of Playboard is available.")
+                .font(PlayboardTypography.body())
+                .foregroundStyle(palette.textPrimary)
+            Spacer(minLength: 0)
+            Link("Update", destination: url).font(PlayboardTypography.label())
+            Button(action: onDismiss) { Image(systemName: "xmark").frame(width: 44, height: 44) }
+                .accessibilityLabel("Dismiss update")
+        }
+        .padding(.leading, PlayboardSpacing.medium)
+        .background(palette.surface.opacity(0.94), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityIdentifier("update-banner")
+    }
 }
 
 private enum AppTab: Hashable {
@@ -176,6 +337,7 @@ private enum AppTab: Hashable {
 
 private struct GroupSwitcherHeader: View {
     @ObservedObject var viewModel: GroupViewModel
+    let onOpenSettings: () -> Void
     @Environment(\.playboardPalette) private var palette
 
     var body: some View {
@@ -228,6 +390,11 @@ private struct GroupSwitcherHeader: View {
             .accessibilityLabel("Active group, \(viewModel.state.selectedGroup?.name ?? "none")")
             .accessibilityHint("Opens group switching and management actions")
             .accessibilityIdentifier("group-switcher")
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape").foregroundStyle(palette.textMuted).frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Settings")
+            .accessibilityIdentifier("header-settings-button")
         }
     }
 
@@ -261,23 +428,6 @@ private struct GroupLoadingSkeleton: View {
         .padding(PlayboardSpacing.extraLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Loading groups")
-    }
-}
-
-private struct ShellPlaceholder: View {
-    @Environment(\.playboardPalette) private var palette
-    let title: String
-    let message: String
-    let symbol: String
-
-    var body: some View {
-        VStack(spacing: PlayboardSpacing.large) {
-            Image(systemName: symbol).font(.system(size: 38, weight: .bold)).foregroundStyle(palette.brand)
-            Text(title).font(PlayboardTypography.display()).foregroundStyle(palette.textPrimary)
-            Text(message).font(PlayboardTypography.body()).foregroundStyle(palette.textMuted).multilineTextAlignment(.center)
-        }
-        .padding(PlayboardSpacing.extraLarge)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

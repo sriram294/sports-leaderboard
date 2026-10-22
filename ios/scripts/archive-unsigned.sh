@@ -15,6 +15,7 @@ xcodebuild archive \
   -onlyUsePackageVersionsFromResolvedFile \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
   SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+  ${PROVIDER_SETTINGS[@]+"${PROVIDER_SETTINGS[@]}"} \
   | tee "${BUILD_DIR}/logs/archive.log"
 test -d "${BUILD_DIR}/Playboard.xcarchive"
 

@@ -11,3 +11,9 @@ APNs keys, signing certificates, provisioning profiles, OAuth client secrets,
 and service-account material out of source control and CI artifacts. Use the CI
 provider's encrypted environment/file facilities when those slices authorize
 configuration.
+
+The manual **iOS build** GitHub workflow reads these three values from repository
+variables `IOS_API_BASE_URL`, `IOS_GOOGLE_CLIENT_ID`, and `IOS_GOOGLE_REVERSED_CLIENT_ID`
+(public identifiers, not secrets). Push notifications stay disabled unless a build bundles
+`GoogleService-Info.plist`; add it at build time from the CI provider's secure files, never
+to git.

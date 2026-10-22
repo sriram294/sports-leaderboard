@@ -59,6 +59,18 @@ extension Color {
     }
 }
 
+extension Color {
+    /// Creates a color from an API `#RRGGBB` string, falling back to gray for malformed values.
+    init(apiHex value: String) {
+        let cleaned = value.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        if cleaned.count == 6, let hex = UInt32(cleaned, radix: 16) {
+            self.init(hex: hex)
+        } else {
+            self = .gray
+        }
+    }
+}
+
 /// Playboard's compact spacing rhythm.
 enum PlayboardSpacing {
     static let extraSmall: CGFloat = 4

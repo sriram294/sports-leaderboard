@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private func monthLabel(_ value: String) -> String {
     let input = DateFormatter()
@@ -11,6 +12,11 @@ private func monthLabel(_ value: String) -> String {
 /// Branded month/all-time leaderboard for the active group.
 struct BoardScreen: View {
     @ObservedObject var viewModel: BoardViewModel
+    var groupName = ""
+    /// Opens a player's profile from a podium slot or ranking row.
+    var onPlayerTap: (LeaderboardEntry) -> Void = { _ in }
+    @Environment(\.playboardPalette) private var palette
+    @State private var shareImage: ShareImage?
 
     var body: some View {
         Group {
@@ -25,7 +31,7 @@ struct BoardScreen: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: PlayboardSpacing.large) {
-                        BoardHeader(viewModel: viewModel)
+                        BoardHeader(viewModel: viewModel, onShare: share)
                         if let stale = viewModel.state.staleMessage {
                             Label(stale, systemImage: "wifi.slash")
                                 .font(PlayboardTypography.eyebrow())
@@ -40,8 +46,8 @@ struct BoardScreen: View {
                             )
                             .accessibilityIdentifier("leaderboard-empty")
                         } else {
-                            LeaderboardPodium(entries: viewModel.state.podium, period: viewModel.state.selectedSnapshotMonth.map(monthLabel) ?? "This Month")
-                            RankingsCard(viewModel: viewModel)
+                            LeaderboardPodium(entries: viewModel.state.podium, period: period, onPlayerTap: onPlayerTap)
+                            RankingsCard(viewModel: viewModel, onPlayerTap: onPlayerTap)
                         }
                     }
                     .padding(.horizontal, PlayboardSpacing.large)
@@ -51,6 +57,16 @@ struct BoardScreen: View {
                 .accessibilityIdentifier("leaderboard-screen")
             }
         }
+        .sheet(item: $shareImage) { ActivityShareSheet(items: [$0.image]).ignoresSafeArea() }
+    }
+
+    private var period: String { viewModel.state.selectedSnapshotMonth.map(monthLabel) ?? "This Month" }
+
+    private func share() {
+        guard let image = LeaderboardShareRenderer.image(
+            groupName: groupName, period: period, rankings: viewModel.state.rankings, palette: palette
+        ) else { return }
+        shareImage = ShareImage(image: image)
     }
 
     private var emptyMessage: String {
@@ -61,8 +77,15 @@ struct BoardScreen: View {
     }
 }
 
+/// A rendered share image, identifiable so it can drive a sheet.
+private struct ShareImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
 private struct BoardHeader: View {
     @ObservedObject var viewModel: BoardViewModel
+    let onShare: () -> Void
     @Environment(\.playboardPalette) private var palette
 
     var body: some View {
@@ -93,6 +116,12 @@ private struct BoardHeader: View {
                     .frame(minHeight: 44)
             }
             .accessibilityIdentifier("leaderboard-range")
+            Button(action: onShare) {
+                Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44)
+            }
+            .disabled(viewModel.state.podium.isEmpty)
+            .accessibilityLabel("Share leaderboard")
+            .accessibilityIdentifier("leaderboard-share")
         }
         .padding(.top, PlayboardSpacing.medium)
     }
@@ -101,12 +130,18 @@ private struct BoardHeader: View {
 private struct LeaderboardPodium: View {
     let entries: [LeaderboardEntry]
     let period: String
+    let onPlayerTap: (LeaderboardEntry) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(spacing: PlayboardSpacing.small) {
-                ForEach(entries) { PodiumSlot(entry: $0, champion: $0.rank == entries.first?.rank, period: period) }
+                ForEach(entries) { entry in
+                    Button { onPlayerTap(entry) } label: {
+                        PodiumSlot(entry: entry, champion: entry.rank == entries.first?.rank, period: period)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         } else {
             HStack(alignment: .bottom, spacing: PlayboardSpacing.small) {
@@ -121,8 +156,11 @@ private struct LeaderboardPodium: View {
     @ViewBuilder
     private func podium(at index: Int, champion: Bool = false) -> some View {
         if entries.indices.contains(index) {
-            PodiumSlot(entry: entries[index], champion: champion, period: period)
-                .frame(maxWidth: .infinity)
+            Button { onPlayerTap(entries[index]) } label: {
+                PodiumSlot(entry: entries[index], champion: champion, period: period)
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
         } else {
             Color.clear.frame(maxWidth: .infinity, minHeight: 100).accessibilityHidden(true)
         }
@@ -146,7 +184,8 @@ private struct PodiumSlot: View {
                 avatarID: entry.avatarID,
                 photoURL: entry.photoURL,
                 color: playerColor,
-                size: champion && !dynamicTypeSize.isAccessibilitySize ? 82 : 58
+                size: champion && !dynamicTypeSize.isAccessibilitySize ? 82 : 58,
+                previewsOnTap: false
             )
             Text(dynamicTypeSize.isAccessibilitySize ? "#\(entry.rank)  \(entry.displayName)" : entry.displayName)
                 .font(PlayboardTypography.label())
@@ -178,6 +217,7 @@ private struct PodiumSlot: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(playerColor.opacity(champion ? 0.45 : 0.2)))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Rank \(entry.rank), \(entry.displayName)")
+        .accessibilityHint("Opens this player's profile")
         .accessibilityValue("\(entry.rating.map { $0.formatted(.number.precision(.fractionLength(1))) + " skill rating" } ?? "win rate"), \(entry.wins) wins from \(entry.gamesPlayed) games, \(period)")
     }
 
@@ -186,6 +226,7 @@ private struct PodiumSlot: View {
 
 private struct RankingsCard: View {
     @ObservedObject var viewModel: BoardViewModel
+    let onPlayerTap: (LeaderboardEntry) -> Void
     @Environment(\.playboardPalette) private var palette
 
     var body: some View {
@@ -210,17 +251,28 @@ private struct RankingsCard: View {
                 let provisional = viewModel.state.tableRows.filter { $0.provisional }
                 Group {
                     ForEach(ranked) { entry in
-                        LeaderboardRowView(entry: entry, minGamesToRank: viewModel.state.minGamesToRank, metric: viewModel.state.metric)
+                        row(entry)
                     }
                     if !provisional.isEmpty {
                         Text("Not yet ranked").font(PlayboardTypography.label()).foregroundStyle(palette.textMuted).padding(.top, PlayboardSpacing.small)
                         ForEach(provisional) { entry in
-                            LeaderboardRowView(entry: entry, minGamesToRank: viewModel.state.minGamesToRank, metric: viewModel.state.metric)
+                            row(entry)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+private extension RankingsCard {
+    func row(_ entry: LeaderboardEntry) -> some View {
+        Button { onPlayerTap(entry) } label: {
+            LeaderboardRowView(entry: entry, minGamesToRank: viewModel.state.minGamesToRank, metric: viewModel.state.metric)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens this player's profile")
     }
 }
 
@@ -238,7 +290,7 @@ private struct LeaderboardRowView: View {
                 .monospacedDigit()
                 .foregroundStyle(entry.provisional ? palette.textMuted : rankColor)
                 .frame(minWidth: 26, alignment: .leading)
-            PlayerAvatar(displayName: entry.displayName, avatarID: entry.avatarID, photoURL: entry.photoURL, color: Color(leaderboardHex: entry.avatarColor), size: 38)
+            PlayerAvatar(displayName: entry.displayName, avatarID: entry.avatarID, photoURL: entry.photoURL, color: Color(leaderboardHex: entry.avatarColor), size: 38, previewsOnTap: false)
             VStack(alignment: .leading, spacing: PlayboardSpacing.extraSmall) {
                 if dynamicTypeSize.isAccessibilitySize {
                     Text(entry.displayName).font(PlayboardTypography.label()).foregroundStyle(palette.textPrimary)

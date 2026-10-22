@@ -8,6 +8,7 @@
 /* Begin PBXBuildFile section */
 		100000000000000000000001 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 100000000000000000000101 /* GoogleSignIn */; };
 		100000000000000000000002 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 100000000000000000000102 /* FirebaseMessaging */; };
+		100000000000000000000003 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 100000000000000000000103 /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,7 +44,7 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		100000000000000000000051 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000001 /* GoogleSignIn in Frameworks */, 100000000000000000000002 /* FirebaseMessaging in Frameworks */, ); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000051 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000001 /* GoogleSignIn in Frameworks */, 100000000000000000000002 /* FirebaseMessaging in Frameworks */, 100000000000000000000003 /* FirebaseCore in Frameworks */, ); runOnlyForDeploymentPostprocessing = 0; };
 		100000000000000000000052 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		100000000000000000000053 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
@@ -63,7 +64,7 @@
 			dependencies = ();
 			fileSystemSynchronizedGroups = (100000000000000000000041 /* Playboard */, );
 			name = Playboard;
-			packageProductDependencies = (100000000000000000000101 /* GoogleSignIn */, 100000000000000000000102 /* FirebaseMessaging */, );
+			packageProductDependencies = (100000000000000000000101 /* GoogleSignIn */, 100000000000000000000102 /* FirebaseMessaging */, 100000000000000000000103 /* FirebaseCore */, );
 			productName = Playboard;
 			productReference = 100000000000000000000021 /* Playboard.app */;
 			productType = "com.apple.product-type.application";
@@ -168,6 +169,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		100000000000000000000101 /* GoogleSignIn */ = {isa = XCSwiftPackageProductDependency; package = 100000000000000000000111 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */; productName = GoogleSignIn; };
 		100000000000000000000102 /* FirebaseMessaging */ = {isa = XCSwiftPackageProductDependency; package = 100000000000000000000112 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */; productName = FirebaseMessaging; };
+		100000000000000000000103 /* FirebaseCore */ = {isa = XCSwiftPackageProductDependency; package = 100000000000000000000112 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */; productName = FirebaseCore; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 100000000000000000000200 /* Project object */;

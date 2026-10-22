@@ -1,10 +1,20 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Provider credential passed from a native adapter to the Playboard API.
 struct ProviderCredential: Equatable, Sendable {
     let identityToken: String
     let givenName: String?
     let familyName: String?
+}
+
+/// Injected native Google provider boundary.
+@MainActor
+protocol GoogleAuthProviding: AnyObject {
+    func signIn() async throws -> ProviderCredential
+    func signOut()
 }
 
 /// Authentication and durable-session boundary used by presentation code.
@@ -14,6 +24,17 @@ protocol AuthRepository: Sendable {
     func signInWithApple(_ credential: ProviderCredential) async throws -> AuthSession
     func refreshSession() async throws -> AuthSession
     func logout() async
+    /// Hidden store-review username/password login; returns the same session as provider sign-in.
+    func signInAsReviewer(username: String, password: String) async throws -> AuthSession
+    /// Persists a changed profile (rename, avatar) into the stored session.
+    func updateUser(_ user: AuthenticatedUser) async
+}
+
+extension AuthRepository {
+    func signInAsReviewer(username: String, password: String) async throws -> AuthSession {
+        throw AuthError.notConfigured("Reviewer")
+    }
+    func updateUser(_ user: AuthenticatedUser) async {}
 }
 
 /// Stable authentication failures with user-facing recovery guidance.
@@ -23,12 +44,13 @@ enum AuthError: Error, Equatable, Sendable {
     case offline
     case expiredSession
     case rejected(String)
+    case invalidReviewerCredentials
     case invalidResponse
 
     var message: String {
         switch self {
         case .notConfigured(let provider):
-            "(provider) sign-in is not configured for this build."
+            "\(provider) sign-in is not configured for this build."
         case .cancelled:
             "Sign-in was cancelled."
         case .offline:
@@ -37,6 +59,8 @@ enum AuthError: Error, Equatable, Sendable {
             "Your session expired. Sign in again to continue."
         case .rejected(let message):
             message
+        case .invalidReviewerCredentials:
+            "Invalid username or password."
         case .invalidResponse:
             "Playboard returned an unexpected response. Try again."
         }
@@ -98,8 +122,30 @@ actor LiveAuthRepository: AuthRepository {
         )
     }
 
+    func signInAsReviewer(username: String, password: String) async throws -> AuthSession {
+        do {
+            return try await signIn(path: "auth/reviewer", body: ReviewerRequest(username: username, password: password))
+        } catch AuthError.expiredSession {
+            // The reviewer endpoint answers 401 for a wrong username/password, not an expired session.
+            throw AuthError.invalidReviewerCredentials
+        }
+    }
+
+    func updateUser(_ user: AuthenticatedUser) async {
+        guard let session = currentSession else { return }
+        let updated = AuthSession(
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+            accessTokenExpiresAt: session.accessTokenExpiresAt,
+            user: user
+        )
+        currentSession = updated
+        try? await sessionStore.save(updated)
+    }
+
     func refreshSession() async throws -> AuthSession {
-        let session = currentSession ?? (try await sessionStore.load())
+        var session = currentSession
+        if session == nil { session = try await sessionStore.load() }
         guard let session else {
             throw AuthError.expiredSession
         }
@@ -107,10 +153,11 @@ actor LiveAuthRepository: AuthRepository {
     }
 
     func logout() async {
-        let session = currentSession ?? (try? await sessionStore.load())
+        var session = currentSession
+        if session == nil { session = try? await sessionStore.load() }
         if let session, let baseURL {
             var request = request(path: "auth/logout", baseURL: baseURL)
-            request.setValue("Bearer (session.accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
             request.httpBody = try? encoder.encode(RefreshRequest(refreshToken: session.refreshToken))
             _ = try? await apiClient.response(for: request)
         }
@@ -224,6 +271,11 @@ private struct AppleRequest: Encodable {
     let identityToken: String
     let givenName: String?
     let familyName: String?
+}
+
+private struct ReviewerRequest: Encodable {
+    let username: String
+    let password: String
 }
 
 private struct RefreshRequest: Encodable {

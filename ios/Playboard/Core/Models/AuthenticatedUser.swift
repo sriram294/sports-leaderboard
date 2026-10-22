@@ -26,3 +26,19 @@ struct AuthenticatedUser: Codable, Equatable, Identifiable, Sendable {
         case authProviders
     }
 }
+
+extension AuthenticatedUser {
+    /// Tolerates providers this build does not know (and a missing list) instead of failing sign-in.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try c.decode(String.self, forKey: .id),
+            displayName: try c.decode(String.self, forKey: .displayName),
+            email: try c.decode(String.self, forKey: .email),
+            photoURL: try c.decodeIfPresent(String.self, forKey: .photoURL),
+            avatarID: try c.decodeIfPresent(String.self, forKey: .avatarID),
+            avatarColor: try c.decode(String.self, forKey: .avatarColor),
+            authProviders: (try c.decodeIfPresent([String].self, forKey: .authProviders) ?? []).compactMap(AuthProvider.init(rawValue:))
+        )
+    }
+}

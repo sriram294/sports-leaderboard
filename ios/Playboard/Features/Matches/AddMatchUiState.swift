@@ -31,6 +31,14 @@ struct AddMatchUiState: Equatable, Sendable {
     var errorMessage: String?
     var successMessage: String?
     var successfulMatchID: String?
+    /// The match being edited; nil records a new match.
+    var editingMatchID: String?
+    /// The edited match's original time, sent back unchanged so an edit never re-dates it.
+    var editingPlayedAt: Date?
+    /// Whether the last successful submit was an edit (edits return to Matches, new results to the Board).
+    var lastSuccessWasEdit = false
+
+    var isEditing: Bool { editingMatchID != nil }
 
     var assignedPlayerIDs: Set<String> { Set(team1 + team2) }
     var isDirty: Bool {

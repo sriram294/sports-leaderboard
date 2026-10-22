@@ -19,7 +19,7 @@ struct MatchRepositoryTests {
         let page = try await repository.matches(groupID: "group-1", cursor: "next value", mine: true)
 
         #expect(page.matches.first?.id == "match-1")
-        #expect(page.matches.first?.playedAt.timeIntervalSince1970 == 1_786_258_680.123)
+        #expect(abs((page.matches.first?.playedAt.timeIntervalSince1970 ?? 0) - 1_786_258_680.123) < 0.000_5)
         #expect(await client.lastQuery?.contains("mine=true") == true)
         #expect(await client.lastQuery?.contains("cursor=next%20value") == true)
     }
@@ -43,7 +43,7 @@ struct MatchRepositoryTests {
 
         #expect(await client.lastIdempotencyKey == "attempt-42")
         #expect(await client.lastMethod == "POST")
-        #expect(await client.lastBodyString?.contains(#"\"winningTeamNo\":1"#) == true)
+        #expect(await client.lastBodyString?.contains(#""winningTeamNo":1"#) == true)
         #expect(detail.ratingChanges == nil)
     }
 

@@ -27,6 +27,18 @@ protocol MatchRepository: Sendable {
     func matches(groupID: String, cursor: String?, mine: Bool) async throws -> MatchPage
     func detail(groupID: String, matchID: String) async throws -> MatchDetail
     func record(groupID: String, request: RecordMatchRequest, requestID: String) async throws -> MatchDetail
+    /// Full-replace edit; `request.playedAt` must carry the original match time.
+    func edit(groupID: String, matchID: String, request: RecordMatchRequest) async throws -> MatchDetail
+    func delete(groupID: String, matchID: String) async throws
+}
+
+extension MatchRepository {
+    func edit(groupID: String, matchID: String, request: RecordMatchRequest) async throws -> MatchDetail {
+        throw MatchRepositoryError.invalidResponse
+    }
+    func delete(groupID: String, matchID: String) async throws {
+        throw MatchRepositoryError.invalidResponse
+    }
 }
 
 actor LiveMatchRepository: MatchRepository {
@@ -42,13 +54,8 @@ actor LiveMatchRepository: MatchRepository {
         self.baseURL = baseURL
         self.accessToken = accessToken
         self.refreshAccessToken = refreshAccessToken
-        encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let value = try decoder.singleValueContainer().decode(String.self)
-            return try Date(value, strategy: .iso8601)
-        }
+        encoder = PlayboardJSON.encoder()
+        decoder = PlayboardJSON.decoder()
     }
 
     func matches(groupID: String, cursor: String?, mine: Bool) async throws -> MatchPage {
@@ -69,6 +76,16 @@ actor LiveMatchRepository: MatchRepository {
             requestID: requestID,
             response: MatchDetail.self
         )
+    }
+
+    func edit(groupID: String, matchID: String, request: RecordMatchRequest) async throws -> MatchDetail {
+        var value = self.request(path: "groups/\(groupID)/matches/\(matchID)", method: "PATCH")
+        value.httpBody = try encoder.encode(request)
+        return try await perform(value, response: MatchDetail.self)
+    }
+
+    func delete(groupID: String, matchID: String) async throws {
+        _ = try await perform(request(path: "groups/\(groupID)/matches/\(matchID)", method: "DELETE"), response: EmptyResponse.self)
     }
 
     private func send<Response: Decodable>(
@@ -116,6 +133,7 @@ actor LiveMatchRepository: MatchRepository {
             result = try await transport(request)
         }
         guard (200..<300).contains(result.statusCode) else { throw map(result) }
+        if Response.self == EmptyResponse.self, let empty = EmptyResponse() as? Response { return empty }
         do { return try decoder.decode(Response.self, from: result.data) }
         catch { throw MatchRepositoryError.invalidResponse }
     }
@@ -138,6 +156,8 @@ actor LiveMatchRepository: MatchRepository {
     }
 }
 private struct MatchProblem: Decodable { let code: String? }
+/// Marker for endpoints that answer 204 with no body.
+private struct EmptyResponse: Decodable {}
 
 protocol MatchRequestIDGenerating: Sendable { func next() -> String }
 struct UUIDMatchRequestIDGenerator: MatchRequestIDGenerating { func next() -> String { UUID().uuidString.lowercased() } }
