@@ -22,6 +22,10 @@ insights. It's an Android app backed by a custom REST API.
 
 **Backend** (`cd backend`, JDK 25, Spring Boot):
 - Compile: `./mvnw -q compile` (add `-o` to force offline).
+- Native image (GraalVM, ~0.7s startup vs ~9s JVM): `docker build -f Dockerfile.native .`
+  (~10 min, ~12 GB RAM). Railway uses it when `RAILWAY_DOCKERFILE_PATH=Dockerfile.native`.
+  A new third-party lib that reflects/binds JSON, or a new entity attribute type, may need a
+  hint in `config/NativeHintsConfig.java` — smoke-test the native build after such changes.
 - Integration tests are `@SpringBootTest` and need a live Postgres + auth env vars — see
   the "Backend integration test setup" project memory for the exact command (a dockerized
   Postgres runs on host port `55432`; use a fresh DB, and pass `DB_URL`/`DB_USERNAME`/

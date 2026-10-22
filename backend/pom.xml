@@ -162,7 +162,51 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- GraalVM native image. Inert in a normal `package`; the Spring Boot parent's
+                 `native` profile wires in AOT processing + the native compile, so
+                 `./mvnw -Pnative native:compile` (or Dockerfile.native) yields a
+                 standalone binary that starts in well under a second. -->
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <configuration>
+                    <buildArgs>
+                        <!-- protobuf (via firebase-admin) folds this enum constant into a
+                             method at build time; it's a plain enum, safe to initialize early. -->
+                        <buildArg>--initialize-at-build-time=com.google.protobuf.RuntimeVersion$RuntimeDomain</buildArg>
+                    </buildArgs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Extends the Spring Boot parent's `native` profile. A native image can't generate
+             Hibernate's lazy-association proxies at runtime, so enhance the entity bytecode at
+             build time instead. Scoped to `native` so the JVM build is unchanged. -->
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.hibernate.orm</groupId>
+                        <artifactId>hibernate-maven-plugin</artifactId>
+                        <version>${hibernate.version}</version>
+                        <executions>
+                            <execution>
+                                <id>enhance</id>
+                                <goals>
+                                    <goal>enhance</goal>
+                                </goals>
+                                <configuration>
+                                    <enableLazyInitialization>true</enableLazyInitialization>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

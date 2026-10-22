@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Optional Redis read-through cache; PostgreSQL remains the source of truth on every failure. */
 @Service
+@RegisterReflectionForBinding(LeaderboardResponse.class)
 public class LeaderboardSnapshotCache {
     private static final Logger log = LoggerFactory.getLogger(LeaderboardSnapshotCache.class);
     private final StringRedisTemplate redis;
