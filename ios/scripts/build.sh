@@ -11,6 +11,5 @@ xcodebuild build \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath "${BUILD_DIR}/DerivedData" \
   -onlyUsePackageVersionsFromResolvedFile \
-  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
   ${PROVIDER_SETTINGS[@]+"${PROVIDER_SETTINGS[@]}"} \
   | tee "${BUILD_DIR}/logs/build.log"

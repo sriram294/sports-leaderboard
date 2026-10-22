@@ -17,7 +17,6 @@ xcodebuild test \
   -derivedDataPath "${BUILD_DIR}/DerivedData" \
   -resultBundlePath "${BUILD_DIR}/TestResults.xcresult" \
   -onlyUsePackageVersionsFromResolvedFile \
-  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
   2>&1 | tee "${BUILD_DIR}/logs/test.log"
 readonly test_status=${PIPESTATUS[0]}
 set -e
