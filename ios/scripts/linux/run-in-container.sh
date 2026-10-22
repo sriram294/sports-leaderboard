@@ -12,9 +12,10 @@ swiftc -parse-as-library -emit-module -emit-library -module-name Combine \
 # provider types AppEnvironment references); SwiftUI screens are left to Xcode.
 APP=$(grep -LE "^import (SwiftUI|UIKit|GoogleSignIn|AuthenticationServices|FirebaseMessaging|FirebaseCore|PhotosUI|Charts|UserNotifications)" \
   $(find Playboard -name "*.swift"))
-echo "== type-checking $(echo ${APP} | wc -w) app files (Swift 6, complete concurrency, warnings as errors)"
+echo "== type-checking $(echo ${APP} | wc -w) app files (Swift 6, complete concurrency, warnings as errors, DEBUG, slow-expression limits)"
 swiftc -parse-as-library -emit-module -emit-library -enable-testing -module-name Playboard \
-  -swift-version 6 -strict-concurrency=complete -warnings-as-errors \
+  -swift-version 6 -strict-concurrency=complete -warnings-as-errors -D DEBUG \
+  -Xfrontend -warn-long-expression-type-checking=300 -Xfrontend -warn-long-function-bodies=500 \
   -I "${OUT}" -L "${OUT}" -lCombine -o "${OUT}/libPlayboard.so" -emit-module-path "${OUT}/Playboard.swiftmodule" ${APP} "${HERE}/AppleStubs.swift" || exit 2
 
 # Test files that import Apple-only frameworks or exercise excluded types.
