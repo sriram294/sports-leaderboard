@@ -17,8 +17,8 @@ struct AppEnvironment {
     let deviceRepositoryFactory: (String) -> any DeviceRepository
     let updateRepository: any UpdateRepository
 
-    /// Production dependencies are created exactly once for the app process.
-    static let live: AppEnvironment = {
+    /// Production dependencies; ``PlayboardApp`` calls this once for the app process.
+    static func live() -> AppEnvironment {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         if let marker = arguments.firstIndex(of: "-ui-auth-scenario"), arguments.indices.contains(marker + 1) {
@@ -113,7 +113,7 @@ struct AppEnvironment {
             },
             updateRepository: updateRepository
         )
-    }()
+    }
 
     /// A deterministic environment for previews and tests.
     static func preview() -> AppEnvironment {
