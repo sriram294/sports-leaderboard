@@ -1,10 +1,12 @@
 package com.org.playboard.service.stats;
 
+import com.org.playboard.dto.stats.LeaderboardEntryDto;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameterValue;
@@ -14,6 +16,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Rebuilds one month at a time; expensive history scans never run on a match-write thread. */
 @Service
+@RegisterReflectionForBinding(LeaderboardEntryDto.class)
 public class ProjectionRebuildService {
     private final JdbcTemplate jdbc;
     private final ObjectProvider<StatsQueryService> stats;

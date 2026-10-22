@@ -1,0 +1,31 @@
+# GraalVM native-image build of the API. Starts in well under a second (vs. several
+# seconds on the JVM), which matters because Railway sleeps the service when idle and
+# every wake-up is a cold start. Select it on Railway with
+# RAILWAY_DOCKERFILE_PATH=Dockerfile.native; the plain Dockerfile stays the JVM build.
+#
+# The native compile is slow (~5-10 min) and memory-hungry (~6-8 GB), so expect a
+# longer Railway build in exchange for the faster boot.
+
+# --- Build stage -------------------------------------------------------------
+FROM ghcr.io/graalvm/native-image-community:25 AS build
+WORKDIR /app
+
+# Warm the dependency cache: copy the wrapper + pom first so `mvn` only
+# re-downloads when dependencies actually change, not on every source edit.
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN ./mvnw -B -Pnative dependency:go-offline
+
+COPY src/ src/
+RUN ./mvnw -B -Pnative -DskipTests native:compile
+
+# --- Runtime stage -----------------------------------------------------------
+# Native binaries link glibc + zlib dynamically, so use a slim glibc distro rather
+# than scratch/alpine. CA certs are baked into the image at build time.
+FROM debian:bookworm-slim
+WORKDIR /app
+COPY --from=build /app/target/playboard-backend app
+
+# Railway injects $PORT; application.yml binds server.port to it.
+EXPOSE 8080
+ENTRYPOINT ["/app/app"]
