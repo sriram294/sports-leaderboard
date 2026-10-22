@@ -24,7 +24,7 @@ struct AppShellScreen: View {
     init(
         environment: AppEnvironment,
         session: AuthSession,
-        onUserUpdated: @escaping (AuthenticatedUser) -> Void = { _ in },
+        onUserUpdated: @escaping @MainActor (AuthenticatedUser) -> Void = { _ in },
         deleteAccount: @escaping () async throws -> Void,
         signOut: @escaping () -> Void
     ) {

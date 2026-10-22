@@ -176,7 +176,7 @@ private struct PodiumSlot: View {
 
     var body: some View {
         VStack(spacing: PlayboardSpacing.small) {
-            if champion && !dynamicTypeSize.isAccessibilitySize {
+            if isLarge {
                 Image("PodiumCrown").resizable().scaledToFit().frame(height: 36).accessibilityHidden(true)
             }
             PlayerAvatar(
@@ -184,41 +184,72 @@ private struct PodiumSlot: View {
                 avatarID: entry.avatarID,
                 photoURL: entry.photoURL,
                 color: playerColor,
-                size: champion && !dynamicTypeSize.isAccessibilitySize ? 82 : 58,
+                size: avatarSize,
                 previewsOnTap: false
             )
-            Text(dynamicTypeSize.isAccessibilitySize ? "#\(entry.rank)  \(entry.displayName)" : entry.displayName)
+            Text(nameText)
                 .font(PlayboardTypography.label())
                 .foregroundStyle(palette.textPrimary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-            Text(entry.rating.map { String(format: "%.1f skill rating", $0) } ?? "Win rate")
+                .lineLimit(nameLineLimit)
+            Text(ratingText)
                 .font(PlayboardTypography.eyebrow())
                 .monospacedDigit()
-                .foregroundStyle(champion ? playerColor : palette.textMuted)
+                .foregroundStyle(ratingColor)
         }
         .padding(.horizontal, PlayboardSpacing.extraSmall)
         .padding(.vertical, PlayboardSpacing.medium)
-        .frame(maxWidth: .infinity, minHeight: champion && !dynamicTypeSize.isAccessibilitySize ? 180 : 140)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(palette.surface.opacity(champion ? 0.94 : 0.68))
-                .overlay {
-                    VStack(spacing: 0) {
-                        Rectangle().fill(playerColor.opacity(0.12)).frame(width: 1)
-                        Rectangle().fill(playerColor.opacity(0.18)).frame(height: 1)
-                    }
-                    .padding(PlayboardSpacing.small)
-                    .accessibilityHidden(true)
-                }
-                .overlay(alignment: .bottom) {
-                    Rectangle().fill(playerColor).frame(height: champion ? 5 : 3)
-                }
-        }
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(playerColor.opacity(champion ? 0.45 : 0.2)))
+        .frame(maxWidth: .infinity, minHeight: minHeight)
+        .background { slotBackground }
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(playerColor.opacity(strokeOpacity)))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Rank \(entry.rank), \(entry.displayName)")
+        .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint("Opens this player's profile")
-        .accessibilityValue("\(entry.rating.map { $0.formatted(.number.precision(.fractionLength(1))) + " skill rating" } ?? "win rate"), \(entry.wins) wins from \(entry.gamesPlayed) games, \(period)")
+        .accessibilityValue(accessibilityValueText)
+    }
+
+    // Split out of `body` so the type checker solves small expressions instead of one large one.
+    private var isLarge: Bool { champion && !dynamicTypeSize.isAccessibilitySize }
+    private var avatarSize: CGFloat { isLarge ? 82 : 58 }
+    private var minHeight: CGFloat { isLarge ? 180 : 140 }
+    private var nameLineLimit: Int { dynamicTypeSize.isAccessibilitySize ? 2 : 1 }
+    private var strokeOpacity: Double { champion ? 0.45 : 0.2 }
+    private var ratingColor: Color { champion ? playerColor : palette.textMuted }
+
+    private var nameText: String {
+        dynamicTypeSize.isAccessibilitySize ? "#\(entry.rank)  \(entry.displayName)" : entry.displayName
+    }
+
+    private var ratingText: String {
+        guard let rating = entry.rating else { return "Win rate" }
+        return String(format: "%.1f skill rating", rating)
+    }
+
+    private var accessibilityLabelText: String { "Rank \(entry.rank), \(entry.displayName)" }
+
+    private var accessibilityValueText: String {
+        let rating: String
+        if let value = entry.rating {
+            rating = value.formatted(.number.precision(.fractionLength(1))) + " skill rating"
+        } else {
+            rating = "win rate"
+        }
+        return "\(rating), \(entry.wins) wins from \(entry.gamesPlayed) games, \(period)"
+    }
+
+    private var slotBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(palette.surface.opacity(champion ? 0.94 : 0.68))
+            .overlay {
+                VStack(spacing: 0) {
+                    Rectangle().fill(playerColor.opacity(0.12)).frame(width: 1)
+                    Rectangle().fill(playerColor.opacity(0.18)).frame(height: 1)
+                }
+                .padding(PlayboardSpacing.small)
+                .accessibilityHidden(true)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(playerColor).frame(height: champion ? 5 : 3)
+            }
     }
 
     private var playerColor: Color { Color(leaderboardHex: entry.avatarColor) }

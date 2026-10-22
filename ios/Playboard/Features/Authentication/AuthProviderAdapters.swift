@@ -28,9 +28,7 @@ final class GoogleAuthProvider: GoogleAuthProviding {
                 throw AuthError.invalidResponse
             }
             return ProviderCredential(identityToken: identityToken, givenName: nil, familyName: nil)
-        } catch let error as NSError
-            where error.domain == kGIDSignInErrorDomain
-                && error.code == GIDSignInErrorCode.canceled.rawValue {
+        } catch let error as GIDSignInError where error.code == .canceled {
             throw AuthError.cancelled
         } catch let error as AuthError {
             throw error
