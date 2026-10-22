@@ -115,13 +115,15 @@ struct DesignGallery: View {
         _ title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: PlayboardSpacing.medium) {
+        // PlayboardCard stores its builder, so build the non-escaping content up front.
+        let sectionContent = content()
+        return VStack(alignment: .leading, spacing: PlayboardSpacing.medium) {
             Text(title.uppercased())
                 .font(PlayboardTypography.eyebrow())
                 .tracking(2)
                 .foregroundStyle(palette.textMuted)
             PlayboardCard {
-                VStack(alignment: .leading, spacing: PlayboardSpacing.large, content: content)
+                VStack(alignment: .leading, spacing: PlayboardSpacing.large) { sectionContent }
                     .foregroundStyle(palette.textPrimary)
             }
         }
