@@ -123,13 +123,13 @@ struct LoginScreen: View {
     private var reviewerForm: some View {
         VStack(spacing: PlayboardSpacing.medium) {
             Divider()
-            TextField("Username", text: Binding(get: { viewModel.state.reviewerUsername }, set: viewModel.setReviewerUsername))
+            TextField("Username", text: Binding(get: { viewModel.state.reviewerUsername }, set: { viewModel.setReviewerUsername($0) }))
                 .textContentType(.username)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("reviewer-username")
-            SecureField("Password", text: Binding(get: { viewModel.state.reviewerPassword }, set: viewModel.setReviewerPassword))
+            SecureField("Password", text: Binding(get: { viewModel.state.reviewerPassword }, set: { viewModel.setReviewerPassword($0) }))
                 .textContentType(.password)
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.go)

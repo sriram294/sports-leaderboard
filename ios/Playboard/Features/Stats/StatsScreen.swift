@@ -31,7 +31,7 @@ struct StatsScreen: View {
                 PlayboardSectionLabel("Group insights")
                 Text("Stats").font(PlayboardTypography.title()).foregroundStyle(palette.textPrimary)
             }
-            Picker("Time range", selection: Binding(get: { viewModel.state.range }, set: viewModel.setRange)) {
+            Picker("Time range", selection: Binding(get: { viewModel.state.range }, set: { viewModel.setRange($0) })) {
                 ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -190,7 +190,7 @@ private struct StatsPartnersCard: View {
                     } else {
                         Picker("Player", selection: Binding(
                             get: { viewModel.state.selectedPlayerID ?? "" },
-                            set: viewModel.selectPlayer
+                            set: { viewModel.selectPlayer($0) }
                         )) {
                             ForEach(viewModel.state.players) { Text($0.displayName).tag($0.userID) }
                         }
