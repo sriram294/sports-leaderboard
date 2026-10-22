@@ -19,7 +19,8 @@ final class AuthenticationUITests: XCTestCase {
 
         app.descendants(matching: .any)["google-sign-in-button"].tap()
 
-        let error = app.descendants(matching: .any)["login-error"]
+        // The combined error row and its label can both carry the identifier; they share the text.
+        let error = app.descendants(matching: .any)["login-error"].firstMatch
         XCTAssertTrue(error.waitForExistence(timeout: 3))
         XCTAssertTrue(error.label.contains("cancelled"))
     }
@@ -29,7 +30,8 @@ final class AuthenticationUITests: XCTestCase {
 
         app.descendants(matching: .any)["google-sign-in-button"].tap()
 
-        let error = app.descendants(matching: .any)["login-error"]
+        // The combined error row and its label can both carry the identifier; they share the text.
+        let error = app.descendants(matching: .any)["login-error"].firstMatch
         XCTAssertTrue(error.waitForExistence(timeout: 3))
         XCTAssertTrue(error.label.contains("offline"))
     }

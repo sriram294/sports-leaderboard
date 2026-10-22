@@ -122,6 +122,7 @@ struct AppShellScreen: View {
                 group: viewModel.state.selectedGroup
             )
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("signed-in-screen")
         .alert("Discard this match?", isPresented: discardAlertBinding) {
             Button("Keep editing", role: .cancel) { pendingTab = nil }
@@ -187,6 +188,7 @@ struct AppShellScreen: View {
                         .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                         .tag(AppTab.profile)
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("app-tab-shell")
             }
         }
@@ -299,6 +301,7 @@ private struct PlayerProfileSheet: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .task { viewModel.select(group: group) }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("player-profile-sheet")
     }
 }

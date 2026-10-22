@@ -22,6 +22,7 @@ struct StatsScreen: View {
                 .refreshable { await viewModel.refresh() }
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("stats-screen")
     }
 

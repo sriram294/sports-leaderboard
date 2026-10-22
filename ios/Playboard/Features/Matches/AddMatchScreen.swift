@@ -32,6 +32,7 @@ struct AddMatchScreen: View {
                 form
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("add-match-screen")
     }
 

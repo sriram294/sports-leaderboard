@@ -22,6 +22,7 @@ struct MatchesScreen: View {
                 history
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("matches-screen")
         .alert("Delete this match?", isPresented: deleteAlertBinding) {
             Button("Cancel", role: .cancel) { viewModel.cancelDelete() }

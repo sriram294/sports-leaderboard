@@ -54,6 +54,7 @@ struct BoardScreen: View {
                     .padding(.bottom, PlayboardSpacing.section)
                 }
                 .refreshable { await viewModel.refresh() }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("leaderboard-screen")
             }
         }

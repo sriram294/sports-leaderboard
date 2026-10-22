@@ -52,6 +52,7 @@ struct SettingsScreen: View {
                 AccountDeletionSheet(deleteAccount: deleteAccount, onDeleted: { dismiss() })
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings-screen")
     }
 

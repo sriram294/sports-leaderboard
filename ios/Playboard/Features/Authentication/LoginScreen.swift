@@ -83,6 +83,7 @@ struct LoginScreen: View {
                                         .font(PlayboardTypography.body())
                                         .foregroundStyle(palette.statLoss)
                                         .fixedSize(horizontal: false, vertical: true)
+                                        .accessibilityElement(children: .combine)
                                         .accessibilityIdentifier("login-error")
                                     Button("Dismiss") { viewModel.dismissError() }
                                         .font(PlayboardTypography.label())
@@ -98,6 +99,7 @@ struct LoginScreen: View {
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("login-screen")
         }
     }

@@ -17,6 +17,7 @@ struct ProfileScreen: View {
                 .padding(.bottom, PlayboardSpacing.section)
         }
         .refreshable { await viewModel.refresh() }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("profile-screen")
         .sheet(isPresented: renameBinding) {
             EditNameSheet(viewModel: viewModel)
